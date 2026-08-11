@@ -1,0 +1,40 @@
+11/08/2026
+renomer comme leurs repos sur github : 
+    soc360-backend en soc360-back-java
+    soc360-frontend en soc360-front-react 
+
+11/08/2026
+mettre le nom du user connecté, son role et le btn Quitter 
+dans l'entete, en haut à droite 
+
+11/08/2026
+quand je click sur le user connected, j'affiche le profil
+
+11/08/2026
+comme ADMIN n'a pas de société, on remplace dans l'entete, la liste 
+"Espace de Travail" par le btn Dashboard 
+
+11/08/2026
+sous soc360-doc : 
+generer une doc fonctionelle du projet : DOC_USER.docx
+une doc technique du backend : DOC_BACKEND.docx
+une doc technique du frontend : DOC_FRONTEND.docx
+
+11/08/2026
+le projet soc360 (front et back et doc) gere les activitées de sociétés et pas seulement des esn.
+donc on doit remplacer le service "ajouter une esn" par "ajouter une société".
+on doit modifier la table client afin qu'elle contienne un id_societe et un champ notes de type text afin de rajouter infos specifique de ce client pour la société en cours.
+
+11/08/2026
+remplacer la table et objet esn par soc (table, objet, FK/colonnes id_esn -> id_soc)
+remplacer la colonne logo_path par logo
+supprimer les colonnes de la table client qui se trouvent deja dans soc
+(la table client contient maintenant id_soc + notes + les colonnes specifiques)
+
+11/08/2026
+generer un script sh dans le backend kill_backend.sh qui va stopper le processus du backend.
+
+11/08/2026
+ajouter l'entité et la page fournisseur comme pour le client
+(table supplier + package com.soc360.supplier + API /api/suppliers + page Fournisseurs /fournisseurs + migration V11)
+
