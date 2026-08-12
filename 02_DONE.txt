@@ -1,0 +1,159 @@
+11/08/2026
+renomer comme leurs repos sur github : 
+    soc360-backend en soc360-back-java
+    soc360-frontend en soc360-front-react 
+
+11/08/2026
+mettre le nom du user connecté, son role et le btn Quitter 
+dans l'entete, en haut à droite 
+
+11/08/2026
+quand je click sur le user connected, j'affiche le profil
+
+11/08/2026
+comme ADMIN n'a pas de société, on remplace dans l'entete, la liste 
+"Espace de Travail" par le btn Dashboard 
+
+11/08/2026
+sous soc360-doc : 
+generer une doc fonctionelle du projet : DOC_USER.docx
+une doc technique du backend : DOC_BACKEND.docx
+une doc technique du frontend : DOC_FRONTEND.docx
+
+11/08/2026
+le projet soc360 (front et back et doc) gere les activitées de sociétés et pas seulement des esn.
+donc on doit remplacer le service "ajouter une esn" par "ajouter une société".
+on doit modifier la table client afin qu'elle contienne un id_societe et un champ notes de type text afin de rajouter infos specifique de ce client pour la société en cours.
+
+11/08/2026
+remplacer la table et objet esn par soc (table, objet, FK/colonnes id_esn -> id_soc)
+remplacer la colonne logo_path par logo
+supprimer les colonnes de la table client qui se trouvent deja dans soc
+(la table client contient maintenant id_soc + notes + les colonnes specifiques)
+
+11/08/2026
+generer un script sh dans le backend kill_backend.sh qui va stopper le processus du backend.
+
+11/08/2026
+ajouter l'entité et la page fournisseur comme pour le client
+     (table supplier + package com.soc360.supplier + API /api/suppliers + page Fournisseurs /fournisseurs + migration V11)
+
+12/08/2026
+contexte : 
+dans les tables client et fournisseur, il y a la colonne id_soc : elle pointe vers la société de ce client / fournisseur.
+on doit donc ajouter une colonne id_soc_parent : elle pointe vers la société parent de ce client / fournisseur.
+
+exemple : 
+la societe esn (Eisi-Consulting) à un client SFR.
+Société parent = ESI CONSULTING
+
+go
+
+12/08/2026
+dans la page profil
+quand je veux supprimer une société :
+    on me demande de confirmer la suppression
+    si je click sur oui : le systeme verifie s'il y a des objets liés à cette société :
+    si oui : les lister dans une dialog avec un btn supprimer pour chaque objet lié.
+    si non, supprimer la soc
+
+go
+
+12/08/2026
+le responsable_soc peut modifier, supprimer les sociétés qu'il a ajouté via la page de son profil.
+go
+
+12/08/2026
+table soc : 
+ajouter id_user : le user connecté qui a ajouté cette société.
+
+ajouter : histo_soc : id, id_soc, id_user, date_maj, infos_avant, infos_apres, diff 
+table qui trace les maj de soc 
+
+go
+
+12/08/2026
+dans la page : inscrire une nouvelle societe :
+apres recherche : 
+adresse mail : <username>@<domaine_site_web>
+exemple : 
+username : ieddinemansour
+site_web  : www.eisiconsulting.com
+
+alors adresse mail : ieddinemansour@eisiconsulting.com
+go
+
+12/08/2026
+page inscription soc : 
+si nom de société renseignée, apres rechercher, mettre a jour le champ site web par le bon, si pas connu, mettre :
+www.<nom_soc>.com 
+si gerant est trouvé ou renseigné : 
+mettre a jour prenom et nom de l'administrateur 
+(ces champs à deplacer vers le haut en dessous du gérant)
+(champ adresse mail a mettre sous username)
+mettre a jour champ username : <first_letter_of prenom>nom 
+(a deplacer en dessous des champs prenom et nom)
+
+go
+
+12/08/2026
+toujours dans la page : inscription d'une societe :
+s'il y a plusieurs sociétés dans le résultat du btn rechercher 
+alors proposer une liste de choix dans une boite de dialog 
+go
+
+12/08/2026
+ajouter dans l'ihm (qui seront pre remplit par le btn rechercher) :
+l'adresse de la societe 
+activite_principale
+categorie_entreprise
+date_creation
+date_fermeture
+dirigeants (gérant)
+
+go
+
+12/08/2026
+modifier le script run_dev.sh dans le backend afin de redemarrer le backend 
+si il y a un changement dans les sources 
+go
+
+12/08/2026
+ajouter d'autres colonnes dans la table soc afin d'avoir pas mal d'infos sur une société.
+une colonne texte : infos_web : le btn rechercher remplit d'abord dans ce champ. puis remplir dans les autres :
+code siret
+code naf
+gerant
+adresse
+ville
+pays 
+...
+go
+
+12/08/2026
+dans la page : inscrire une nouvelle societe :
+ajouter un btn juste apres le input du siret : 
+son action : chercher sur le web les infos de la société via son nom et/ou son siret.
+remplir les autres champs par ces infos.
+go
+
+12/08/2026
+completer eventuellement les tests unitaires
+executer 
+corriger les erreurs eventuelles 
+go
+
+12/08/2026
+il faut unifier les 2 pages pour ajouter une nouvelle société : 
+1. lorsque je ne suis pas connecté 
+2. lorsque je suis connecté : je garde mon username, password, email 
+
+go
+
+12/08/2026
+corriger l'erreur TransientObjectException lors de la suppression d'une société :
+- le code actuel dans SocService.delete() ne gérait pas les entités enfants (HistoSoc)
+- ajout de la suppression des enregistrements HistoSoc avant la suppression de la Soc
+- modification de SocServiceTest pour ajouter les mocks manquants
+
+go

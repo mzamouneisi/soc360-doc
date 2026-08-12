@@ -1,9 +1,0 @@
-contexte : 
-dans les tables client et fournisseur, il y a la colonne id_soc : elle pointe vers la société de ce client / fournisseur.
-on doit donc ajouter une colonne id_soc_parent : elle pointe vers la société parent de ce client / fournisseur.
-
-exemple : 
-la societe esn (Eisi-Consulting) à un client SFR.
-Société parent = ESI CONSULTING
-
-go 
