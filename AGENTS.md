@@ -23,10 +23,11 @@ ou bien
 c:\pgm\nvm\v22.0.0
 -------------------------------------
 
-chaque tache dans 01_TODO.txt se termine pr go
+chaque tache dans 01_TODO.txt peut se terminer pr go
 
 quand je vous dis todo, vous executer les taches une par une.
-une fois finie, vous deplacer le texte de la tache dans 02_DONE.txt avec la date du jour.
+
+une fois finie, vous deplacer le texte de la tache dans 02_DONE.txt avec la date du jour complete yyyy-mm-dd HH:MM:SS
 ---------------------
 
 les repos : 
@@ -34,4 +35,5 @@ les repos :
 soc360-doc : docs, todo, ... 
 soc360-back-java : projet backend java 
 soc360-front-react : projet front 
+soc360-front-react-prod : projet front prod 
 ---------------------------------------------

@@ -1,10 +1,6 @@
-lire les fichiers dans soc360-doc et vérifier le dernier état de run.log.
+lire les fichiers dans soc360-doc et vérifier le dernier état de run.log 
 
      → Read soc360-doc\AGENTS.md
      → Read soc360-doc\01_TODO.txt
      → Read soc360-doc\02_DONE.txt
      → Read soc360-back-java\run.log
-
-lorsque je veux supprimer une soc, j'ai une erreur server : voir run.log 
-
-

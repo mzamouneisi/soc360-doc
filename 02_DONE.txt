@@ -296,3 +296,69 @@ go
 - mvn test : 164 tests, 1 échec pré-existant et indépendant
   (AuthServiceTest.registerSoc_createsSocSubscriptionAdminAndSendsVerificationEmail :
   vérifie seedDefaultsFor appelé par registerSoc alors que seul addSoc l'appelle).
+
+13/08/2026 23:40:09
+le responsable_soc peut etre un manager
+- périmètre validé avec l'utilisateur : RESPONSIBLE_SOC assignable comme manager —
+  dans le formulaire consultant, le RESPONSIBLE_SOC doit pouvoir être sélectionné
+  (et notifié) comme manager d'un consultant, pas seulement apparaître dans la liste.
+- backend : ConsultantService.managers(socId) retourne désormais l'union de :
+  - findBySocIdAndRoleInAndActiveTrue(socId, [CONSULTANT, MANAGER, RESPONSIBLE_SOC])
+    (liés par la société par défaut user_account.id_soc)
+  - findBySocIdInSocs(socId) filtré sur active + rôle dans [CONSULTANT, MANAGER,
+    RESPONSIBLE_SOC] (liés via la table de jointure user_soc — cas d'un RESPONSIBLE_SOC
+    multi-sociétés dont la soc n'est pas la soc par défaut, cf. AuthService.attachSoc)
+  - dédoublonnage par id (une même personne peut être liée aux deux manières).
+- notifications : inchangé — à la soumission d'un CRA, CraService.submit notifie déjà
+  le manager du consultant par mail quel que soit son rôle ; la note de frais n'a pas
+  de notification. Un RESPONSIBLE_SOC assigné comme manager est donc notifié comme
+  un MANAGER, pas seulement visible dans la liste.
+- résolution du manager à l'affectation (ConsultantService.resolveManager) acceptait
+  déjà les rôles CONSULTANT / MANAGER / RESPONSIBLE_SOC : aucune contrainte à lever.
+- frontend : inchangé — le champ manager du formulaire consultant appelle déjà
+  GET /api/consultants/managers (retenu en variable de state) et affiche tous les
+  managers retournés (id/fullName/position), y compris un RESPONSIBLE_SOC.
+- tests (ConsultantServiceTest, 16 OK) :
+  - managers_includesResponsibleSoc (mise à jour : stub findBySocIdInSocs)
+  - managers_includesResponsibleSocLinkedViaUserSocs (nouveau)
+  - managers_deduplicatesUsersFoundViaBothSocAndUserSocs (nouveau)
+- mvn test : 166 tests, 1 échec pré-existant et indépendant (AuthServiceTest
+  registerSoc_createsSocSubscriptionAdminAndSendsVerificationEmail, inchangé).
+
+14/08/2026 00:57:44
+un RESPONSABLE_SOC peut etre lié à plusieurs socId, avec une socId favorite qui est
+selectionnée à la connexion, et une socIdSelected lorsqu'il sélectionne une société
+pour travailler ; la société favorite peut être définie dans la page de son profil
+(4 boutons par société : select, favorite, modifier, supprimer).
+- backend AuthService :
+  - mySocs() retourne désormais l'union de la société favorite (user_account.id_soc)
+    et des sociétés liées (user_soc), dédoublonnée par id, triée par nom. Un compte
+    dont le défaut id_soc n'est pas dans user_soc voit donc sa société dans la liste.
+  - addSoc ne pose plus la favorite : il ajoute la société à user_soc et ne la rend
+    favorite QUE si l'utilisateur n'en avait aucune (user.getSoc() == null).
+  - setFavoriteSoc(Long socId) : ne change la favorite que si la société est la
+    favorite courante ou est dans user_soc (sinon 403), met à jour user_account.id_soc,
+    ajoute au besoin la société à user_soc, sauvegarde et retourne l'utilisateur.
+- backend AuthController : PUT /api/auth/me/socs/{socId}/favorite,
+  @PreAuthorize hasRole('RESPONSIBLE_SOC').
+- frontend :
+  - api/auth.ts : authApi.setFavoriteSoc(socId) -> PUT /auth/me/socs/{socId}/favorite.
+  - SocContext : expose favoriteSocId/favoriteSoc (user.socId) et setFavoriteSoc
+    (appelle l'API, refreshMe() puis refreshSocs()) ; refreshSocs priorise à la
+    connexion : favorite (id_soc) > sélection mémorisée > première société.
+  - SocSelector : chaque société a un bouton étoile pour la définir comme favorite
+    (rendue/disponible seulement pour RESPONSIBLE_SOC).
+  - Profile : 4 boutons par société (sélectionner, favorite, modifier, supprimer),
+    étoile et nom colorés pour la favorite ; sélection d'une société de travail.
+  - Consultants : la liste Manager n'était plus vide : le formulaire utilisait
+    user.socId (null pour un compte lié uniquement via user_soc) ; il utilise
+    désormais la société sélectionnée (useSoc.selectedSocId) sinon user.socId.
+- tests : AuthServiceTest (30, ajout de 4 tests) :
+  - mySocs_returnsSortedListOfCurrentUserSocs (existant)
+  - mySocs_includesFavoriteSocWhenNotInUserSocs (ajouté)
+  - setFavoriteSoc_switchesFavoriteAmongLinkedSocs (ajouté)
+  - setFavoriteSoc_rejectsSocNotLinkedToUser (ajouté)
+- mvn test : 170 tests, 1 échec pré-existant et indépendant (AuthServiceTest
+  registerSoc_createsSocSubscriptionAdminAndSendsVerificationEmail, inchangé).
+- frontend : lint oxlint OK (aucune erreur source ; warnings docs/ pré-existants),
+  vitest 110 tests OK, tsc + vite build OK.
