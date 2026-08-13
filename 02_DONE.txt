@@ -240,7 +240,7 @@ violation FK fk_cra_consultant : la table cra (et autres) référence consultant
   nouveau deleteSoc_detachesSocParentOnClientsOfOtherSocs
   (SocDeleteIntegrationTest : 6 tests OK)
 
-go
+GO
 
 13/08/2026
 corriger le deploy du front afin qu'il utilise le backend sur azure.
@@ -259,7 +259,7 @@ au login : POST https://esn360-backend-v2-dev.whiteforest-96ad5fb7.francecentral
   - DataSeeder : si seedDemoData et base non vide, on garantit quand même l'existence
     du compte admin de démo (admin/Admin123!) via ensureAdmin() (upsert par username) ;
     si base vide, seedDemo() complet comme avant.
-  - (suite) ensureAdmin() réinitialise désormais aussi le mot de passe d'un éventuel
+  - (suite) ensureAdmin() réinitialise désormais aussi le mot de passe d'un ÉVENTUEL
     compte admin pré-existant (base Azure contenant d'anciennes données esn360) :
     admin est toujours connectable avec Admin123! quand SEED_DEMO_DATA=true.
   - DOC_DEPLOY_FRONT_TO_GH_PAGES.md : ajout d'un point « Dépannage » pour le cas
@@ -268,3 +268,31 @@ au login : POST https://esn360-backend-v2-dev.whiteforest-96ad5fb7.francecentral
   connecter avec admin / Admin123!.
 
 go
+
+13/08/2026
+je suis responsable ou manager d'une soc
+et je suis connecté avec une société S
+Alors je ne dois pas voir les objets (consultants, clients, ...) d'autres société
+
+go
+- backend : isolation par société appliquée au niveau controller :
+  - SecurityUtils : effectiveSocId(Long) (ADMIN conserve le socId demandé, null = tout ;
+    non-admin ignore le paramètre et utilise currentSocId()) et requireSocAccess(Long)
+    (non-admin : l'objet doit appartenir à socIds ou socId par défaut, sinon 403).
+  - endpoints filtrés par effectiveSocId : clients, suppliers, projects, consultants,
+    activities, activity types, CRA (findByMonth/export), note de frais (findBySocYear/stats),
+    fiche paie (findBySoc), cra_configuration, batch (export/import).
+  - endpoints protégés par requireSocAccess (getById) : projects, consultants, activities,
+    CRA, notes de frais, fiches de paie, documents, socs.
+  - SupportController : non-admin forcé à mine=true.
+  - SocController.findAll -> SocService.findAllAccessible() (non-admin : union socId + socIds) ;
+    findById -> requireSocAccess(id).
+  - services : CraService/NoteFraisService/FichePaieService.requireConsultantSocAccess,
+    CraService.socIdOfConsultant, FichePaieService.requireFicheSocAccess, SocService.findAllAccessible().
+  - frontend inchangé : le header X-SOC-Id est déjà envoyé et le backend force la SOC.
+- tests : SecurityIntegrationTest (13 tests OK) :
+  responsableSoc_cannotSeeConsultantsOfAnotherSoc, responsibleSoc_cannotSeeClientsOfAnotherSoc,
+  manager_cannotSeeOtherSocObjects (clients, projects, suppliers d'une autre soc invisibles).
+- mvn test : 164 tests, 1 échec pré-existant et indépendant
+  (AuthServiceTest.registerSoc_createsSocSubscriptionAdminAndSendsVerificationEmail :
+  vérifie seedDefaultsFor appelé par registerSoc alors que seul addSoc l'appelle).
