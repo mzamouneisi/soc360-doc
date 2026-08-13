@@ -157,3 +157,87 @@ corriger l'erreur TransientObjectException lors de la suppression d'une sociét�
 - modification de SocServiceTest pour ajouter les mocks manquants
 
 go
+
+13/08/2026
+corriger le Server Error lors de la suppression d'une société (TransientObjectException) :
+la vraie cause : quand l'utilisateur connecté (ou d'autres comptes) est lié à la société
+via user_account.id_soc ou user_soc, la société marquée DELETED reste référencée par
+ces entités MANAGED au moment du flush -> le contrôle Hibernate CHECK_ON_FLUSH
+(CascadingActions$9) lève TransientObjectException "persistent instance references an
+unsaved transient instance of Soc".
+- SocService.delete() détache maintenant la société de tous les users :
+    user_account.id_soc mis à NULL (findBySocId) + retrait de user_soc
+    (findBySocIdInSocs + getSocs().remove(soc)) avant de supprimer la Soc
+- UserAccountRepository : ajout de findBySocId(Long) et findBySocIdInSocs(Long)
+- test d'intégration SocDeleteIntegrationTest (3 cas : owner lié à la soc,
+  admin sans lien, autre user lié uniquement via user_soc)
+
+go
+
+13/08/2026
+je suis connecté en tant que RESPONSABLE_SOC
+je vais dans ma page profil
+je vois que j'ai deux sociétés
+je veux supprimer l'une d'elle
+je click sur supprimer
+je confirme
+le code doit m'avertir que je vais supprimer avec tous les objets liés en me les affichant dans une dialog 500x500
+je dois confirmer la suppression de tout
+- backend : SocService.deleteWithDependencies() supprime la société + tous les objets liés
+  (payments, subscriptions, activités, types d'activités, projets, fournisseurs, clients,
+  consultants) dans l'ordre FK-safe + détache les users + les histo_soc.
+  Repos : ajout de deleteAllBySocId (et deleteAllBySubscriptionSocId pour Payment)
+  endpoint : DELETE /api/socs/{id}/all
+- frontend : socs.api.removeWithDependencies(id) ; la page profil affiche une dialog 500x500
+  qui avertit « cette société sera supprimée avec tous ses objets liés », liste les objets
+  liés (avec leur type) et un bouton « Tout supprimer » qui confirme la suppression de tout.
+- test d'intégration deleteWithDependencies_removesAllLinkedObjects (SocDeleteIntegrationTest)
+
+go
+
+13/08/2026
+corriger l'erreur « Vous ne pouvez gérer que les sociétés que vous avez ajoutées »
+lors de la suppression (simple ou « Tout supprimer ») d'une société par le responsable_soc :
+- cause : AuthService.addSoc() (POST /api/auth/me/socs, page « ajouter une société » quand
+  on est connecté) ne positionnait jamais soc.id_user (createdByUser) -> la société n'avait
+  aucun créateur -> ensureOwnerOrAdmin() (SocService) levait une erreur 403 à chaque gestion
+  (modification / suppression) de cette société.
+- fix : addSoc() fait maintenant soc.setCreatedByUser(user) avant le save.
+- pour les sociétés déjà existantes sans créateur (créées via addSoc avant ce correctif) :
+  ensureOwnerOrAdmin() autorise le responsable_soc dont la société fait partie de
+  user_account.user_soc (fallback sur le lien de l'utilisateur), en plus du créateur explicite.
+- tests ajoutés : AuthServiceTest.addSoc vérifie createdByUser ;
+  SocServiceTest : delete_legacySocWithoutCreator_linkedViaUserSocs_succeeds,
+  delete_legacySocWithoutCreator_notLinked_forbidden ;
+  SocDeleteIntegrationTest : deleteSoc_legacySocWithoutCreator_linkedViaUserSocs_succeeds.
+
+go
+
+13/08/2026
+corriger l'erreur d'intégrité lors de « Tout supprimer » d'une société :
+violation FK fk_cra_consultant : la table cra (et autres) référence consultant.id.
+- les tables référençant consultant / activity / soc n'étaient pas supprimées avant
+  leurs parents dans deleteLinkedObjects() :
+    cra_day_activity (activity_id + cra_day_id)
+    cra_day (cra_id)
+    cra (consultant_id)
+    note_frais_line (note_frais_id)
+    note_frais (consultant_id + id_soc)
+    fiche_paie (consultant_id)
+    cra_configuration (id_soc)
+    client.id_soc_parent (référence une autre société comme soc parent)
+- ajout des méthodes de purge (JPQL @Modifying) :
+  CraDayActivityRepository.deleteByConsultantSocId, CraDayRepository.deleteByConsultantSocId,
+  CraRepository.deleteByConsultantSocId, NoteFraisLineRepository.deleteBySocId,
+  NoteFraisRepository.deleteBySocId, FichePaieRepository.deleteByConsultantSocId,
+  CraConfigurationRepository.deleteBySocId, ClientRepository.detachSocParent
+- deleteLinkedObjects() supprime maintenant dans l'ordre FK-safe :
+  cra_day_activity -> cra_day -> cra -> note_frais_line -> note_frais -> fiche_paie ->
+  cra_configuration -> detach soc_parent -> payments -> subscriptions -> activities ->
+  activity_types -> projects -> suppliers -> clients -> consultants -> (deleteSoc)
+- tests : deleteWithDependencies_removesAllLinkedObjects enrichi (cra, cra_day,
+  cra_day_activity, note_frais, note_frais_line, fiche_paie, cra_configuration) ;
+  nouveau deleteSoc_detachesSocParentOnClientsOfOtherSocs
+  (SocDeleteIntegrationTest : 6 tests OK)
+
+go
