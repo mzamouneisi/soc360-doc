@@ -241,3 +241,30 @@ violation FK fk_cra_consultant : la table cra (et autres) référence consultant
   (SocDeleteIntegrationTest : 6 tests OK)
 
 go
+
+13/08/2026
+corriger le deploy du front afin qu'il utilise le backend sur azure.
+mon front : https://mzamouneisi.github.io/soc360-front-react/login
+au login : POST https://esn360-backend-v2-dev.whiteforest-96ad5fb7.francecentral.azurecontainerapps.io/api/auth/login 401 (Unauthorized)
+- diagnostic : le front GitHub Pages est déjà correctement configuré et à jour :
+  - le site live (main/docs) sert le build qui embarque l'URL du backend Azure dev
+    (index-DJO06bG8.js contient https://esn360-backend-v2-dev...azurecontainerapps.io)
+  - branche main == origin/main (deploy "GitHub Pages : build docs/" poussé)
+  - CORS backend dev vérifié : Access-Control-Allow-Origin: https://mzamouneisi.github.io (admis)
+  le 401 vient donc de la base Azure : aucun compte ne correspond (SEED_DEMO_DATA=false
+  sur le backend dev -> même admin/Admin123! n'existe pas).
+- fix :
+  - env.server.sh (bloc psgsql_azure dev) : SEED_DEMO_DATA=true par défaut
+    (remis à false en prod : le bloc psgsql_azure_prod reste inchangé)
+  - DataSeeder : si seedDemoData et base non vide, on garantit quand même l'existence
+    du compte admin de démo (admin/Admin123!) via ensureAdmin() (upsert par username) ;
+    si base vide, seedDemo() complet comme avant.
+  - (suite) ensureAdmin() réinitialise désormais aussi le mot de passe d'un éventuel
+    compte admin pré-existant (base Azure contenant d'anciennes données esn360) :
+    admin est toujours connectable avec Admin123! quand SEED_DEMO_DATA=true.
+  - DOC_DEPLOY_FRONT_TO_GH_PAGES.md : ajout d'un point « Dépannage » pour le cas
+    401 Unauthorized au login.
+- à faire pour activer : redéployer le backend dev (deploy_app_docker.sh) puis se
+  connecter avec admin / Admin123!.
+
+go
