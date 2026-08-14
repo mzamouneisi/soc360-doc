@@ -23,11 +23,19 @@ ou bien
 c:\pgm\nvm\v22.0.0
 -------------------------------------
 
-chaque tache dans 01_TODO.txt peut se terminer pr go
+tache : _todo :
 
-quand je vous dis todo, vous executer les taches une par une.
+lire 01_TODO.txt : chaque tache dans 01_TODO.txt peut se terminer pr go
+
+executer les taches une par une.
 
 une fois finie, vous deplacer le texte de la tache dans 02_DONE.txt avec la date du jour complete yyyy-mm-dd HH:MM:SS
+--------------------
+tache : _err_back :
+
+lire le fichier run.log du backend 
+corriger l'erreur
+
 ---------------------
 
 les repos : 

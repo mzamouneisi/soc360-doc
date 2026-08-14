@@ -1,0 +1,47 @@
+CR - 14/08/2026
+
+1. 14/08/2026 00:57:44 : un RESPONSABLE_SOC peut être lié à plusieurs socId, avec une
+   socId favorite (définie dans son profil) et une socId selected pour travailler —
+   backend (mySocs = union favorite + user_soc, endpooint PUT /api/auth/me/socs/{socId}/
+   favorite, addSoc ne pose plus la favorite) + frontend (SocContext expose
+   favoriteSoc/setFavoriteSoc, profil : 4 boutons par société, étoile dans SocSelector,
+   formulaire consultants corrigé pour utiliser la société sélectionnée) — 170 tests backend,
+   1 échec pré-existant, 110 tests frontend OK.
+
+2. 14/08/2026 12:05:49 : en tant que RESPONSABLE_SOC (donc aussi manager), quand il ajoute
+   un client ou un fournisseur, le formulaire contient une partie « société » (choisir une
+   de ses sociétés ou en inscrire une nouvelle inline) + les parties notes, contact, tel,
+   email, actif — extraction d'un AddSocModal partagé, select « Société * » dans
+   Clients.tsx/Suppliers.tsx pré-rempli avec la société sélectionnée, et vérification
+   obligatoire requireSocAccess côté backend (create/update) — 172 tests backend OK.
+
+3. 14/08/2026 12:38:26 : quand on ajoute une société en la cherchant avec plusieurs résultats,
+   affichage d'une dialog 600x600 pour choisir ; quand on ajoute un client (ou fournisseur),
+   sélection de la société associée par recherche, liste ou ajout, avec mise à jour du nom,
+   du contact (gérant), de l'email et du tel + bouton « Voir » — nouveau composant SocPicker,
+   champ tel exposé par le backend (SocLookupService), applyCompany pré-remplit le formulaire.
+
+4. 14/08/2026 14:01:42 : corriger erreur console front (contexte : click nouveau client ->
+   taper sfr -> rechercher -> la dialog était fermée ; console : <form> cannot be a
+   descendant of <form>) — cause : formulaire du SocPicker imbriqué dans celui du modal
+   client ; fix : suppression du <form> interne (bouton type="button" + recherche sur Entrée)
+   et rendu des modals via createPortal(document.body) — lint, 110 tests vitest, tsc+build OK.
+
+5. 14/08/2026 14:11:16 : corriger erreur backend run.log : ajout d'une société trouvée par la
+   recherche échouait avec « Value too long for column description CHARACTER VARYING(500) » —
+   le JSON complet du lookup (4680 caractères) était envoyé dans description au lieu du champ
+   infosWeb (colonne TEXT) ; fix dans SocPicker.settleCompany (description -> infosWeb).
+
+6. 14/08/2026 14:38:14 : quand je veux ajouter un client (ou fournisseur), la recherche de la
+   société (liste ou page « Ajouter une société ») doit être au début de la page, et la
+   sélection met à jour les autres champs — SocPicker.placé en tête du formulaire,
+   settleSoc(socId) : sur sélection/ajout, il appelle GET /socs/{id}, construit un lookup et
+   pré-remplit nom, gérant, email dérivé, etc. ; une société ajoutée est ajoutée à la liste,
+   sélectionnée et appliquée au formulaire.
+
+7. 14/08/2026 14:47:07 : corriger erreur backend run.log : suppression d'un client échouait
+   avec DataIntegrityViolationException SQLState 23503 « violation de contrainte
+   fk_project_client » — cause : ClientService.delete() ne gérait pas les projets liés
+   (project.client_id NOT NULL) ; fix : purge des projets via ProjectRepository.deleteByClientId
+   (JPQL @Modifying) avant la suppression du client, atomique par transaction — 173 tests
+   backend, 1 échec pré-existant.

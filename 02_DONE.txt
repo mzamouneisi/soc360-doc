@@ -362,3 +362,185 @@ pour travailler ; la société favorite peut être définie dans la page de son 
   registerSoc_createsSocSubscriptionAdminAndSendsVerificationEmail, inchangé).
 - frontend : lint oxlint OK (aucune erreur source ; warnings docs/ pré-existants),
   vitest 110 tests OK, tsc + vite build OK.
+
+14/08/2026 12:05:49
+en tant que RESPONSABLE_SOC (et donc aussi en tant que manager), quand il ajoute un
+client ou un fournisseur, le formulaire contient une partie « société » (choisir une de
+ses sociétés ou en inscrire une nouvelle inline) + les parties notes, contact, tel,
+email, actif.
+- frontend : AddSocModal extrait de SocSelector.tsx en composant partagé
+  src/soc/AddSocModal.tsx avec un callback onCreated(soc). SocSelector l'importe
+  (comportement inchangé).
+- Clients.tsx et Suppliers.tsx : pour un non-admin (RESPONSIBLE_SOC), le formulaire
+  affiche un select « Société * » alimenté par useSoc().socs (mySocs : sociétés liées,
+  favorite incluse) pré-rempli avec la société sélectionnée (useSoc.selectedSocId sinon
+  user.socId), complété d'un bouton « + Inscrire une société » qui ouvre AddSocModal ;
+  à la création, la nouvelle société est automatiquement sélectionnée dans le formulaire.
+  ADMIN : select de toutes les sociétés inchangé. La liste (findAll) est filtrée selon
+  la société sélectionnée (selectedSocId) et non plus user.socId seul.
+- backend (isolation multi-soc obligatoire) :
+  - ClientService.create/update et SupplierService.create/update vérifient
+    SecurityUtils.requireSocAccess sur la société cible (et sur la soc de l'objet
+    existant en update) ; un non-admin ne peut plus créer/modifier un objet pour une
+    société qui n'est pas la sienne.
+- tests : ajout de create_nonAdmin_otherSoc_forbidden dans ClientServiceTest et
+  SupplierServiceTest + helpers authenticateAsAdmin/authenticateAsResponsible
+  (UserPrincipal + SecurityContextHolder).
+- mvn test : 172 tests, 1 échec pré-existant et indépendant (AuthServiceTest
+  registerSoc_createsSocSubscriptionAdminAndSendsVerificationEmail, inchangé).
+- frontend : lint oxlint OK, vitest 110 tests OK, tsc + vite build OK.
+
+14/08/2026 12:38:26
+1) quand on ajoute une société en la cherchant (bouton Rechercher) et qu'il y a plusieurs
+résultats, on affiche une dialog 600x600 pour choisir la société.
+2) quand on ajoute un client (ou fournisseur), sélection de la société associée par
+recherche, liste ou ajout ; une fois sélectionnée, on met à jour le nom du client par le
+nom de la société, le contact par nom+prénom du gérant, l'email par
+<nom>@<domaine_soc>.com, le tel par la recherche ; bouton « Voir » pour revoir la société.
+- backend : SocLookupDtos.CompanyLookup + SocLookupService exposent désormais un champ
+  tel (téléphone de l'entreprise, champs telephone/tel de l'API recherche-entreprises).
+- frontend :
+  - AddSocModal : dialog de choix de société 600x600 (h-[600px] w-[600px], liste
+    scrollable, compteur de résultats, bouton Annuler).
+  - api/auth.ts : CompanyLookup.tel ajouté.
+  - nouveau composant src/soc/SocPicker.tsx : sélection de la société associée via
+    - recherche (nom/SIRET -> 1 résultat auto-sélectionné, plusieurs -> dialog 600x600 ;
+      si la société existe déjà dans mes socs elle est sélectionnée, sinon addSoc la crée
+      et la sélectionne) ;
+    - liste de mes sociétés (useSoc.socs, select) ;
+    - ajout (AddSocModal réutilisé, onCreated sélectionne la nouvelle société).
+    Un bouton « Voir » ouvre un récapitulatif (nom, SIRET, gérant, tel, email dérivé,
+    site, adresse). Une pastille indique la société retenue + l'email dérivé.
+  - Clients.tsx / Suppliers.tsx : section « Société associée * » -> SocPicker
+    (admin : select global + société parent inchangés). applyCompany pré-remplit le
+    formulaire : name = nom société, contactName = gérant, contactEmail =
+    <slug-nom>@<domaine-web>.com, contactPhone = tel trouvé par la recherche.
+- tests : lint oxlint OK, vitest 110 tests OK, tsc + vite build OK.
+- mvn test : 172 tests, 1 échec pré-existant et indépendant (AuthServiceTest
+  registerSoc_createsSocSubscriptionAdminAndSendsVerificationEmail, inchangé).
+
+14/08/2026 14:01:42
+corriger erreur console front (contexte : click nouveau client -> taper sfr -> rechercher ->
+la dialog était fermée ; console : <form> cannot be a descendant of <form>).
+- cause : le formulaire de recherche du SocPicker (<form onSubmit>) était imbriqué dans le
+  <form> du modal client (HTML invalide) : le submit remontait au formulaire parent et
+  fermait la dialog.
+- fix :
+  - SocPicker : suppression du <form> interne -> <div> ; le bouton « Rechercher » devient
+    type="button" onClick={() => void search()} ; la recherche se déclenche aussi sur Entrée
+    dans le champ (onKeyDown, preventDefault) ; search() ne prend plus d'événement.
+  - components/data.tsx : Modal rendu via createPortal(document.body) au lieu d'être imbriqué
+    dans l'arbre DOM -> tout contenu de modal (dont le <form id="add-soc-form"> d'AddSocModal
+    ouvert depuis le SocPicker) ne peut plus se retrouver imbriqué dans un formulaire parent.
+- vérifs : lint oxlint OK (plus d'import FormEvent), vitest 110 tests OK, tsc + vite build OK.
+
+14/08/2026 14:11:16
+corriger erreur backend run.log : ajout d'une société trouvée par la recherche (SocPicker)
+échouait avec "Value too long for column description CHARACTER VARYING(500)" (JSON de 4680
+caractères, ex. ALTICE siren 351094883).
+- cause : dans SocPicker.settleCompany, l'auto-création de la société envoyait le JSON complet
+  du lookup (company.infosWeb) dans le champ description (VARCHAR(500)) au lieu du champ
+  infosWeb (colonne TEXT infos_web, sans limite).
+- fix : src/soc/SocPicker.tsx -> description: company.infosWeb remplacé par
+  infosWeb: company.infosWeb dans l'appel addSoc (AddSocModal utilisait déjà le bon champ).
+- vérifs : lint oxlint OK, vitest 110 tests OK, tsc + vite build OK.
+
+14/08/2026 14:38:14
+quand je veux ajouter un client, je cherche une société :
+- soit via la liste,
+- soit via la page « Ajouter une société »,
+et cette recherche doit être au début de la page client.
+si je sélectionne via la liste, je mets à jour les autres champs (nom du client, ...).
+si j'ajoute une société, je dois l'ajouter à la liste, la sélectionner dans la liste et
+mettre à jour les autres champs.
+- frontend :
+  - SocPicker (src/soc/SocPicker.tsx) : nouvelle fonction settleSoc(socId) — à la
+    sélection d'une société depuis la liste (select) ou juste après l'ajout via
+    AddSocModal, elle appelle GET /socs/{id} (socsApi.getById), construit un
+    CompanyLookup à partir du détail de la société (lookupFromSoc : name, infosWeb,
+    siret, codeNaf, gerant, categorieEntreprise, website, adresse) puis appelle
+    onCompany(lookup) pour pré-remplir les champs du client/fournisseur (nom = nom de
+    la société, contact = gérant, email dérivé du site web, ...). En cas d'échec de
+    getById, onCompany(null) est appelé (aucune sur-écriture).
+  - AddSocModal onCreated : après la création, la nouvelle société est ajoutée à la
+    liste (addSoc de SocContext la recharge via mySocs), sélectionnée et settleSoc
+    met à jour les champs avec les infos de la société créée.
+  - Clients.tsx et Suppliers.tsx : le bloc « Société associée * » (SocPicker) est
+    désormais placé en tête du formulaire (au-dessus du nom du client/fournisseur),
+    comme demandé « au début de la page client ».
+- vérifs : lint oxlint OK (warnings docs/ pré-existants), vitest 110 tests OK,
+  tsc + vite build OK.
+
+14/08/2026 14:47:07
+corriger erreur backend run.log : suppression d'un client échouait avec
+DataIntegrityViolationException SQLState 23503 « violation de contrainte
+fk_project_client » (delete from client where id=?).
+- cause : ClientService.delete() faisait clientRepository.deleteById(id) sans gérer
+  les projets liés : la colonne project.client_id est NOT NULL et référencée par la FK
+  fk_project_client -> la suppression d'un client ayant des projets violait l'intégrité
+  référentielle et remontait en « Erreur interne du serveur » (500) au lieu d'une
+  suppression propre.
+- fix : purge des dépendances avant suppression (même convention que
+  ConsultantService.delete -> purge) :
+  - ProjectRepository : ajout de deleteByClientId(Long) (JPQL @Modifying
+    « delete from Project p where p.client.id = :clientId »).
+  - ClientService.delete() : appelle d'abord projectRepository.deleteByClientId(id)
+    puis clientRepository.deleteById(id). Transactionnel : les deux opérations sont
+    atomiques.
+- vérifs : mvn test -Dtest=ClientServiceTest -> 12 tests OK (dont 2 delete :
+  delete_deletesById vérifie l'ordre purge puis delete, delete_purgesLinkedProjectsThenDeletesClient) ;
+  mvn test complet -> 173 tests, 1 échec pré-existant et indépendant
+  (AuthServiceTest.registerSoc_createsSocSubscriptionAdminAndSendsVerificationEmail, inchangé).
+
+14/08/2026 23:15:30
+réorganiser plus simplement, rôle admin + responsable_soc : ajouter le menu Sociétés :
+voir toutes les sociétés de l'application ; rechercher par nom, siret, gerant ;
+ajouter ; modifier les sociétés qu'on a ajoutées (historisation user + date) ;
+supprimer les sociétés qu'on a ajoutées et non utilisées par des consultants.
+- backend :
+  - SocService.findAllAccessible() : retourne désormais toutes les sociétés pour
+    ADMIN et RESPONSIBLE_SOC (interrogations du dashboard/listes inchangées pour les autres).
+  - SocService.delete() : blocage si la société est encore utilisée par des consultants
+    (consultantRepository.findBySocIdAndActiveTrue non vide) -> ApiException.conflict
+    « Impossible de supprimer : cette société est utilisée par des consultants ».
+  - update/create : l'historisation par user + dateMaj via HistoSoc était déjà en place
+    (audit() appelé dans create/update).
+- frontend :
+  - api/socs.ts : ajout de l'interface SocRequest + socsApi.create (POST /api/socs).
+  - api/types.ts : AddSocPayload.mine?, SocDto.dateCreation/dateFermeture.
+  - SocAdmin.tsx : réécrit en page CRUD des sociétés (liste, recherche nom/SIRET/gérant,
+    « Géré par moi », modif avec modal complète, suppression avec vérif dépendances et
+    confirmation « Tout supprimer ») ; l'ancienne page abonnements/paiements est retirée.
+  - AddSocModal : prop submit (création ADMIN via socsApi.create, RESPONSIBLE_SOC via addSoc).
+- écran : menu « Sociétés » disponible pour ADMIN et RESPONSIBLE_SOC (MainLayout).
+- vérifs : tsc + vite build OK, vitest 110 tests OK, mvn SocServiceTest 14 tests OK,
+  mvn complet 173 tests (1 échec pré-existant et indépendant, voir ci-dessus).
+
+14/08/2026 23:15:30
+pour ajouter un client ou fournisseur, on ne fait que sélectionner la société.
+Puis mettre à jour les autres champs.
+- Clients.tsx et Suppliers.tsx : le bloc « Société associée * » (SocPicker avec
+  recherche + ajout de société) est remplacé par un simple Select des sociétés
+  (Mes sociétés pour non-admin, toutes les sociétés pour ADMIN).
+- à la sélection, les champs nom/contact sont auto-remplis depuis les données de la
+  société (socToCompanyLookup -> applyCompany), puis l'utilisateur met à jour le reste.
+- SocPicker.tsx retiré (plus utilisé) ; nouveau helper src/soc/socLookup.ts.
+- openCreate : pour RESPONSIBLE_SOC, présélection + auto-remplissage depuis la société
+  courante (selectedSocId / user.socId).
+- vérifs : tsc + vite build OK, vitest 110 tests OK.
+
+14/08/2026 23:15:30
+lorsqu'on rajoute une société, on doit déclarer si c'est la sienne ou pas.
+D'où deux menus : « Mes sociétés » et « Toutes les sociétés ».
+- backend : AddSocRequest.mine (Boolean, défaut true) ; AuthService.addSoc() : si
+  mine=false, la société est créée (Soc + subscription + seeds) mais PAS liée au compte
+  (ni user_soc, ni soc par défaut). Si mine=true (défaut), comportement inchangé.
+- frontend : AddSocModal ajoute le case à cocher « C'est ma société » (visible
+  uniquement sur le chemin addSoc, c.-à-d. quand submit n'est pas fourni) ; le flag
+  mine est envoyé dans addSoc.
+- menu : deux entrées sous « Sociétés » pour ADMIN et RESPONSIBLE_SOC :
+  « Mes sociétés » (route /soc) et « Toutes les sociétés » (route /soc/toutes),
+  SocAdmin prend une prop scope='mine'|'all' et filtre « Mes sociétés » par les
+  sociétés liées au compte (sauf ADMIN qui voit toutes).
+- vérifs : tsc + vite build OK, vitest 110 tests OK, mvn AuthServiceTest (seul échec =
+  pré-existant registerSoc…), mvn complet 173 tests (1 échec pré-existant).
