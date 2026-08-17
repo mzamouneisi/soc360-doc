@@ -544,3 +544,27 @@ D'où deux menus : « Mes sociétés » et « Toutes les sociétés ».
   sociétés liées au compte (sauf ADMIN qui voit toutes).
 - vérifs : tsc + vite build OK, vitest 110 tests OK, mvn AuthServiceTest (seul échec =
   pré-existant registerSoc…), mvn complet 173 tests (1 échec pré-existant).
+
+17/08/2026 10:30:49
+régression validation par mail pour l'inscription d'une nouvelle société (1ère fois) :
+le lien de validation doit confirmer le mot de passe et refaire un nouveau mot de passe
+(qui peut être le même) afin de valider l'inscription de la nouvelle société et de son responsable.
+- backend :
+  - UserDtos.VerifyEmailRequest : ajout de currentPassword + newPassword (constructeur
+    compact conservant le cas token seul).
+  - AuthService.verifyEmail(token, currentPassword, newPassword) : vérifie que le mot de
+    passe actuel (saisi à l'inscription) correspond (passwordEncoder.matches) sinon 400
+    « Mot de passe actuel incorrect » ; met à jour le mot de passe (peut être le même),
+    active le compte, mustChangePassword=false, passwordChangedAt=now, marque le token utilisé
+    puis retourne un JWT (AuthResponse) comme avant.
+  - AuthController : POST /api/auth/verify-email transmet currentPassword + newPassword.
+- frontend :
+  - api/auth.ts : authApi.verifyEmail(token, currentPassword, newPassword).
+  - VerifyEmail.tsx : plus de validation auto au chargement ; formulaire « Mot de passe
+    actuel » + « Nouveau mot de passe » + « Confirmer le nouveau mot de passe » qui soumet
+    verifyEmail ; bloc « Renvoyer l'email » conservé ; redirection vers / après succès.
+- tests : AuthServiceTest (31) — verifyEmail_success vérifie désormais le nouveau mot de
+  passe, l'activation, mustChangePassword=false ; ajout de verifyEmail_wrongCurrentPassword.
+- vérifs : mvn -Dtest=AuthServiceTest -> 31 tests (seul échec = pré-existant
+  registerSoc_createsSocSubscriptionAdminAndSendsVerificationEmail, inchangé) ;
+  frontend : oxlint OK (warnings docs/ pré-existants), vitest 110 tests OK, tsc + vite build OK.
