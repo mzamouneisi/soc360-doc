@@ -781,6 +781,76 @@ une activité s'appuie sur :
   (échec d'ordre d'isolation, indépendant) ; frontend : oxlint OK (warnings docs/
   pré-existants), vitest 110 tests OK, tsc + vite build OK.
 
+2026-08-17 18:32:47
+err_back : run.log du backend : le démarrage échoue sur le checksum de la migration V20
+- erreur : « Migration checksum mismatch for migration version 20 — Applied to database :
+  2101231905, Resolved locally : -1063061325 » -> le backend ne démarre pas.
+- cause : V20__remove_default_activities.sql avait été MODIFIÉE (ajout d'un garde-fou
+  « AND NOT EXISTS (SELECT 1 FROM cra_day_activity ...) ») APRÈS son application sur la base
+  -> Flyway calcule le checksum (CRC32 par ligne UTF-8, sans les séparateurs de fin de ligne,
+  BOM filtré) et détecte une divergence entre le fichier et ce qui a été appliqué.
+- règle appliquée : ne jamais éditer une migration déjà appliquée ; toute évolution du schéma
+  passe par une NOUVELLE migration (la suivante est V22).
+- fix : V20__remove_default_activities.sql restaurée à son contenu original (sans le
+  garde-fou) -> checksum recalculé = 2101231905, conforme à la base.
+- vérifs : run.log -> démarrage OK à 17:52:23 (« Successfully validated 21 migrations »,
+  « Current version of schema public: 21 ») ; mvn test -> 181 tests, seul échec =
+  adminCannotDeleteActiveUser PRÉ-EXISTANT ; frontend non concerné.
+
+2026-08-17 18:32:47
+menu CRA :
+on a le choix de 2 types d'affichages (en deux onglets) :
+- onglet calendar (par defaut)
+- onglet ligne (comme actuellement)
+
+on doit pouvoir :
+- remplir pardefaut l'activité courante
+- supprimer tous evenements ajoutés d'un coup
+- modifier / supprimer un evenement
+
+on travaille en jours : 1 , 0.5
+max par evenement = 1
+
+un cra valide doit avoir tous les evenements à nb_jour_total = 1
+
+un btn pour envoyer le cra à valider par son manager
+il faut d'abord que le cra soit valide avant de l'envoyer.
+
+le manager peut valider ou rejeter le cra avec un commentaire.
+- backend :
+  - migration V22__cra_day_activity_days.sql : ajout de la colonne `days NUMERIC(6,2) NOT NULL DEFAULT 1`
+    sur `cra_day_activity` (le CRA travaille désormais en jours).
+  - CraDayActivity : nouveau champ `days` (BigDecimal) ; CraDtos :
+    CraDayActivityDto + CraDayActivityRequest exposent/acceptent `days`.
+  - CraService.save : chaque événement doit représenter 0,5 ou 1 jour (max 1 jour par événement),
+    sinon 400 (« Un événement doit représenter 0,5 ou 1 jour »).
+  - CraService.submit : le CRA doit être complet — chaque jour WORKED doit totaliser exactement
+    1 jour, sinon 400 (« Le CRA est incomplet : le jour <date> doit totaliser 1 jour »).
+  - toDto renvoie `days`.
+- frontend (CraDetail.tsx) :
+  - deux onglets : « Calendrier » (défaut) et « Ligne » (vue tableau comme avant).
+  - onglet Calendrier : grille mensuelle (cases vides en tête, en-têtes Lun..Dim) ; chaque jour
+    travaillé affiche ses événements (pastille couleur + nom + ×jours) et un badge du total ;
+    bouton + pour ouvrir la modale d'événements du jour ; jours non travaillés grisés avec leur
+    type ; pastille rouge « à compléter » quand le total du jour ≠ 1.
+  - modale d'événements du jour : choix type de jour, liste des événements (activité + jours
+    0,5/1 + commentaire), ajout / modification / suppression d'un événement, total du jour.
+  - bouton « Supprimer tous les événements » (avec confirmation) — vide tous les jours d'un coup.
+  - événement ajouté pré-rempli avec l'activité courante (active, dont la période couvre
+    aujourd'hui, sinon première activité active) — « remplir par défaut l'activité courante ».
+  - unité jours : select 0,5 j / 1 j (max 1 jour par événement).
+  - validité : le CRA est valide si chaque jour travaillé totalise exactement 1 jour ; sinon
+    bandeau rouge listant le nombre de jours incomplets ; le bouton « Envoyer pour validation »
+    est désactivé tant que le CRA n'est pas valide (et le backend rejette aussi la soumission).
+  - validation/rejet par le manager avec commentaire déjà en place, inchangée.
+- tests :
+  - CraServiceTest : submitAndValidate_updatesStatus remplit désormais tous les jours WORKED
+    (1 journée d'activité par jour) avant de soumettre ; nouveau submit_rejectsIncompleteCra
+    (soumission d'un CRA vide rejetée 400).
+- vérifs : mvn test -> 182 tests, seul échec = adminCannotDeleteActiveUser PRÉ-EXISTANT
+  (échec d'ordre d'isolation, indépendant) ; frontend : oxlint OK (warnings docs/ pré-existants),
+  vitest 110 tests OK, tsc + vite build OK.
+
 2026-08-17 17:42:00
 les activités ne doivent pas exister par défaut
 - les activités ne sont plus seedées par défaut : seuls les types d'activités sont créés.
@@ -812,3 +882,106 @@ une activité a une date début et une date fin. fin n'est pas obligatoire.
     ouvert si pas de fin) dans le tableau.
 - vérifs : mvn test -> 181 tests, seul échec = adminCannotDeleteActiveUser PRÉ-EXISTANT ;
   frontend : oxlint OK (warnings pré-existants), vitest 110 tests OK, tsc + vite build OK.
+
+2026-08-17 22:05:00
+modifier activité et ses formulaires :
+un manager ajoute une activité à un consultant :
+donc on doit avoir consultant_id dans la table activité
+- backend :
+  - migration V23__activity_consultant.sql : `ALTER TABLE activity ADD COLUMN consultant_id BIGINT`
+    + contrainte FK -> consultant(id) (colonne nullable : les activités générales n'ont pas de consultant).
+  - Activity.java : ajout `@ManyToOne Consultant consultant` (@JoinColumn name = "consultant_id").
+  - ActivityDtos : nouveau record `ConsultantRef(id, firstName, lastName)` ; `ActivityDto` expose
+    `consultant` ; `ActivityRequest` accepte `consultantId`.
+  - ActivityService (apply) : si `consultantId` fourni, résout le consultant et vérifie qu'il
+    appartient à la même société que l'activité (isolation multi-société) ; toDto renvoie le ref.
+  - ActivityService.findAll(socId, typeId, consultantId) : accepte un filtre par consultantId.
+  - ActivityController : paramètre optionnel `consultantId` sur GET /api/activities ; les POST /
+    PUT / DELETE sont désormais accessibles aussi au rôle MANAGER (« un manager ajoute une activité »).
+  - ActivityRepository : findByConsultantId(Long).
+- frontend :
+  - src/api/types.ts : ActivityDto.consultant {id, firstName, lastName} ;
+    ActivityRequest.consultantId (nullable).
+  - src/api/activities.ts : params {socId, typeId, consultantId}.
+  - src/pages/Activities.tsx : canEdit élargi à MANAGER ; chargement des consultants de la
+    société (consultantsApi.summaries) ; champ « Consultant » (select « Aucun »/consultants) dans
+    le formulaire ; colonne « Consultant » (prénom nom) dans le tableau ; pré-remplissage à
+    l'édition et envoi de consultantId dans le payload.
+- tests : ConsultantServiceTest inchangé (16 OK) ;
+
+2026-08-17 22:05:00
+chaque consultant doit avoir automatiquement un certain nombre d'activites :
+'INTER_CONTRAT', 'CONGE_RTT', 'CONGE_PAYE', 'CONGE_NON_PAYE', 'FORMATION'
+avec projet : proj_interne
+client : la societe mere
+- backend :
+  - ActivityService : ensureDefaultActivitiesForConsultant(Consultant) — crée, pour chaque type
+    requis de la société (codes INTER_CONTRAT, CONGE_RTT, CONGE_PAYE, CONGE_NON_PAYE, FORMATION)
+    non encore affecté à ce consultant, une activité (nom = labelFr, prix 0, EUR, active) rattachée
+    au projet interne de la société (proj_interne, sans description).
+  - ActivityTypeRepository : findBySocIdAndCodeIn(socId, codes) ; ActivityRepository :
+    existsByConsultantIdAndTypeId(consultantId, typeId).
+  - ConsultantService.create : après le save, appel de ensureDefaultActivitiesForConsultant
+    (couvre aussi l'import CSV batch qui passe par create).
+  - migration V24__consultant_default_activities.sql : backfill pour les consultants existants
+    (INSERT par consultant × type requis manquant, créé_at/updated_at = CURRENT_TIMESTAMP).
+  - migration V25__default_activities_internal_project.sql : rattache les activités par défaut
+    (V24) au projet interne (proj_interne ou « Activités internes ») quand elles n'en ont pas.
+  - DefaultClientProjectSeeder : le projet interne d'une nouvelle société est maintenant nommé
+    « proj_interne » (compatibilité conservée avec l'ancien nom « Activités internes »).
+  - SecurityIntegrationTest : valeur attendue « Activités internes » -> « proj_interne ».
+  - DataSeeder : après seed des types, ensureDefaultActivitiesForConsultant est appelé pour
+    chaque consultant actif de la société de démo.
+- vérifs : mvn test -> 182 tests, seul échec = adminCannotDeleteActiveUser PRÉ-EXISTANT
+  (échec d'ordre d'isolation, indépendant) ; run_dev.sh redémarrée OK (migrations V23→V25
+  validées/appliquées) ; frontend : oxlint OK (warnings docs/ pré-existants), vitest 110 tests OK,
+  tsc + vite build OK.
+
+2026-08-17 22:30:00
+lorsqu'on ouvre un cra (new ou old), le consultant peut remplir d'un coup tous les jours du mois
+(sauf weekend, jours feries, jours de congés, jours deja rensegné)
+par l'activité qui lui est associée sur ce mois.
+- frontend (CraDetail.tsx) :
+  - résolution de l'activité du mois (monthActivity) : parmi les activités de la liste, on
+    privilégie l'activité liée au consultant du CRA (consultant.id == cra.consultantId) qui couvre
+    le mois (active + startDate <= fin du mois + endDate >= début du mois), sinon la première
+    activité active du consultant, sinon toute activité active couvrant le mois, sinon
+    currentActivity (activité courante existante).
+  - bouton « Remplir tout le mois » (visible quand le CRA est éditable, à côté de « Supprimer tous
+    les événements ») : pour chaque jour WORKED sans événement, ajoute un événement de 1 jour avec
+    l'activité du mois (monthActivity) ; un message d'erreur s'affiche si aucune activité n'est
+    disponible ou si tous les jours travaillés sont déjà renseignés.
+  - les jours WEEKEND / PUBLIC_HOLIDAY / LEAVE / SICK_LEAVE / OTHER et les jours déjà remplis
+    (activities.length > 0) sont laissés intacts.
+- vérifs : oxlint OK (warnings docs/ pré-existants), vitest 110 tests OK, tsc + vite build OK.
+
+2026-08-17 22:30:00
+augmenter x2 la taille de font des caracteres des jours du calendrier et ses cellules d'un cra ouvert
+- ANNULEE : à la demande de l'utilisateur, tout le calendrier du CRA reste à la taille normale
+  (12 px : numéro du jour text-xs, activités text-xs, libellés et totaux text-[11px]).
+  Une première passe appliquait ×2 (jour 24px, chip 22px, libellés 18px, puis tout à 24px), puis
+  elle a été entièrement annulée et remise à 12 px. Aucun changement résiduel n'est conservé.
+
+2026-08-17 23:11:00
+mettre la taille de font pour toute l'application en paramètre 14px :
+il faut un menu paramètres pour la modifier par utilisateur (défaut 14px)
+- backend :
+  - migration V26__user_font_size.sql : `ALTER TABLE user_account ADD COLUMN font_size INT NOT NULL DEFAULT 14`.
+  - UserAccount : champ `int fontSize = 14` (@Column nullable=false).
+  - UserDtos : UserDto expose `fontSize` (int) ; nouveau record FontSizeRequest(int fontSize).
+  - AuthService : updateFontSize(userId, fontSize) — borne 10..32 px (400 sinon), sauvegarde et
+    retourne le UserDto ; toDto renvoie fontSize.
+  - AuthController : PUT /api/auth/me/font-size (tout utilisateur connecté).
+- frontend :
+  - src/api/types.ts : UserDto.fontSize (number).
+  - src/api/auth.ts : authApi.updateFontSize(fontSize) -> PUT /auth/me/font-size.
+  - src/auth/AuthContext.tsx : effet qui applique la taille au niveau racine
+    `document.documentElement.style.fontSize = '<fontSize>px'` (défaut 14 si absent) -> toute
+    l'application (Tailwind rem-based) est redimensionnée globalement dès la connexion et après
+    chaque changement.
+  - nouvelle page src/pages/Settings.tsx : menu « Paramètres » (route /parametres, entrée sous
+    « Espace » dans MainLayout) avec un select 10..24 px, bouton Enregistrer, aperçu en direct et
+    messages d'erreur/succès ; refreshMe() après sauvegarde.
+- vérifs : mvn test -> 182 tests, seul échec = adminCannotDeleteActiveUser PRÉ-EXISTANT
+  (échec d'ordre d'isolation, indépendant) ; run_dev.sh redémarrée OK (V26 validée/appliquée) ;
+  frontend : oxlint OK (warnings docs/ pré-existants), vitest 110 tests OK, tsc + vite build OK.
