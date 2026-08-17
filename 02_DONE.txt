@@ -568,3 +568,36 @@ le lien de validation doit confirmer le mot de passe et refaire un nouveau mot d
 - vérifs : mvn -Dtest=AuthServiceTest -> 31 tests (seul échec = pré-existant
   registerSoc_createsSocSubscriptionAdminAndSendsVerificationEmail, inchangé) ;
   frontend : oxlint OK (warnings docs/ pré-existants), vitest 110 tests OK, tsc + vite build OK.
+
+17/08/2026 13:12:00
+menu Utilisateurs (role ADMIN)
+. on peut modifier chaque utilisateur 
+. on peut supprimer un utilisateur (si inactif) avec sa societe 
+- backend :
+  - UserController : ajout PUT /api/users/{id} (ADMIN) → AuthService.updateUser ;
+    DELETE /api/users/{id} refuse désormais un compte actif (« désactivez-le d'abord »)
+    et supprime la société liée via SocService.deleteWithDependencies (cascade déjà
+    existante, réutilisée) avant de supprimer l'utilisateur ; garde self-delete et
+    compte admin conservées.
+  - AuthService.updateUser : garde d'unicité email (409 si email déjà pris par un autre compte).
+  - tests : SecurityIntegrationTest — adminCanDeleteRegularUser adapté (désactive le compte
+    via PUT avant suppression), ajout de adminCannotDeleteActiveUser (400) et
+    adminCanUpdateUser (PUT OK).
+- frontend :
+  - api/users.ts : usersApi.update(id, UpdateUserRequest) (PUT).
+  - Users.tsx : bouton « Modifier » (modal : prénom, nom, email, téléphone, rôle, société,
+    compte actif) + bouton « Supprimer » désactivé tant que le compte est actif, avec modal
+    de confirmation avertissant de la suppression de la société et de ses objets liés.
+- vérifs : mvn -Dtest=AuthServiceTest,SecurityIntegrationTest -> 47 tests (1 échec pré-existant
+  inchangé) ; frontend : oxlint OK, vitest 110 tests OK, tsc + vite build OK.
+erreur backend run.log à l'inscription d'une société : « Valeur trop longue pour la
+colonne username CHARACTER VARYING(50) » (SQLState 22001) — username de 56 caractères.
+- cause : le champ « Gérant » de la page d'inscription contenait plusieurs personnes
+  séparées par une virgule (« Cécile Paulette Poinin-Auraye, Mickaël Flavien Poinin-Auraye »).
+  Register.tsx::updateAdministrator concaténait `<1re lettre prénom> + nom…` sans
+  supprimer la virgule ni les caractères accentués -> username
+  « icecilepaulettepoinin-auraye,mickaelflavienpoinin-auraye » (56) > VARCHAR(50),
+  et AuthService.registerSoc (AuthService.java:142) ratait l'insertion de user_account.
+- fix : sanitizeUsername() dans Register.tsx — normalise NFD (retire les accents),
+  garde uniquement [a-z0-9_.-], tronque à 50 caractères max avant setUsername.
+- vérifs : oxlint OK, vitest 110 tests OK, tsc + vite build OK.
