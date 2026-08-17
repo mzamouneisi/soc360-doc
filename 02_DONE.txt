@@ -601,3 +601,214 @@ colonne username CHARACTER VARYING(50) » (SQLState 22001) — username de 56 ca
 - fix : sanitizeUsername() dans Register.tsx — normalise NFD (retire les accents),
   garde uniquement [a-z0-9_.-], tronque à 50 caractères max avant setUsername.
 - vérifs : oxlint OK, vitest 110 tests OK, tsc + vite build OK.
+
+17/08/2026 14:36:11
+augmenter la taille de font de l'info de la date du dernier deploiement x2
+- MainLayout.tsx : la date de déploiement (ligne « Déploiement : {__BUILD_DATE__} ») passe de
+  text-[10px] à text-[20px] (x2).
+- vérifs : oxlint OK, vitest 110 tests OK, tsc + vite build OK ; déployé (build docs/ commit 00ba1bd).
+
+17/08/2026 14:36:11
+le lien de validation par mail pour inscrire une nouvelle société n'affiche pas le bon
+formulaire sur github pages (en local c'est bon, mais pas sur github pages !!)
+- cause racine : sur GitHub Pages, un lien direct type .../auth/verify-email?token= n'existe pas
+  en tant que fichier -> le site sert docs/404.html qui stocke l'URL dans sessionStorage
+  (clé soc360.redirect) puis redirige vers la racine. Le bundle se charge alors, et App.tsx
+  créait le router (createBrowserRouter) À L'ÉVALUATION du module, donc AVANT que le corps de
+  main.tsx ne restaure l'URL via history.replaceState. Or replaceState ne déclenche pas
+  d'événement popstate -> le router restait sur la route / (protégée) -> redirection vers /login.
+  En local, Vite sert index.html sur toutes les routes, donc aucune restauration nécessaire.
+- fix : la restauration de l'URL (lecture + suppression de soc360.redirect + history.replaceState)
+  est déplacée de src/main.tsx vers un <script> inline dans index.html, exécuté AVANT le
+  chargement du bundle -> createBrowserRouter capture alors la bonne URL (/auth/verify-email).
+- fichiers : index.html (script inline ajouté), src/main.tsx (bloc de restauration supprimé).
+- vérifs : oxlint OK, vitest 110 tests OK, tsc + vite build OK ; déployé (build docs/ commit
+  00ba1bd) ; en ligne : index.html contient le script inline et 404.html est servi sur
+  .../auth/verify-email?token= (curl vérifié).
+
+17/08/2026 15:35:00
+l'url de validation d'inscription d'une nouvelle société et nouveau resp soc sur github pages
+ne donne pas la bonne page de validation :
+url : https://mzamouneisi.github.io/soc360-front-react//auth/verify-email?token=...
+contenu de la page : « 404 / Page introuvable » (composant React NotFound)
+- cause racine restante : le lien de l'email contient un DOUBLE SLASH
+  (https://mzamouneisi.github.io/soc360-front-react//auth/verify-email?token=...).
+  La valeur FRONTEND_URL (env.server.sh:86) finit par un slash final
+  (« …/soc360-front-react/ ») et AuthService concaténait frontendUrl + "/auth/verify-email?token="
+  -> //auth. Après restauration de l'URL, react-router stripBasename renvoie « //auth/verify-email »
+  (il ne retire qu'un seul slash du basename), qui ne matche pas la route /auth/verify-email
+  -> le router tombe sur la route catch-all '*' -> NotFound.
+  (Le fix précédent 14:36:11 — restauration AVANT création du router — était nécessaire mais
+  insuffisant : il restaurait une URL à double slash qui ne matche toujours pas la route.)
+- fix frontend (soc360-front-react) :
+  - index.html : le <script> inline de restauration normalise maintenant le pathname
+    (url.pathname = url.pathname.replace(/\/{2,}/g, '/')) avant history.replaceState
+    -> //auth/verify-email devient /auth/verify-email. Résout tous les liens déjà envoyés.
+  - vérifs : oxlint OK, vitest 110 tests OK, tsc + vite build OK ; déployé (build docs/
+    commit 6d85711, bundle index-Bwo8k3cT.js) ; testé en Chrome headless sur l'URL réelle
+    à double slash -> le formulaire VerifyEmail (« Mot de passe actuel » / « Nouveau mot de
+    passe ») s'affiche, plus de « Page introuvable ».
+- fix backend (soc360-back-java) :
+  - AuthService.java : nouveau helper baseFrontendUrl() qui retire les slashes finaux
+    (frontendUrl.replaceAll("/+$", "")) ; utilisé pour construire les liens
+    /auth/verify-email?token= et /auth/reset-password?token= -> plus aucun lien à double slash
+    dans les futurs emails.
+  - vérifs : mvn compile OK ; mvn -Dtest=AuthServiceTest -> 31 tests, seul échec =
+    pré-existant registerSoc_createsSocSubscriptionAdminAndSendsVerificationEmail.
+  - NON DÉPLOYÉ sur Azure (redéploiement backend à faire).
+
+17/08/2026 16:23:30
+menu Activités & tarifs :
+le btn Gérer les types : doit afficher la liste des types d'activitées de la société existants
+et la possibilité de rajouter, de rechercher, de supprimer, modifier
+- backend :
+  - ActivityTypeService : findAllIncludingInactive(socId) (tous les types, actifs et inactifs,
+    ordre par libellé) ; delete(id) — vérifie assertCanManage(soc) puis bloque la suppression si
+    le type est utilisé par des activités (ApiException.conflict) pour respecter la FK
+    fk_activity_type ; ActivityRepository : findByTypeId(Long).
+  - ActivityTypeController : GET /api/activity-types accepte désormais le paramètre `all`
+    (true = inclure les types inactifs) ; ajout DELETE /api/activity-types/{id}
+    (@PreAuthorize ADMIN ou RESPONSIBLE_SOC).
+- frontend (Activities.tsx) :
+  - la modale « Gérer les types » affiche tous les types (actifs + inactifs) via
+    activityTypesApi.findAll(socId, { all: true }).
+  - ajout d'un champ de recherche « Rechercher un type… » (filtre sur libellé/code).
+  - par type : boutons Modifier, Désactiver (ou Réactiver si inactif) et Supprimer
+    (suppression définitive avec confirmation) ; après chaque action, rechargement des deux
+    listes (types actifs pour le formulaire d'activité + liste complète de la modale).
+  - api/activities.ts : activityTypesApi.findAll(socId, opts) + activityTypesApi.delete(id).
+
+lorsque je veux ajouter une nouvelle activité, j'ai toujours la liste des types d'activités vide !!
+donc je suis bloqué !
+- cause racine : AuthService.registerSoc() (inscription d'une nouvelle société via la page
+  publique) créait la société + l'admin mais n'appelait jamais
+  defaultActivityTypesSeeder.seedDefaultsFor(soc) ni defaultClientProjectSeeder.seedDefaultsFor(soc)
+  (seuls addSoc et SocService.create le faisaient) -> la société inscrite ne possédait aucun type
+  d'activité -> le sélecteur « Type * » de « + Nouvelle activité » restait vide.
+- fix :
+  - AuthService.registerSoc() : ajout de defaultActivityTypesSeeder.seedDefaultsFor(soc) et
+    defaultClientProjectSeeder.seedDefaultsFor(soc) juste après socRepository.save(soc).
+  - migration V17__activity_type_defaults_backfill.sql : backfill en SQL des 6 types par défaut
+    (DEV, MAINT, SUPPORT, MEETING, MANAGEMENT, REST) + une activité par défaut (tarif 0) pour
+    les sociétés existantes qui n'ont aucun type d'activité (mêmes valeurs que
+    DefaultActivityTypesSeeder).
+- tests : AuthServiceTest.registerSoc_createsSocSubscriptionAdminAndSendsVerificationEmail
+  vérifie désormais aussi defaultActivityTypesSeeder.seedDefaultsFor (le test pré-existant
+  « registerSoc n'appelle pas seedDefaultsFor » est corrigé) ; ActivityTypeServiceTest :
+  findAllIncludingInactive_returnsAllTypesForSoc, delete_deletesTypeNotUsedByActivities,
+  delete_typeUsedByActivities_throwsConflict, delete_otherSoc_forbidden, delete_notFound_throws.
+- vérifs : mvn test -> 181 tests, seul échec = adminCannotDeleteActiveUser (échec d'ordre
+  d'isolation PRÉ-EXISTANT, présent aussi sur le code d'origine : 2 échecs avant ce correctif
+  (registerSoc + adminCannotDeleteActiveUser) -> 1 après) ; frontend : oxlint OK (warnings
+  docs/ pré-existants), vitest 110 tests OK, tsc + vite build OK.
+
+17/08/2026 17:07:00
+faire un menu a part : Type d'Activités :
+on affiche la liste des Type d'Activités de la societe selected
+on peut ajouter, modifier, supprimer.
+
+lorsqu'on ajoute une société, on s'assure qu'elle a au moins les types d'activités suivants :
+MISSION, INTER_CONTRAT, CONGE_RTT, CONGE_PAYE, CONGE_NON_PAYE, FORMATION, DEV_INTERNE,
+COMMERCIAL, SUPPORT
+- backend :
+  - DefaultActivityTypesSeeder : les types par défaut d'une nouvelle société sont désormais
+    les 9 types requis (MISSION, INTER_CONTRAT, CONGE_RTT, CONGE_PAYE, CONGE_NON_PAYE,
+    FORMATION, DEV_INTERNE, COMMERCIAL, SUPPORT) au lieu de DEV/MAINT/SUPPORT/MEETING/
+    MANAGEMENT/REST ; une activité par défaut (tarif 0) reste créée par type.
+  - migration V18__activity_type_company_defaults.sql : garantit que chaque société existante
+    possède au moins ces 9 types (INSERT des codes manquants par société, sans toucher aux
+    autres) + une activité par défaut (tarif 0) pour chaque type créé par le backfill.
+  - SecurityIntegrationTest.creatingSoc_seedsDefaultActivityTypes : attendu passé de 6 à 9
+    (taille des types seedés par la création d'une société).
+- frontend :
+  - nouvelle page dédiée src/pages/ActivityTypes.tsx : liste des types d'activités de la
+    société sélectionnée (selectedSocId, sinon user.socId), actifs et inactifs ; recherche ;
+    bouton « + Nouveau type » et actions Modifier / Désactiver-Réactiver / Supprimer dans un
+    tableau, avec modal de création/édition (code, libellé FR, libellé EN, couleur).
+  - route /types-activites (App.tsx, wrap NotConsultantRoute) + entrée de menu « Types
+    d'activités » sous Gestion (MainLayout, visible pour tous sauf CONSULTANT).
+  - Activities.tsx : la modale « Gérer les types » et son bouton sont retirés (la gestion est
+    désormais dans le menu dédié) ; l'import de ActivityTypeRequest et le state inutilisés
+    supprimés.
+- vérifs : mvn test -> 181 tests, seul échec = adminCannotDeleteActiveUser PRÉ-EXISTANT
+  (échec d'ordre d'isolation, présent aussi sur le code d'origine, indépendant de ce correctif) ;
+  frontend : oxlint OK (warnings docs/ pré-existants), vitest 110 tests OK, tsc + vite build OK.
+
+2026-08-17 17:17:20
+err_back : run.log du backend : le démarrage échoue en compilation
+(4 erreurs javac, « COMPILATION ERROR »), le backend ne démarre pas.
+- erreur : /…/src/main/java/com/soc360/activity/Activity.java:[6,22] package com.soc360.esn
+  does not exist ; lignes 41/18 « cannot find symbol: class Soc ».
+- cause : Activity.java importait `com.soc360.esn.Soc` alors que le package `esn` a été
+  renommé en `soc` depuis longtemps (tous les autres fichiers du package activity importent
+  `com.soc360.soc.Soc` : ActivityService, ActivityType, ActivityTypeService,
+  DefaultActivityTypesSeeder). Ce mauvais import était resté dans le working tree (modif
+  locale non committée) et cassait la compilation.
+- fix : src/main/java/com/soc360/activity/Activity.java : `import com.soc360.esn.Soc;` ->
+  `import com.soc360.soc.Soc;`.
+- vérifs : mvn -q compile OK (0 erreur) ; mvn test complet -> 181 tests, seul échec =
+  adminCannotDeleteActiveUser PRÉ-EXISTANT (échec d'ordre d'isolation, indépendant de ce fix,
+  déjà documenté) ; frontend non concerné (aucun changement).
+
+2026-08-17 17:36:00
+une activité s'appuie sur :
+- un type d'activité
+- un projet chez un client
+- une description de cette activité
+- conception : une activité est désormais rattachée à un type (déjà en place), à un
+  projet de la société (nouveau) et conserve sa description (+ nom, prix, devise, actif).
+- backend :
+  - migration V19__activity_project.sql : `ALTER TABLE activity ADD COLUMN project_id BIGINT`
+    + contrainte FK -> project(id) (colonne nullable : les activités existantes/par défaut
+    n'ont pas de projet).
+  - Activity.java : ajout `@ManyToOne Project project` (@JoinColumn name = "project_id").
+  - ActivityDtos : nouveau record `ProjectRef(id, name, clientName)` ; `ActivityDto` expose
+    `project` ; `ActivityRequest` accepte `projectId`.
+  - ActivityService (apply) : si `projectId` fourni, résout le projet et vérifie qu'il
+    appartient à la même société que l'activité (isolation multi-société) ; toDto renvoie le
+    ref projet avec le nom du client.
+  - Liaison des activités par défaut au projet interne « Activités internes » : les seeders
+    créent désormais d'abord le client+projet interne puis les types/activités
+    (DataSeeder, SocService.create, AuthService.registerSoc + registerDirect). Sinon les
+    activités par défaut n'auraient pas de projet.
+- frontend :
+  - src/api/types.ts : ActivityDto.project {id, name, clientName} ; ActivityRequest.projectId.
+  - src/pages/Activities.tsx : chargement des projets de la société (projectsApi) ; champ
+    « Projet * » (select avec « nom — client ») dans le formulaire ; colonne « Projet »
+    (nom + client) dans le tableau ; validation « Nom, type et projet sont obligatoires » ;
+    pré-remplissage à l'édition.
+- vérifs : mvn test -> 181 tests, seul échec = adminCannotDeleteActiveUser PRÉ-EXISTANT
+  (échec d'ordre d'isolation, indépendant) ; frontend : oxlint OK (warnings docs/
+  pré-existants), vitest 110 tests OK, tsc + vite build OK.
+
+2026-08-17 17:42:00
+les activités ne doivent pas exister par défaut
+- les activités ne sont plus seedées par défaut : seuls les types d'activités sont créés.
+- backend :
+  - DefaultActivityTypesSeeder : ne crée plus d'activité par type (suppression du bloc de
+    création d'activity + de la dépendance ProjectRepository). Ne seed plus que les 9 types.
+  - migration V20__remove_default_activities.sql : supprime les activités par défaut déjà
+    créées (ancien seeder + backfill V18 : nom = label_fr du type, prix 0, sans description),
+    sauf celles déjà référencées par un CRA (évite un conflit de FK).
+  - ordre des seeders inchangé en pratique : DataSeeder/SocService/AuthService seedent le
+    client+projet interne puis les types ; sans activité par défaut, l'ordre n'a plus d'impact.
+- vérifs : mvn test -> 181 tests, seul échec = adminCannotDeleteActiveUser PRÉ-EXISTANT ;
+  frontend inchangé.
+
+2026-08-17 17:42:00
+une activité a une date début et une date fin. fin n'est pas obligatoire.
+  si fin == null, alors pas de fin
+- backend :
+  - migration V21__activity_dates.sql : `ALTER TABLE activity ADD COLUMN start_date DATE;
+    ADD COLUMN end_date DATE;` (toutes deux NULLables).
+  - Activity.java : champs LocalDate startDate / endDate.
+  - ActivityDtos : ActivityDto et ActivityRequest exposent startDate/endDate (nullables).
+  - ActivityService.apply : valide que endDate >= startDate quand les deux sont fournies
+    (« La date de fin ne peut pas précéder la date de début ») ; toDto renvoie les dates.
+- frontend :
+  - src/api/types.ts : ActivityDto.startDate/endDate, ActivityRequest.startDate/endDate.
+  - src/pages/Activities.tsx : champs date de début + date de fin (optionnelle) dans le
+    formulaire ; validation endDate < startDate ; colonne « Période » (début → fin, « → »
+    ouvert si pas de fin) dans le tableau.
+- vérifs : mvn test -> 181 tests, seul échec = adminCannotDeleteActiveUser PRÉ-EXISTANT ;
+  frontend : oxlint OK (warnings pré-existants), vitest 110 tests OK, tsc + vite build OK.
