@@ -1163,3 +1163,24 @@ société.
   contrôlé par requireSocAccess et vaut la société de l'utilisateur).
 - vérifs : frontend oxlint OK (warnings pré-existants), vitest 111 tests OK, tsc + vite build OK ;
   backend non concerné (aucun changement).
+
+2026-08-18 15:57:10
+page CRA : juste avant la table des CRA, un input text pour filtrer les CRA par année-mois,
+consultant et statut.
+- frontend (src/pages/CraList.tsx) :
+  - état search + input « Filtrer par année-mois, consultant ou statut… » affiché avant la table
+    (visible dès que les données sont chargées).
+  - filtrage du tableau sur : année-mois (AAAA-MM), nom du consultant et libellé de statut
+    (insensible à la casse) ; reset de la pagination à la saisie ; état vide adapté
+    (« Aucun CRA ne correspond au filtre » vs « Aucun CRA pour cette année »).
+- vérifs : frontend oxlint OK, vitest 111 tests OK, tsc + vite build OK ; backend non concerné.
+
+2026-08-18 15:57:10
+avant de commiter, mettre à jour la date du dernier commit dans la page menu, en bas.
+- frontend :
+  - vite.config.ts : __BUILD_DATE__ vaut désormais la date du dernier commit git
+    (execSync('git log -1 --format=%ci') parsée en jj/mm/aaaa hh:mm, repli sur la date du build si
+    git indisponible) au lieu de la date de build courante.
+  - MainLayout.tsx : libellé « Déploiement : … » -> « Dernier commit : … » (bas de la sidebar).
+- vérifs : frontend oxlint OK, vitest 111 tests OK, tsc + vite build OK (le bundle embarqué contient
+  bien la date du dernier commit, ex. « 18/08/2026 15:46 ») ; backend non concerné.
