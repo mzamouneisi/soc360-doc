@@ -1087,3 +1087,35 @@ d'un input text modifiable à côté.
   - l'input (désactivé tant que la case est décochée) filtre les caractères non numériques.
 - vérifs : frontend oxlint OK (warnings pré-existants), vitest 110 tests OK, tsc + vite build OK ;
   backend non concerné.
+
+2026-08-18 14:05:13
+page CRA : liste des CRA en table (paginée si > 5 lignes) : annee_mois, consultant, status,
+total worked days, submitted at, validated at, comment, Actions (edit, supprimer) ; on ne peut pas
+éditer ni supprimer un CRA validé ou soumis ; en bas, un bouton pour ajouter un nouveau CRA.
+- backend (soc360-back-java) :
+  - CraService.delete(id) : interdit la suppression d'un CRA SUBMITTED ou VALIDATED
+    (ApiException.badRequest « Impossible de supprimer un CRA soumis ou validé ») puis
+    craRepository.delete(cra) (cascade jours/activités ; cra_exchange via ON DELETE CASCADE).
+  - CraController : DELETE /api/cras/{id} (@PreAuthorize CRA_DELETE + ADMIN + RESPONSIBLE_SOC,
+    contrôle requireSocAccess).
+  - tests : CraExchangeIntegrationTest.delete_draftCra_removesCra et delete_submittedCra_throws.
+- frontend (soc360-front-react) :
+  - api/cras.ts : crasApi.delete(id).
+  - CraList.tsx réécrit : table paginée (5 lignes/page) avec colonnes Année-mois, Consultant, Statut,
+    Jours, Soumis le, Validé le, Commentaire, Actions ; Actions = « Éditer » (DRAFT/REJECTED) ou
+    « Ouvrir » (SUBMITTED/VALIDATED) + « Supprimer » (masqué si soumis/validé) + Valider/Rejeter
+    (manager sur SUBMITTED) ; bouton « Nouveau CRA » en bas (consultant -> getOrCreate + navigation) ;
+    filtre par mois (consultant et manager).
+  - CraList.test.tsx adapté (suppression colonne Heures, bouton « Nouveau CRA », filtre par mois)
+    + test suppression d'un CRA non soumis.
+- vérifs : mvn test -> 187 tests, seul échec = adminCannotDeleteActiveUser PRÉ-EXISTANT (inchangé) ;
+  frontend : oxlint OK (warnings pré-existants), vitest 111 tests OK, tsc + vite build OK.
+
+2026-08-18 14:05:13
+page CRA : à droite de « Période mois année », ajouter 3 boutons prec / auj / suiv ; chaque clic
+affiche le CRA correspondant au mois s'il existe.
+- frontend (src/pages/CraList.tsx) :
+  - helper shiftMonth(year, month, delta) ; boutons ◀ (mois précédent), « auj » (aujourd'hui),
+    ▶ (mois suivant) à côté des selects mois/année ; chaque clic met à jour year/month et recharge
+    la liste du mois correspondant (findByMonth pour manager, filtre du mois pour consultant).
+- vérifs : frontend oxlint OK, vitest 111 tests OK, tsc + vite build OK ; backend non concerné.
