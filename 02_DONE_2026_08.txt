@@ -1483,3 +1483,61 @@ menu Activités & tarifs : bouton « Gérer les types » + correction « liste d
     page dédiée qui permet lister/ajouter/rechercher/modifier/supprimer.
 - vérifs : frontend oxlint OK (aucun warning nouveau), tsc -b OK, vitest 111 OK, build OK ;
   endpoints admin testés OK (/api/socs = 4 socs, activity-types/projects/consultants?socId=1 OK).
+
+2026-08-18 23:38:39
+sur la page Clients : je click sur modifier une ligne client, une dialog s'ouvre, je vois
+« Société associée » — est-ce que ça correspond à id_soc ou id_soc_parent ? je veux que ce soit
+id_soc, et ajouter un autre champ liste « Société parente (id_soc_parent) » = la société selected
+(aussi appliqué aux Fournisseurs).
+- inversion de la sémantique client/fournisseur (confirmé avec l'utilisateur) :
+  - id_soc (soc) = société associée (entreprise recherchée, n'importe quelle société, sans
+    contrôle d'accès) ;
+  - id_soc_parent (socParent) = société parente / société de travail (société sélectionnée) ->
+    portée de l'isolation multi-société (effectiveSocId / requireSocAccess).
+- backend :
+  - ClientRepository / SupplierRepository : ajout findBySocParentId + deleteAllBySocParentId ;
+    retrait de detachSocParent (plus de détachement : la société parente = propriétaire, on supprime).
+  - ClientService / SupplierService : findAll filtre par socParentId ; create exige socId
+    (société associée) et force socParent = effectiveSocId(socParentId) (non-admin -> sa société
+    de travail, jamais null) ; update/delete vérifient requireSocAccess sur socParent.
+  - SocService : deleteLinkedObjects supprime clients/fournisseurs via deleteAllBySocParentId
+    (au lieu de détacher socParent), ordre FK-safe conservé (projets avant clients) ;
+    dependencies() liste findBySocParentId.
+  - DefaultClientProjectSeeder : le client interne est rattaché à socParent = soc (visible pour
+    les utilisateurs de la société).
+- frontend :
+  - Clients.tsx / Suppliers.tsx : formulaire unifié « Société associée * » (socId, liste de
+    toutes les sociétés, auto-remplissage nom/contact/gérant/email/tel) + « Société parente
+    (société de travail) » (socParentId : sociétés de l'utilisateur pour non-admin, toutes pour
+    admin) ; openCreate présélectionne socParent = société sélectionnée ; colonnes du tableau
+    renommées « Société associée » / « Société parente ».
+- tests : ClientServiceTest / SupplierServiceTest (findAll par socParent,
+  create_nonAdmin_forcesSocParentToCurrentSoc, delete avec contrôle d'accès) ;
+  SocDeleteIntegrationTest.deleteSoc_deletesClientsOwnedBySocParent ;
+  SecurityIntegrationTest (clients/fournisseurs rattachés via socParent).
+- vérifs : mvn test -> 192 tests, seul échec = adminCannotDeleteActiveUser PRÉ-EXISTANT
+  (échec d'ordre d'isolation, indépendant) ; frontend : oxlint OK (warnings pré-existants),
+  vitest 111 tests OK, tsc + vite build OK.
+
+2026-08-18 23:57:38
+cas qui ne fonctionne pas : un consultant (mzamoun) soumet son CRA à son manager (mzamouneisi,
+le responsable_soc de sa société Eisi-Consulting) mais mzamouneisi ne reçoit PAS de notification
+dans sa cloche (Bell). En revanche, quand mzamouneisi rejette/valide, le consultant reçoit bien
+la sienne. À corriger.
+- diagnostic (données réelles H2 ./data/soc360) : le consultant « mourad zamoun » (id 66) n'a
+  AUCUN manager renseigné (manager_id = null) ; son responsable_soc est « mzamouneisi »
+  (id 33, soc 33 = EISI CONSULTING). CraService.submit() ne notifiait que consultant.getManager()
+  -> null -> aucune notification. C'est le même défaut sur NoteFraisService.submit().
+- fix backend :
+  - CraService.submit() : nouvelle méthode notificationRecipients(consultant) — si le consultant a
+    un manager explicite, on notifie ce manager ; sinon on notifie le(s) responsable_soc de la
+    société du consultant (findBySocIdAndRoleInAndActiveTrue + findBySocIdInSocs pour couvrir le
+    multi-société, dédoublonnage par id). Chaque destinataire reçoit la notification in-app
+    (lien /cras) + l'email. recordExchange garde le nom des destinataires (joints par virgule).
+  - NoteFraisService.submit() : même logique (notificationRecipients + notification in-app
+    lien /notes-frais + email).
+- tests : CraServiceTest.submit_notifiesResponsibleSocWhenNoManager (consultant sans manager ->
+  1 notification pour le responsable_soc) ; NoteFraisServiceTest.submit_notifiesResponsibleWhenNoManager
+  + submit_setsStatusAndDate (retrait du stub findByEmail devenu inutile).
+- vérifs : mvn test -> 194 tests, seul échec = adminCannotDeleteActiveUser PRÉ-EXISTANT
+  (échec d'ordre d'isolation, indépendant) ; frontend non concerné (aucun changement).
