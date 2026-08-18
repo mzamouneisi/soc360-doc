@@ -1331,3 +1331,13 @@ lorsqu'on ouvre un cra, on montre toutes les activités.
   (currentActivity, monthActivities, lignes, modal événement) ; sinon toutes les activités.
 - clique+remplissage, remplisser plage, remplir tout le mois utilisent filteredActivities.
 - vérifs : frontend lint OK, vitest 111 OK, build OK.
+
+2026-08-18 19:36:00
+ajouter un paramètre par user : choix du thème de l'application — liste de 10 thèmes.
+- backend : migration V30__user_theme.sql (user_account.theme VARCHAR(30) DEFAULT 'ocean') ;
+  UserAccount.theme ; UserDto.theme ; AuthService.updateTheme (10 thèmes autorisés : ocean,
+  forest, sunset, lilac, emerald, ruby, amber, sky, slate, rose) + PUT /auth/me/theme.
+- frontend : types.ts theme ; authApi.updateTheme ; AuthContext applique data-theme sur
+  <html> (comme fontSize) ; index.css : @theme inline brand-* -> variables CSS, palettes
+  par [data-theme=...] (10 thèmes) ; Paramètres : sélecteur de thème avec aperçu de couleur.
+- vérifs : backend AuthServiceTest+UserControllerTest 31 OK ; frontend lint OK, vitest 111 OK, build OK.
