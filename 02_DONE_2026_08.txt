@@ -1385,3 +1385,10 @@ l'année suivante via un bouton ; IHM calendrier avec boutons préc / aujourd'hu
   ajout au menu Activité + route App.tsx + icône calendrier ; socHolidaysApi + SocHolidayDto.
 - tests : SocHolidayServiceTest 5 OK ; CraExchangeIntegrationTest 3 OK (Flyway V31 appliqué) ;
   frontend lint OK, vitest 111 OK, build OK.
+
+2026-08-18 20:36:00
+page CRA — ajouter un bouton en haut pour rafraîchir la liste des CRA.
+- frontend (CraList) : bouton « Actualiser » (icône refresh) dans l'en-tête (PageHeader actions),
+  visible pour tous les rôles (consultant compris) ; appelle reload() du hook useAsync.
+  Les boutons Exporter CSV/PDF restent réservés aux non-consultants.
+- vérifs : frontend lint OK, vitest 111 OK, build OK.
