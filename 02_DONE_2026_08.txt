@@ -1268,3 +1268,17 @@ lorsqu'un consultant envoie un CRA ou un congé à valider, son manager doit rec
   <année> », corps « <consultant> a soumis son CRA / son congé pour validation. » (selon cra.type).
 - vérifs : mvn -Dtest=CraServiceTest -> 7 tests OK (la notification existe déjà via
   submit_notifiesManager) ; frontend non concerné.
+
+2026-08-18 18:55:42
+chaque appel au serveur (sauf le chargement des notifications) doit lancer un écran de chargement,
+qui se ferme dès que le serveur répond (ok ou ko).
+- frontend (soc360-front-react) :
+  - api/client.ts : compteur global activeRequests + setLoadingListener() ; request/upload/download
+    incrémentent (beginLoading) et décrémentent (endLoading, finally) ce compteur ; les chemins
+    commençant par /notifications (poll unread-count, liste, marquer lu, …) sont exemptés pour ne pas
+    faire clignoter l'écran en permanence.
+  - nouveau composant src/components/GlobalLoading.tsx : overlay plein écran (fond semi-transparent +
+    spinner + « Chargement… ») affiché quand activeRequests > 0, masqué sinon.
+  - MainLayout.tsx : rendu de <GlobalLoading /> en fin de layout.
+- vérifs : frontend oxlint OK (warnings pré-existants), vitest 111 tests OK, tsc + vite build OK ;
+  backend non concerné.
