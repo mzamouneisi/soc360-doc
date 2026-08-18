@@ -1429,3 +1429,11 @@ les lignes des tables sont de couleur légèrement différente selon pair ou imp
   PUBLIC_HOLIDAY (fond orange) et affichent leur libellé spécifique (ex. « Fête nationale »,
   libellé de la société).
 - vérifs : frontend lint OK, vitest 111 OK, build OK.
+
+2026-08-18 21:12:00
+les cellules des en-têtes de tables sont toujours en gras.
+- frontend : passage de font-semibold à font-bold sur les cellules d'en-tête (<th>) de toutes les
+  tables : composant Table partagé (components/data.tsx), CRA (CraList + tableau "ligne" de
+  CraDetail), Profil (historique des connexions), Paramètres (aperçu), Tables (console SQL).
+  Les titres de cartes/le calendrier (div) ne sont pas concernés.
+- vérifs : frontend lint OK, vitest 111 OK, build OK.
