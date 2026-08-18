@@ -1145,3 +1145,21 @@ c'est un nouveau.
     ouverture inline mockée avec getById + activitiesApi).
 - vérifs : mvn test -> 187 tests, seul échec = adminCannotDeleteActiveUser PRÉ-EXISTANT (inchangé) ;
   frontend : oxlint OK (warnings pré-existants), vitest 111 tests OK, tsc + vite build OK.
+
+2026-08-18 15:20:11
+page Clients / Fournisseurs : ajouter un client (ou fournisseur) qui se référence à n'importe quelle
+société.
+- frontend (soc360-front-react) — Clients.tsx et Suppliers.tsx :
+  - pour un non-admin (RESPONSIBLE_SOC), le champ « Société associée » référence désormais n'importe
+    quelle société via socParentId (auparavant il mappait socId = société propriétaire, restreint par
+    le backend) ; la société propriétaire socId reste la société sélectionnée (selectedSocId/user.socId),
+    implicite pour l'isolation multi-société.
+  - selectCompany(field, value) remplace selectSoc : auto-remplissage nom/contact/gérant depuis la
+    société référencée (socToCompanyLookup) pour socId (ADMIN) ou socParentId (non-admin).
+  - openCreate : plus d'auto-remplissage initial ; l'utilisateur choisit la société associée.
+  - colonne du tableau renommée dynamiquement : « Société parent » (ADMIN) / « Société associée »
+    (non-admin) et affiche désormais socParent.name pour tous.
+- backend : aucun changement (socParentId était déjà accepté sans contrôle d'accès ; socId reste
+  contrôlé par requireSocAccess et vaut la société de l'utilisateur).
+- vérifs : frontend oxlint OK (warnings pré-existants), vitest 111 tests OK, tsc + vite build OK ;
+  backend non concerné (aucun changement).
