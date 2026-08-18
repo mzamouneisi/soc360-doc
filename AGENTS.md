@@ -25,11 +25,15 @@ c:\pgm\nvm\v22.0.0
 
 tache : _todo :
 
-lire 01_TODO.txt : chaque tache dans 01_TODO.txt peut se terminer pr go
-
-executer les taches une par une.
-
-une fois finie, vous deplacer le texte de la tache dans 02_DONE.txt avec la date du jour complete yyyy-mm-dd HH:MM:SS
+lire un par un les fichiers soc360-doc/01_TODO_* (chaque tache peut se terminer par go).
+Pour chaque fichier :
+  - executer les taches de ce fichier ;
+  - tester ;
+  - si ok : committer ;
+  - si erreurs : corriger, puis si ok committer ;
+  - archiver le contenu du fichier dans soc360-doc/02_DONE_<annee>_<MM>.txt
+    avec la date du jour complete yyyy-mm-dd HH:MM:SS ;
+  - supprimer le fichier 01_TODO_* traite.
 --------------------
 tache : _err_back :
 

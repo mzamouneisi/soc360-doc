@@ -1,6 +1,6 @@
 lire les fichiers dans soc360-doc et vérifier le dernier état de run.log 
 
      → Read soc360-doc\AGENTS.md
-     → Read soc360-doc\01_TODO.txt
-     → Read soc360-doc\02_DONE.txt
+     → Read soc360-doc\01_TODO_* (un par un)
+     → Read soc360-doc\02_DONE_<annee>_<MM>.txt
      → Read soc360-back-java\run.log
