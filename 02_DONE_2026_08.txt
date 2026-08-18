@@ -1347,3 +1347,17 @@ page CRA — table des cras : si une ligne est de type congé, couleur de fond j
 - frontend (CraList) : la classe bg-yellow-100 est posée sur le <tr> (toute la ligne) quand
   cra.type === 'CONGE' (précédemment posée seulement sur la première cellule).
 - vérifs : frontend lint OK, vitest 111 OK, build OK.
+
+2026-08-18 20:03:00
+une fois tout est terminé : maj de la variable _LAST_COMMIT_, commit des 3 projs (soc360-doc,
+soc360-front-react, soc360-back-java), deploy frontend + backend (cible dev).
+- _LAST_COMMIT_ : MainLayout.tsx -> 18/08/2026 19:51 (commit front d5c495b).
+- commits : front 8668fc0 (ligne congé jaune) + e2b29bb (thème) + 09b1436/c24adb3 (congé) +
+  d5c495b (_LAST_COMMIT_) ; back d323328 (thème V30) + 3dd0476 (congé) ; doc archives a2e02ca,
+  311fb66, 3c279e0 + celui-ci.
+- deploy frontend dev : ./deploy_front_to_gh_pages.sh dev -> docs/ build + push GitHub Pages
+  (https://mzamouneisi.github.io/soc360-front-react/), commit 62fee61, push main.
+- deploy backend dev : ./deploy_app_docker.sh -> image esn360-backend-v2-dev:20260818195605,
+  Container App esn360-backend-v2-dev (RG-ESN360-DEV), prête.
+- smoke tests : login admin/Admin123! -> HTTP 200 ; GET /auth/me -> theme=ocean,fontSize=22 ;
+  PUT /auth/me/theme {forest} -> forest ; reset {ocean} -> ocean (migration V30 appliquée).
