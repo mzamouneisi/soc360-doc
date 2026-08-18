@@ -1302,3 +1302,32 @@ société, ou de façon publique au sein de la société.
     consultantsApi.managers).
 - vérifs : mvn test -> 187 tests, seul échec = adminCannotDeleteActiveUser PRÉ-EXISTANT (inchangé) ;
   frontend : oxlint OK (warnings pré-existants), vitest 111 tests OK, tsc + vite build OK.
+
+2026-08-18 19:32:00
+un congé est valide meme si toutes les cellules ne sont pas toutes remplies ; mais on n'a pas le droit
+de mettre une activité qui n'est pas de type congé.
+- backend (CraService) : submit() ne vérifie plus la complétude (1j par jour travaillé) quand
+  cra.type = CONGE ; save() rejette une activité dont le code de type ne commence pas par « CONGE »
+  dans un CRA congé.
+- frontend (CraDetail) : incompleteDays / craValid ignorés pour type CONGE (le congé est soumis
+  même s'il reste des cellules vides).
+- vérifs : CraServiceTest + CraExchangeIntegrationTest 10 OK ; frontend lint OK, vitest 111 OK, build OK.
+
+2026-08-18 19:32:00
+lorsqu'on a ouvert un congé (cra de type congé) on affiche un btn en haut qui convertit le congé en
+cra ; après toutes les règles du cra reviennent.
+- backend : CraService.convertToCra(id) (setType "CRA") + CraController POST /api/cras/{id}/convert
+  (requireSocAccess sur le consultaant du cra).
+- frontend : crasApi.convertToCra(id) ; dans l'en-tête de CraDetail un bouton « Convertir en CRA »
+  visible si cra.type === 'CONGE' et crayon (DRAFT/REJECTED) ; après conversion le congé redevient
+  un CRA (activités toutes types, validation complétude…).
+- vérifs : CraServiceTest/CraExchangeIntegrationTest 10 OK ; frontend lint/test/build OK.
+
+2026-08-18 19:32:00
+lorsqu'on a ouvert un congé, on filtre les activités afin qu'elles soient toutes de type congé ; et
+lorsqu'on ouvre un cra, on montre toutes les activités.
+- frontend (CraDetail) : memo filteredActivities — si cra.type === 'CONGE', seules les activités dont
+  le code de type commence par « CONGE » (CONGE_RTT, CONGE_PAYE, CONGE_NON_PAYE) sont affichées/sélectionnables
+  (currentActivity, monthActivities, lignes, modal événement) ; sinon toutes les activités.
+- clique+remplissage, remplisser plage, remplir tout le mois utilisent filteredActivities.
+- vérifs : frontend lint OK, vitest 111 OK, build OK.
