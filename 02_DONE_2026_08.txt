@@ -1361,3 +1361,13 @@ soc360-front-react, soc360-back-java), deploy frontend + backend (cible dev).
   Container App esn360-backend-v2-dev (RG-ESN360-DEV), prête.
 - smoke tests : login admin/Admin123! -> HTTP 200 ; GET /auth/me -> theme=ocean,fontSize=22 ;
   PUT /auth/me/theme {forest} -> forest ; reset {ocean} -> ocean (migration V30 appliquée).
+
+2026-08-18 20:12:00
+pourquoi le manager d'un consultant (qui peut être un responsable_soc) ne reçoit pas de notification ?
+- diagnostic : pour le CRA, CraService.submit notifie déjà le manager (in-app + email) quel que soit
+  son rôle (RESPONSIBLE_SOC compris) — vérifié. Le manque venait de la NOTE DE FRAIS :
+  NoteFraisService.submit ne notifiait personne (statut seul).
+- correction : NoteFraisService.submit notifie désormais le manager du consultant (comme le CRA) :
+  notification in-app (NotificationService.create, lien /notes-frais) + email (EmailService.send).
+- test : NoteFraisServiceTest.submit_setsStatusAndDate enrichi (manager, verify notification + email),
+  + 3 mocks ajoutés. NoteFraisServiceTest 13 OK.
