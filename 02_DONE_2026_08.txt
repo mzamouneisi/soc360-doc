@@ -1341,3 +1341,9 @@ ajouter un paramètre par user : choix du thème de l'application — liste de 1
   <html> (comme fontSize) ; index.css : @theme inline brand-* -> variables CSS, palettes
   par [data-theme=...] (10 thèmes) ; Paramètres : sélecteur de thème avec aperçu de couleur.
 - vérifs : backend AuthServiceTest+UserControllerTest 31 OK ; frontend lint OK, vitest 111 OK, build OK.
+
+2026-08-18 19:38:00
+page CRA — table des cras : si une ligne est de type congé, couleur de fond jaune sur toute la ligne.
+- frontend (CraList) : la classe bg-yellow-100 est posée sur le <tr> (toute la ligne) quand
+  cra.type === 'CONGE' (précédemment posée seulement sur la première cellule).
+- vérifs : frontend lint OK, vitest 111 OK, build OK.
