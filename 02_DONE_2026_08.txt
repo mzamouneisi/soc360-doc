@@ -1119,3 +1119,29 @@ affiche le CRA correspondant au mois s'il existe.
     ▶ (mois suivant) à côté des selects mois/année ; chaque clic met à jour year/month et recharge
     la liste du mois correspondant (findByMonth pour manager, filtre du mois pour consultant).
 - vérifs : frontend oxlint OK, vitest 111 tests OK, tsc + vite build OK ; backend non concerné.
+
+2026-08-18 14:56:37
+page CRA : table en haut (non filtrée par la période), « Nouveau Cra » juste en dessous (s'ouvre à la
+période choisie), champ « Période » en dessous ; « Ouvrir »/« Nouveau Cra » ouvrent le CRA dans la
+même page (en dessous) ; la navigation par la période ouvre le CRA (en dessous) s'il existe, sinon
+c'est un nouveau.
+- backend (soc360-back-java) :
+  - CraService.findBySocYear(socId, year) + CraController GET /api/cras/soc/{socId}/{year}
+    (isolation via effectiveSocId) : liste des CRA d'une société sur une année (table non filtrée
+    par le mois pour les managers/ADMIN).
+- frontend (soc360-front-react) :
+  - api/cras.ts : crasApi.findBySocYear(socId, year).
+  - CraDetail.tsx : refactor — signature CraDetail({ id, onClose, onChange }) (plus de useParams) ;
+    nouveau composant CraDetailRoute (useParams) pour la route /cras/:id ; bouton « ← Fermer »
+    (onClose) en mode inline vs « ← Retour aux CRA » en mode route ; onChange() appelé après
+    save/submit/validate/reject pour rafraîchir la liste parente.
+  - App.tsx : route /cras/:id -> CraDetailRoute.
+  - CraList.tsx réécrit : table des CRA en haut (année, non filtrée par mois), pagination 5 lignes ;
+    « Nouveau Cra » en dessous de la table (consultant -> getOrCreate + ouverture inline) ; champ
+    « Période » (mois/année + ◀/auj/▶) en dessous ; « Éditer/Ouvrir » et « Nouveau Cra » ouvrent le
+    CRA en ligne (CraDetail inline avec onClose/onChange) ; navigation période (selects et boutons)
+    -> consultant : getOrCreate + ouverture inline (crée si absent), manager : mise à jour période.
+  - CraList.test.tsx adapté (findBySocYear pour manager, table non filtrée par mois, « Nouveau Cra »,
+    ouverture inline mockée avec getById + activitiesApi).
+- vérifs : mvn test -> 187 tests, seul échec = adminCannotDeleteActiveUser PRÉ-EXISTANT (inchangé) ;
+  frontend : oxlint OK (warnings pré-existants), vitest 111 tests OK, tsc + vite build OK.
