@@ -1437,3 +1437,19 @@ les cellules des en-têtes de tables sont toujours en gras.
   CraDetail), Profil (historique des connexions), Paramètres (aperçu), Tables (console SQL).
   Les titres de cartes/le calendrier (div) ne sont pas concernés.
 - vérifs : frontend lint OK, vitest 111 OK, build OK.
+
+2026-08-18 21:25:00
+page paramètres : définir NB_LIGNES_MAX_VIEW (nombre de lignes d'une table qu'on voit, défaut 5,
+défini par user) ; le reste vient par boutons Précédent/Suivant. Appliqué à toutes les tables.
+- backend : migration V33__user_page_size.sql (user_account.page_size INT DEFAULT 5) ;
+  UserAccount.pageSize, UserDto.pageSize, AuthService.updatePageSize (1..100) +
+  PUT /auth/me/page-size.
+- frontend : Paramètres : sélecteur « Lignes par page » (5/10/15/20/50/100) ;
+  composant Table partagé : prop paginate -> pagination client-side (pageSize de useAuth, défaut 5)
+  + barre Précédent/Suivant (Pagination) ; prop paginate ajoutée aux 9 pages côté client
+  (Activités, Types, Clients, Documents, Fiches paie, Notes frais, Projets, Sociétés, Fournisseurs) ;
+  pages paginées serveur (Utilisateurs, Consultants, Support, Messages) : size = user.pageSize ;
+  CRA (CraList) : PAGE_SIZE remplacé par user.pageSize.
+- test : data.test.tsx mocke useAuth (Table utilise désormais le contexte d'auth). frontend 111 OK.
+- vérifs : AuthServiceTest 31 OK, CraExchangeIntegrationTest 3 OK (V33 appliqué) ;
+  frontend lint OK, vitest 111 OK, build OK.
