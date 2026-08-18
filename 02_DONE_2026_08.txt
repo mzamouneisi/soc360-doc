@@ -1403,3 +1403,19 @@ chaque page : il faut un bouton refresh.
   useAsync (ajouté là où il manquait : Dashboard, Facturation, Missions, Users, Profile, CraDetail)
   ou un tick de rafraîchissement (Holidays).
 - vérifs : frontend lint OK, vitest 111 OK, build OK.
+
+2026-08-18 20:55:00
+page Paramètres — choix de la couleur d'en-tête des tables et de la couleur de bordure des tables.
+- backend : migration V32__user_table_colors.sql (user_account.table_header_color DEFAULT '#f9fafb',
+  table_border_color DEFAULT '#e5e7eb') ; UserAccount + UserDto enrichis ; AuthService.updateTableColors
+  (validation hex #RRGGBB) + PUT /auth/me/table-colors.
+- frontend : Paramètres : deux sélecteurs de couleur (type color) + aperçu ; AuthContext applique
+  --table-header / --table-border sur <html> ; index.css définit les valeurs par défaut ; le composant
+  Table + les tables brutes (CraList, Profile, Tables) utilisent var(--table-header)/var(--table-border).
+- tests : AuthServiceTest 31 OK, CraExchangeIntegrationTest 3 OK (V32 appliqué) ; frontend 111 OK.
+
+2026-08-18 20:55:00
+les lignes des tables sont de couleur légèrement différente selon pair ou impair (zebrage).
+- frontend : lignes paires en bg-gray-50 (even:bg-gray-50) sur le composant Table et les tables brutes
+  (CraList — sauf lignes congé qui restent jaunes, Profile connexions, Tables).
+- vérifs : frontend lint OK, vitest 111 OK, build OK.
