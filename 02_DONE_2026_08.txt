@@ -1232,3 +1232,14 @@ cellules déjà remplies, les week-ends et les jours fériés.
   (travaux précédents non commités).
 - vérifs : frontend oxlint OK (warnings pré-existants), vitest 111 tests OK, tsc + vite build OK ;
   backend non concerné (aucun changement).
+
+2026-08-18 18:43:36
+lorsque je clique sur « Nouveau Congé », faire pareil que « Nouveau Cra » : chercher la période où il
+n'y a aucun CRA rempli.
+- frontend (src/pages/CraList.tsx) :
+  - findFreePeriod() ne prend plus de type : il recherche désormais un mois où le CRA régulier
+    (type 'CRA') est absent ou en DRAFT/REJECTED (donc pas rempli/validé), quel que soit le bouton
+    cliqué ; createCra(type) applique la même recherche pour 'CRA' et 'CONGE' puis getOrCreate sur le
+    mois trouvé.
+- vérifs : frontend oxlint OK (warnings pré-existants), vitest 111 tests OK, tsc + vite build OK ;
+  backend non concerné.
