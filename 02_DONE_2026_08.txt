@@ -1419,3 +1419,13 @@ les lignes des tables sont de couleur légèrement différente selon pair ou imp
 - frontend : lignes paires en bg-gray-50 (even:bg-gray-50) sur le composant Table et les tables brutes
   (CraList — sauf lignes congé qui restent jaunes, Profile connexions, Tables).
 - vérifs : frontend lint OK, vitest 111 OK, build OK.
+
+2026-08-18 21:05:00
+à l'ouverture d'un cra/congé, charger les jours fériés nationaux et aussi spécifiques de la société.
+- frontend (CraDetail) : à l'ouverture, chargement parallèle des jours fériés nationaux
+  (holidaysApi.findByCountryYear('FR', année)) et des jours fériés de la société
+  (socHolidaysApi.list(année), X-SOC-Id auto) ; construction d'une Map date->libellé ;
+  les jours du calendrier correspondants (type WORKED sans activité) sont marqués
+  PUBLIC_HOLIDAY (fond orange) et affichent leur libellé spécifique (ex. « Fête nationale »,
+  libellé de la société).
+- vérifs : frontend lint OK, vitest 111 OK, build OK.
