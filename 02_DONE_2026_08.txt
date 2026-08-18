@@ -1184,3 +1184,29 @@ avant de commiter, mettre à jour la date du dernier commit dans la page menu, e
   - MainLayout.tsx : libellé « Déploiement : … » -> « Dernier commit : … » (bas de la sidebar).
 - vérifs : frontend oxlint OK, vitest 111 tests OK, tsc + vite build OK (le bundle embarqué contient
   bien la date du dernier commit, ex. « 18/08/2026 15:46 ») ; backend non concerné.
+
+2026-08-18 16:42:02
+CRA : nouvelle propriété type = 'CRA' par défaut ; bouton « Nouveau Congé » (à droite de « Nouveau
+Cra ») qui crée un CRA de type 'CONGE' ; champ Période avant le bouton Nouveau Cra ; couleurs de fond
+des événements CONGE (jaune) et HOLIDAY (orange).
+- backend (soc360-back-java) :
+  - migration V28__cra_type.sql : colonne cra.type VARCHAR(20) NOT NULL DEFAULT 'CRA' ; contrainte
+    unique étendue à (consultant_id, month_number, period_year, type) pour permettre CRA + CONGE sur
+    le même mois.
+  - Cra : champ type (String, défaut "CRA") ; CraRepository.findByConsultantIdAndMonthAndYearAndType ;
+    CraDtos.CraDto.type.
+  - CraService : getOrCreate(..., type) + createForMonth(..., type) — un CRA type CONGE initialise ses
+    jours en LEAVE (congé, 0h) au lieu de WORKED ; toDto renvoie type.
+  - CraController : GET /cras/consultant/{id}/{year}/{month} accepte ?type= (défaut CRA).
+  - DashboardService + DashboardServiceTest adaptés au renommage du repository.
+- frontend (soc360-front-react) :
+  - types.ts CraDto.type ; cras.ts getOrCreate(..., type = 'CRA').
+  - CraList.tsx : champ Période déplacé avant les boutons ; bouton « Nouveau Congé » (createCra('CONGE'))
+    à droite de « Nouveau Cra ».
+  - CraDetail.tsx : helper dayBackground — cellules calendrier : LEAVE = jaune (bg-yellow-100),
+    PUBLIC_HOLIDAY = orange (bg-orange-100), WORKED = blanc, autres = gris.
+- note : remplacement du mécanisme __BUILD_DATE__ par la variable manuelle _LAST_COMMIT_ dans
+  MainLayout.tsx (affichée dans le menu), suppression de la ligne « Déploiement/Dernier commit » en bas
+  de la sidebar (vite.config.ts et vite-env.d.ts nettoyés).
+- vérifs : mvn test -> 187 tests, seul échec = adminCannotDeleteActiveUser PRÉ-EXISTANT (inchangé) ;
+  frontend : oxlint OK (warnings pré-existants), vitest 111 tests OK, tsc + vite build OK.
