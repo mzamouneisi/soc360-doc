@@ -985,3 +985,40 @@ il faut un menu paramètres pour la modifier par utilisateur (défaut 14px)
 - vérifs : mvn test -> 182 tests, seul échec = adminCannotDeleteActiveUser PRÉ-EXISTANT
   (échec d'ordre d'isolation, indépendant) ; run_dev.sh redémarrée OK (V26 validée/appliquée) ;
   frontend : oxlint OK (warnings docs/ pré-existants), vitest 110 tests OK, tsc + vite build OK.
+
+2026-08-18 11:04:26
+dans la page CRA, ajouter au btn 'Remplir tout le mois' une liste contenant les activités
+correspondant au mois afin de choisir la bonne activité à remplir avec
+- frontend (src/pages/CraDetail.tsx) :
+  - le clic sur « Remplir tout le mois » n'applique plus directement une activité unique :
+    il ouvre désormais une modale (FillMonthModal) listant les activités correspondant au mois.
+  - monthActivities : remplace l'ancien memo monthActivity (qui ne renvoyait qu'une seule
+    activité). Il retourne la liste des activités actives dont la période chevauche le mois du CRA
+    (active + startDate <= fin du mois + endDate >= début du mois), en privilégiant celles liées au
+    consultant du CRA (consultant.id == cra.consultantId) ; sinon toutes les activités du mois.
+  - FillMonthModal : modale avec pastille de couleur + nom + période (début → fin) par activité ;
+    un message s'affiche si aucune activité ne correspond au mois.
+- vérifs : oxlint OK (warnings docs/ pré-existants), vitest 110 tests OK, tsc + vite build OK.
+
+2026-08-18 11:17:41
+_err_back : run.log du backend — DataIntegrityViolationException lors de l'enregistrement d'un CRA
+déjà rempli : « violation de contrainte fk_cda_cra_day » (delete from cra_day where cra_id=?).
+- cause : CraService.save() supprimait les jours du CRA via craDayRepository.deleteByCraId(id)
+  (delete JPQL en masse sur cra_day) SANS supprimer d'abord les événements associés
+  (cra_day_activity). La FK fk_cda_cra_day (cra_day_activity.cra_day_id -> cra_day.id) bloquait
+  donc le delete des jours : le CRA échouait au 2e enregistrement (quand il contient déjà des
+  événements), le delete en masse court-circuitant le cascade/orphanRemoval de CraDay.activities.
+- fix :
+  - CraDayActivityRepository : ajout de deleteByCraId(Long) (JPQL @Modifying
+    « delete from CraDayActivity cda where cda.craDay.cra.id = :craId »).
+  - CraService : injection de CraDayActivityRepository ; dans save(), suppression dans l'ordre
+    FK-safe : craDayActivityRepository.deleteByCraId(id) PUIS craDayRepository.deleteByCraId(id)
+    avant de recréer les jours (même convention que deleteByConsultantSocId déjà utilisé par
+    SocService.deleteWithDependencies).
+- tests : nouveau test d'intégration non transactionnel CraSaveIntegrationTest
+  (save_twiceWithActivities_replacesEventsWithoutFkViolation) qui enregistre 2 fois de suite un CRA
+  rempli d'événements (reproduit la FK violation avant le fix) + nettoyage @AfterEach en ordre
+  FK-safe (cra -> cra_configuration -> activity -> activity_type -> consultant -> soc) pour ne pas
+  polluer la base H2 partagée des tests.
+- vérifs : mvn test -> 183 tests, seul échec = adminCannotDeleteActiveUser PRÉ-EXISTANT
+  (échec d'ordre d'isolation, indépendant de ce correctif) ; frontend non concerné (aucun changement).
