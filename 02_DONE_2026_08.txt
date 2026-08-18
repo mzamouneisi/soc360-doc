@@ -1282,3 +1282,23 @@ qui se ferme dès que le serveur répond (ok ou ko).
   - MainLayout.tsx : rendu de <GlobalLoading /> en fin de layout.
 - vérifs : frontend oxlint OK (warnings pré-existants), vitest 111 tests OK, tsc + vite build OK ;
   backend non concerné.
+
+2026-08-18 19:04:49
+page Documents : partager un document à un autre consultant / manager / responsable_soc de la même
+société, ou de façon publique au sein de la société.
+- backend (soc360-back-java) :
+  - migration V29__document_share.sql : colonne hr_document.visibility (VARCHAR(20) DEFAULT 'PRIVATE')
+    + table document_share (document_id -> hr_document ON DELETE CASCADE, user_id -> user_account).
+  - HrDocument.visibility (PRIVATE/PUBLIC) ; entités DocumentShare + DocumentShareRepository ;
+    HrDocumentRepository.findByVisibilityAndSocId / findByUploadedByAndSocId.
+  - DocumentController : upload accepte visibility + sharedWith (liste d'userIds) et crée les
+    document_share ; POST /{id}/share (partage d'un document existant) ; findAll pour non
+    ADMIN/RESPONSIBLE_SOC retourne public + partagé + uploadé par moi + consultant assigné ;
+    requireDocumentAccess() pour le téléchargement (public/uploadé/assigné/partagé sinon 403).
+- frontend (soc360-front-react) :
+  - types.ts HrDocumentDto.visibility ; documents.ts upload(visibility/sharedWith) + share(id, userIds).
+  - Documents.tsx : le formulaire « Partager un document » ajoute « Visibilité » (Privé/Public) et,
+    en privé, une liste à cocher « Partager avec » (consultants/managers/responsables via
+    consultantsApi.managers).
+- vérifs : mvn test -> 187 tests, seul échec = adminCannotDeleteActiveUser PRÉ-EXISTANT (inchangé) ;
+  frontend : oxlint OK (warnings pré-existants), vitest 111 tests OK, tsc + vite build OK.
