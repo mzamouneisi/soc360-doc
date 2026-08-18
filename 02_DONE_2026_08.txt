@@ -437,6 +437,18 @@ la dialog était fermée ; console : <form> cannot be a descendant of <form>).
 14/08/2026 14:11:16
 corriger erreur backend run.log : ajout d'une société trouvée par la recherche (SocPicker)
 échouait avec "Value too long for column description CHARACTER VARYING(500)" (JSON de 4680
+
+2026-08-18 22:23:59
+lorsque je rajoute un nouveau client
+id_soc = l'id de la societe que je recherche
+id_soc_parent : id de la societe selected : la societe dans laquelle on travaille.
+go
+
+2026-08-18 22:23:59
+dans la page Clients
+lorsque je click sur modifier
+je dois aussi modifier le champ societe parent (societe)
+go
 caractères, ex. ALTICE siren 351094883).
 - cause : dans SocPicker.settleCompany, l'auto-création de la société envoyait le JSON complet
   du lookup (company.infosWeb) dans le champ description (VARCHAR(500)) au lieu du champ
@@ -1453,3 +1465,21 @@ défini par user) ; le reste vient par boutons Précédent/Suivant. Appliqué à
 - test : data.test.tsx mocke useAuth (Table utilise désormais le contexte d'auth). frontend 111 OK.
 - vérifs : AuthServiceTest 31 OK, CraExchangeIntegrationTest 3 OK (V33 appliqué) ;
   frontend lint OK, vitest 111 OK, build OK.
+
+2026-08-18 22:49:12
+menu Activités & tarifs : bouton « Gérer les types » + correction « liste des types vide »
+à l'ajout d'une activité (tâches 1 et 2 de todo_save).
+- tâche 2 (bug « liste des types d'activités vide, je suis bloqué ») : cause = le formulaire
+  « + Nouvelle activité » chargeait types/projets/consultants seulement si une société était
+  résolue (workingSocId). Pour ADMIN (aucune société), workingSocId = null -> listes vides
+  -> ajout d'activité bloqué. Pour MANAGER/RESPONSIBLE_SOC (soc défini) l'API renvoyait déjà
+  les types (vérifié : /api/activity-types?socId=1 = 14 types).
+- frontend (Activities.tsx) :
+  - sélecteur « Société * » dans la modale pour ADMIN (liste via socsApi.findAll()) ; au changement
+    de société, type/projet/consultant réinitialisés.
+  - types/projets/consultants chargés selon effectiveSocId = (ADMIN ? soc choisi dans le formulaire
+    : workingSocId) ; handleSubmit utilise le bon socId pour ADMIN (validation soc requise).
+  - bouton « Gérer les types » (InlineButton) dans l'en-tête, navigate('/types-activites') vers la
+    page dédiée qui permet lister/ajouter/rechercher/modifier/supprimer.
+- vérifs : frontend oxlint OK (aucun warning nouveau), tsc -b OK, vitest 111 OK, build OK ;
+  endpoints admin testés OK (/api/socs = 4 socs, activity-types/projects/consultants?socId=1 OK).
