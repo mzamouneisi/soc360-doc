@@ -1210,3 +1210,25 @@ des événements CONGE (jaune) et HOLIDAY (orange).
   de la sidebar (vite.config.ts et vite-env.d.ts nettoyés).
 - vérifs : mvn test -> 187 tests, seul échec = adminCannotDeleteActiveUser PRÉ-EXISTANT (inchangé) ;
   frontend : oxlint OK (warnings pré-existants), vitest 111 tests OK, tsc + vite build OK.
+
+2026-08-18 18:01:46
+page CRA : boutons « Nouveau Cra » / « Nouveau Congé » sur une même ligne et centrés, bouton
+« Nouveau Congé » jaune ; dans la table des CRA, si une ligne est un congé (type CONGE), la première
+cellule (année-mois) a un fond jaune ; au clic sur Nouveau Cra/Nouveau Congé, si le mois affiché a
+déjà un CRA rempli (soumis/validé), on avance mois par mois jusqu'à trouver un mois sans CRA ou
+partiellement rempli ; bouton + plage de dates (début/fin) pour remplir la plage en évitant les
+cellules déjà remplies, les week-ends et les jours fériés.
+- frontend (soc360-front-react) :
+  - components/ui.tsx : Button accepte une prop variant ('primary' | 'yellow' | 'green'), défaut primary.
+  - CraList.tsx : boutons centrés (justify-center) + « Nouveau Congé » variant yellow ; cellule
+    « année-mois » en bg-yellow-100 quand cra.type === 'CONGE' ; createCra() -> findFreePeriod(type)
+    qui, pour chaque mois à partir du mois courant (jusqu'à 24 mois), regarde le CRA du type donné
+    (data de l'année courante, sinon findByConsultant de l'année suivante) et s'arrête au premier mois
+    sans CRA ou en DRAFT/REJECTED ; puis getOrCreate + ouvre en ligne et repositionne la période.
+  - CraDetail.tsx : bouton « Remplir une plage » + FillRangeModal (date début/fin, liste d'activités du
+    mois) ; handleFillRange() remplit les jours WORKED vides de la plage [début, fin] avec l'activité
+    choisie (1 j), en évitant les jours déjà remplis, week-ends et jours fériés (dayType != WORKED).
+- note : commité aussi l'horloge numérique et les classes font_last_commit / text-horloge du menu
+  (travaux précédents non commités).
+- vérifs : frontend oxlint OK (warnings pré-existants), vitest 111 tests OK, tsc + vite build OK ;
+  backend non concerné (aucun changement).
