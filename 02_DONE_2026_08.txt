@@ -1022,3 +1022,55 @@ déjà rempli : « violation de contrainte fk_cda_cra_day » (delete from cra_da
   polluer la base H2 partagée des tests.
 - vérifs : mvn test -> 183 tests, seul échec = adminCannotDeleteActiveUser PRÉ-EXISTANT
   (échec d'ordre d'isolation, indépendant de ce correctif) ; frontend non concerné (aucun changement).
+
+2026-08-18 12:10:25
+lorsque le consultant envoie un CRA à valider, le manager ne reçoit pas de notification :
+il doit la recevoir.
+- diagnostic : la notification in-app (entité Notification, cloche) était déjà créée par
+  CraService.submit() pour le manager (consultant.getManager() -> findByEmail -> notify()), vérifié
+  par un test d'intégration. En revanche aucun EMAIL n'était envoyé au manager, et le badge de la
+  cloche n'était pas rafraîchi en temps réel (l'effect ne lisait le compteur non-lus qu'au montage).
+- fix backend (soc360-back-java) :
+  - CraService : injection d'EmailService ; dans submit(), en plus de la notification in-app, envoi
+    d'un email au manager (objet « CRA soumis — <mois> <année> », corps « Bonjour <manager>,
+    <consultant> a soumis son CRA pour validation. »). Le code lit désormais manager =
+    consultant.getManager() une seule fois (le nom du manager, auparavant calculé mais inutilisé,
+    sert au corps de l'email).
+  - test : CraServiceTest.submit_notifiesManager (intégration) — crée un manager (UserAccount
+    MANAGER), un consultant rattaché à ce manager, remplit et soumet le CRA, puis vérifie qu'une
+    notification non lue existe pour le manager (countByUserIdAndReadFalse == 1).
+- fix frontend (soc360-front-react) :
+  - NotificationBell.tsx : le compteur de notifications non lues est désormais pollé toutes les
+    30 s (setInterval + clearInterval dans l'effect), en plus du chargement au montage -> le badge
+    du manager se met à jour quand un consultant soumet un CRA, sans rechargement de page.
+- vérifs : mvn test -> 184 tests, seul échec = adminCannotDeleteActiveUser PRÉ-EXISTANT (inchangé) ;
+  frontend : oxlint OK (warnings pré-existants SocContext/AuthContext), vitest 110 tests OK,
+  tsc + vite build OK.
+
+2026-08-18 12:39:13
+on doit historiser les échanges de validation/rejet entre consultant et son manager :
+date_heure | sender | receiver | comment ; un btn « Historique » affiche dans une dialog la liste
+des échanges ; une fois le CRA validé, on remplace le dernier commentaire par :
+« validé par <manager> le <date_heure> ».
+- backend (soc360-back-java) :
+  - migration V27__cra_exchange.sql : table cra_exchange (cra_id FK -> cra ON DELETE CASCADE,
+    sender/receiver VARCHAR(120) NOT NULL, comment VARCHAR(500), created_at/updated_at/created_by).
+  - CraExchange (entité), CraExchangeRepository (findByCraIdOrderByCreatedAtAsc).
+  - CraDtos : record CraExchangeDto(id, dateTime, sender, receiver, comment).
+  - CraService : recordExchange() appelé dans submit() (consultant -> manager, comment null),
+    reject() (manager -> consultant, comment = motif) et validate() (manager -> consultant,
+    comment = « validé par <manager> le <date_heure> ») ; validate() positionne aussi cra.comment
+    avec ce même texte ; nouvelle méthode exchanges(craId).
+  - CraController : GET /api/cras/{id}/exchanges (avec contrôle d'accès requireSocAccess comme getById).
+  - le nom de l'acteur (manager) en validate/reject est lu via SecurityUtils.currentPrincipal()
+    .getFullName() avec repli sur le manager du consultant (pour ne pas casser les tests sans contexte).
+- frontend (soc360-front-react) :
+  - api/types.ts : interface CraExchangeDto ; api/cras.ts : crasApi.exchanges(id).
+  - CraDetail.tsx : bouton « Historique » dans l'en-tête -> HistoryModal (dialog) qui liste les
+    échanges (sender -> receiver, date/heure via formatDateTime, commentaire).
+- tests : CraExchangeIntegrationTest.submit_reject_validate_recordsExchangeHistory (non transactionnel,
+  nettoyage @AfterEach incluant notification -> user_account) ; CraServiceTest.submit_notifiesManager.
+- vérifs : mvn test -> 185 tests, seul échec = adminCannotDeleteActiveUser PRÉ-EXISTANT (inchangé) ;
+  frontend : oxlint OK (warnings pré-existants), vitest 110 tests OK, tsc + vite build OK.
+- notes : le .gitignore ignorait `db/` (les migrations Flyway n'étaient pas versionnées, seules V15/V16
+  l'étaient) -> retrait de `db/` + commit de toutes les migrations V1..V27.
