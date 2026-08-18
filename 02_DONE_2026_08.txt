@@ -1392,3 +1392,14 @@ page CRA — ajouter un bouton en haut pour rafraîchir la liste des CRA.
   visible pour tous les rôles (consultant compris) ; appelle reload() du hook useAsync.
   Les boutons Exporter CSV/PDF restent réservés aux non-consultants.
 - vérifs : frontend lint OK, vitest 111 OK, build OK.
+
+2026-08-18 20:45:00
+chaque page : il faut un bouton refresh.
+- frontend : composant réutilisable RefreshButton (components/ui.tsx, icône + libellé « Actualiser ») ;
+  ajouté en haut de chaque page de données : Dashboard, Clients, Fournisseurs, Projets, Missions,
+  Consultants, Activités, Types d'activités, Notes de frais, Facturation, Fiches de paie, Documents,
+  Messages, Support, Utilisateurs, Sociétés (SocAdmin), Jours fériés, CRA (CraList + CraDetail), Profil.
+  Logs et Tables disposaient déjà d'un bouton de rechargement. Chaque bouton appelle reload() du hook
+  useAsync (ajouté là où il manquait : Dashboard, Facturation, Missions, Users, Profile, CraDetail)
+  ou un tick de rafraîchissement (Holidays).
+- vérifs : frontend lint OK, vitest 111 OK, build OK.
