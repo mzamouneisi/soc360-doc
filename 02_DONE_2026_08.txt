@@ -1074,3 +1074,16 @@ des échanges ; une fois le CRA validé, on remplace le dernier commentaire par 
   frontend : oxlint OK (warnings pré-existants), vitest 110 tests OK, tsc + vite build OK.
 - notes : le .gitignore ignorait `db/` (les migrations Flyway n'étaient pas versionnées, seules V15/V16
   l'étaient) -> retrait de `db/` + commit de toutes les migrations V1..V27.
+
+2026-08-18 12:42:44
+changer NotificationBell : pour ne pas solliciter le serveur chaque 30 s, on met une case à cocher
+à côté du Bell pour activer ou non la sollicitation du serveur tous les x secondes, x étant la valeur
+d'un input text modifiable à côté.
+- frontend (src/layout/NotificationBell.tsx) :
+  - ajout d'une case à cocher + d'un input text numérique à côté de la cloche (dans l'en-tête).
+  - état pollEnabled (défaut false = aucun polling) et intervalSec (défaut « 30 »).
+  - l'effect charge le compteur non-lus une fois au montage ; le poll périodique n'est lancé QUE si la
+    case est cochée, toutes les max(1, intervalSec) secondes (setInterval + clearInterval).
+  - l'input (désactivé tant que la case est décochée) filtre les caractères non numériques.
+- vérifs : frontend oxlint OK (warnings pré-existants), vitest 110 tests OK, tsc + vite build OK ;
+  backend non concerné.
