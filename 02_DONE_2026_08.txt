@@ -1243,3 +1243,19 @@ n'y a aucun CRA rempli.
     mois trouvé.
 - vérifs : frontend oxlint OK (warnings pré-existants), vitest 111 tests OK, tsc + vite build OK ;
   backend non concerné.
+
+2026-08-18 18:50:17
+click sur « Nouveau Congé » ne doit pas remplir tout de suite tout le mois par des congés.
+- backend (soc360-back-java, CraService.createForMonth) : suppression du remplissage automatique des
+  jours en LEAVE pour un CRA de type CONGE — les jours d'un CRA congé sont désormais initialisés comme
+  un CRA normal (WORKED pour les jours ouvrés, WEEKEND / PUBLIC_HOLIDAY selon la config), l'utilisateur
+  remplit ensuite les congés via la plage de dates.
+- vérifs : mvn -Dtest=CraServiceTest,CraExchangeIntegrationTest -> 10 tests OK ; frontend non concerné.
+
+2026-08-18 18:50:17
+dans la page Nouveau Cra/Congé : un bouton et un sélecteur de dates (début, fin) pour ajouter une
+activité (à choisir) dans cette plage de dates.
+- frontend (src/pages/CraDetail.tsx) : déjà en place (bouton « Remplir une plage » + FillRangeModal
+  avec dates début/fin et liste d'activités du mois) ; handleFillRange() remplit les jours WORKED vides
+  de la plage avec l'activité choisie, en évitant jours remplis/week-ends/fériés.
+- vérifs : frontend oxlint OK, vitest 111 tests OK, tsc + vite build OK (aucun changement nécessaire).
