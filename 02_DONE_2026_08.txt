@@ -1371,3 +1371,17 @@ pourquoi le manager d'un consultant (qui peut être un responsable_soc) ne reço
   notification in-app (NotificationService.create, lien /notes-frais) + email (EmailService.send).
 - test : NoteFraisServiceTest.submit_setsStatusAndDate enrichi (manager, verify notification + email),
   + 3 mocks ajoutés. NoteFraisServiceTest 13 OK.
+
+2026-08-18 20:32:00
+chaque société peut définir des jours fériés spécifiques dans une année ; elle peut dupliquer dans
+l'année suivante via un bouton ; IHM calendrier avec boutons préc / aujourd'hui / suiv.
+- backend : migration V31__soc_holiday.sql (table soc_holiday, unique id_soc+date) ; package
+  com.soc360.socholiday : SocHoliday (soc/date/label), SocHolidayRepository, SocHolidayService
+  (list/create/delete/duplicate), SocHolidayController (/api/soc-holidays).
+  Isolation multi-société : list/create/duplicate via SecurityUtils.effectiveSocId, delete via
+  requireSocAccess(soc). Écritures réservées ADMIN/RESPONSIBLE_SOC/MANAGER.
+- frontend : page /jours-feries (Holidays.tsx) : calendrier mensuel (Préc/Aujourd'hui/Suiv),
+  clic sur un jour pour ajouter (libellé) ou supprimer, bouton « Dupliquer vers année+1 » ;
+  ajout au menu Activité + route App.tsx + icône calendrier ; socHolidaysApi + SocHolidayDto.
+- tests : SocHolidayServiceTest 5 OK ; CraExchangeIntegrationTest 3 OK (Flyway V31 appliqué) ;
+  frontend lint OK, vitest 111 OK, build OK.
