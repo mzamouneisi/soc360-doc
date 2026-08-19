@@ -1541,3 +1541,19 @@ la sienne. À corriger.
   + submit_setsStatusAndDate (retrait du stub findByEmail devenu inutile).
 - vérifs : mvn test -> 194 tests, seul échec = adminCannotDeleteActiveUser PRÉ-EXISTANT
   (échec d'ordre d'isolation, indépendant) ; frontend non concerné (aucun changement).
+
+2026-08-19 11:05:39
+dans un cra ou congé, chaque evenement ne doit pas depasser 1j
+- déjà en place (règle « un événement = 0,5 ou 1 jour, max 1 jour par événement ») :
+  - backend CraService.save() : rejette (400) tout événement dont `days` <= 0, > 1 ou ≠ 0,5/1
+    (« Un événement doit représenter 0,5 ou 1 jour (maximum 1 jour par événement) »), appliqué
+    indifféremment aux CRA et aux congés (type CONGE) — la validation n'est pas liée au type.
+  - frontend CraDetail.tsx : DAY_VALUES = ['0.5', '1'] -> les sélecteurs « jours » des événements
+    (vue ligne + modale d'événements du jour) ne proposent que 0,5 j ou 1 j ; les remplissages
+    automatiques (mois, plage) posent days = '1'.
+- ajout de tests de régression explicites (CraServiceTest) :
+  - save_rejectsEventExceedingOneDay (days = 1.5 -> 400 « maximum 1 jour »)
+  - save_rejectsEventInvalidDayValue (days = 0.75 -> 400 « 0,5 ou 1 jour »)
+- vérifs : mvn -Dtest=CraServiceTest -> 10 tests OK ; mvn test -> 196 tests, seul échec =
+  adminCannotDeleteActiveUser PRÉ-EXISTANT (échec d'ordre d'isolation, indépendant) ;
+  frontend non concerné (règle déjà en place).
