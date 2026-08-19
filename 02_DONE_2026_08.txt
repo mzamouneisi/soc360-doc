@@ -1679,3 +1679,15 @@ d'autres tables : Congés, Formations, inter_contrat, ...
   adminCannotDeleteActiveUser PRÉ-EXISTANT (échec d'ordre d'isolation, indépendant) ;
   frontend : oxlint OK (warnings pré-existants inchangés), vitest 110 tests OK,
   tsc -b + vite build OK.
+
+2026-08-19 14:39:19
+page CRA : quand je clique sur « Ouvrir » un cra/congé dans la table, l'appli sélectionne la ligne
+en l'encadrant d'une couleur bleue (et désélectionne l'ancienne ligne).
+- frontend (src/pages/CraList.tsx) : la ligne `<tr>` dont cra.id === openCraId reçoit un cadre
+  bleu (borders 2px blue-400 sur les cellules : top/bottom sur toutes, left sur la 1ère, right sur
+  la dernière) + fond bleu clair bg-blue-50 ; les autres lignes conservent leur style (congé =
+  fond jaune, sinon zébrage pair/impair). La désélection de l'ancienne ligne est automatique
+  (openCraId ne référence qu'une seule ligne à la fois).
+- backend non concerné (aucun changement).
+- vérifs : frontend oxlint OK (warnings pré-existants inchangés), vitest 110 tests OK,
+  tsc -b + vite build OK.
