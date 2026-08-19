@@ -1643,3 +1643,15 @@ chez le client le sont).
 - vérifs : mvn -Dtest=CraServiceTest -> 13 tests OK ; mvn test -> 199 tests, seul échec =
   adminCannotDeleteActiveUser PRÉ-EXISTANT (échec d'ordre d'isolation, indépendant) ;
   frontend non concerné (aucun changement).
+
+2026-08-19 13:20:56
+Export Pdf Client : colorier en jaune la case correspondant au congé.
+- backend (CraService.buildClientPdf) : ajout d'un tableau boolean[] conge indexé par jour du mois.
+  isCongeDay(CraDay) détecte un jour de congé si dayType == LEAVE ou si le jour contient une
+  activité dont le code de type commence par « CONGE ». La ligne « data » du PdfPTable colore la
+  case concernée en jaune clair (Color(255,235,150)) — la valeur reste vide (le congé n'est pas
+  compté dans le total, cf. isMissionActivity). Le fond rouge clair des week-ends est conservé ;
+  un jour de congé (en semaine) n'entre pas en conflit avec les week-ends.
+- vérifs : mvn -Dtest=CraServiceTest -> 13 tests OK ; mvn test -> 199 tests, seul échec =
+  adminCannotDeleteActiveUser PRÉ-EXISTANT (échec d'ordre d'isolation, indépendant) ;
+  frontend non concerné (aucun changement).
