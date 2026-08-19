@@ -1780,3 +1780,85 @@ valeur totale de l'année.
 - tests : DashboardServiceTest.overview_responsibleSoc_includesSocStats vérifie craYearTotal == 3.
 - vérifs : mvn -Dtest=DashboardServiceTest -> 6 tests OK ; frontend : oxlint OK (warnings
   pré-existants inchangés), vitest 110 tests OK, tsc -b + vite build OK.
+
+2026-08-19 16:05:05
+page Nouvelle note de frais : à l'ouverture une nouvelle ligne à la date du jour (déjà en place) ;
+clic « Joindre une facture » upload la facture, puis l'application lit la facture et met son texte
+dans « infos facture » et pré-remplit date, type, libellé/action, montant.
+- backend :
+  - NoteFraisService.extractText(MultipartFile) : extraction du texte d'un PDF via OpenPDF
+    (PdfReader + PdfTextExtractor.getTextFromPage sur chaque page) ; pour une image/autre type,
+    retourne une chaîne vide (pas d'OCR disponible).
+  - NoteFraisController : POST /api/note-frais/extract-text (multipart, champ « file ») -> { text }.
+- frontend :
+  - api/noteFrais.ts : noteFraisApi.extractText(file) -> upload FormData vers /note-frais/extract-text.
+  - NoteFraisList.tsx : handleFile devient async — après l'upload, appelle extractText ; si texte,
+    remplit form.infosFacture et pré-remplit la 1re ligne via fillLineFromText() :
+    - date = première date dd/mm/yyyy trouvée (firstDate) ;
+    - montant = plus grand montant « 123,45 € » trouvé (largestAmount) ;
+    - type/catégorie = inféré par mots-clés (restaurant/transport/hôtel/essence/péage/parking/
+      téléphone/matériel) (inferCategory) ;
+    - libellé = nom du fichier (sans extension) si le libellé était vide.
+  - si image (aucun texte extrait) : message « OCR non disponible pour les images ».
+- vérifs : mvn test -> 201 tests, seul échec = adminCannotDeleteActiveUser PRÉ-EXISTANT ;
+  frontend : oxlint OK (warnings pré-existants inchangés), vitest 110 tests OK,
+  tsc -b + vite build OK.
+
+2026-08-19 16:39:57
+page Documents :
+tout le monde peut partager un document avec les membres qu'il peut voir dans sa société.
+un Responsable : peut voir tout le monde de sa société.
+un Manager : peut voir le responsable de la soc, les équipes de consultants qu'il gère
+un Consultant : peut voir que son manager (qui peut etre le Responsable_soc)
+- backend :
+  - DocumentController : GET /api/documents/share-targets (record ShareTarget id/fullName/role).
+    computeShareTargets() par rôle : ADMIN = tous les comptes actifs ; RESPONSIBLE_SOC =
+    union des CONSULTANT/MANAGER/RESPONSIBLE_SOC actifs du soc (findBySocIdAndRoleInAndActiveTrue
+    + findBySocIdInSocs) ; MANAGER = RESPONSIBLE_SOC du soc + user accounts des consultants dont il
+    est le manager (ConsultantRepository.findByManagerId + UserAccountRepository.findByConsultantIdIn) ;
+    CONSULTANT = son manager (getManager, qui peut être le RESPONSIBLE_SOC).
+  - allowedShareTargetIds() (null pour ADMIN, sinon set des cibles) : upload et /share filtrent
+    sharedWith/userIds sur ces seules cibles ; @PreAuthorize retiré sur upload et share (tout le
+    monde peut partager) ; delete garde son contrôle.
+- frontend :
+  - api/documents.ts : interface ShareTarget + documentsApi.shareTargets().
+  - Documents.tsx : bouton « + Partager un document » désormais visible pour tous les rôles ;
+    liste « Partager avec » (visibilité privée) alimentée par /documents/share-targets avec
+    fullName + role ; canDelete réservé à ADMIN/RESPONSIBLE_SOC (bouton Supprimer).
+- tests : DocumentShareIntegrationTest (3) — responsibleSoc_canShareWithWholeSocMembers,
+  manager_seesResponsibleSocAndManagedConsultantsOnly, consultant_seesOnlyHisManager.
+- vérifs : mvn test -> 204 tests, seul échec = adminCannotDeleteActiveUser PRÉ-EXISTANT ;
+  frontend : oxlint OK (warnings pré-existants inchangés), vitest 110 tests OK,
+  tsc -b + vite build OK.
+
+2026-08-19 17:03:25
+page consultants :
+
+le responsable_soc peut se trouver dans cette table avec une colonne role : RESPONSABLE_SOC
+le responsable_soc peut ajouter un MANAGER ou CONSULTANT qui sera managé par ce RESP ou un autre manager
+le MANAGER peut ajouter un CONSULTANT qui sera managé par ce manager
+- backend :
+  - GET /api/consultants (findAll) retourne la liste unifiée des collaborateurs du soc :
+    consultants (role CONSULTANT) + user accounts actifs MANAGER et RESPONSIBLE_SOC (id_soc ou
+    user_soc) ; colonne role ajoutée au ConsultantDto (CONSULTANT/MANAGER/RESPONSIBLE_SOC) ;
+    recherche et pagination appliquées sur l'ensemble fusionné.
+  - POST /api/consultants : champ role ajouté au ConsultantRequest. role=MANAGER -> création d'un
+    compte user_account MANAGER (soc, mustChangePassword, manager_id) ; role=CONSULTANT -> comportement
+    existant (consultant + compte optionnel). Un compte MANAGER exige username/email/password.
+  - migration V35__user_account_manager.sql : colonne user_account.manager_id (FK user_account) pour
+    stocker le manager (RESP ou manager) d'un MANAGER.
+  - @PreAuthorize de POST /api/consultants : + MANAGER (un manager peut ajouter un consultant) ;
+    guard métier : un principal MANAGER ne peut pas créer un MANAGER (403).
+- frontend :
+  - Consultants.tsx : nouvelle colonne « Rôle » (badge Consultant/Manager/Responsable société) ;
+    bouton « + Nouveau collaborateur » visible aussi pour MANAGER ; formulaire avec « Type de
+    collaborateur » (Consultant/Manager) pour ADMIN/RESPONSIBLE_SOC — en mode Manager, les champs
+    spécifiques consultant sont masqués et le compte utilisateur est requis ; pour un MANAGER,
+    type verrouillé CONSULTANT et manager pré-rempli sur lui-même ; édition/suppression limitées
+    aux lignes CONSULTANT.
+  - types.ts : role ajouté à ConsultantDto/ConsultantRequest.
+- tests : ConsultantServiceTest +7 (findAll inclut managers/responsable, recherche sur managers,
+  création manager, identifiants requis -> 400, manager principal -> 403) ; SecurityIntegrationTest
+  mis à jour (le responsable apparaît lui-même dans la liste de sa société, isolement intact).
+- vérifs : mvn test -> 209 tests, seul échec = adminCannotDeleteActiveUser PRÉ-EXISTANT ; frontend :
+  oxlint OK (warnings pré-existants inchangés), vitest 110 tests OK, tsc -b + vite build OK.
