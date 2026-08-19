@@ -1924,3 +1924,36 @@ Montant TTC
   (échec d'ordre d'isolation, indépendant) ; frontend : oxlint OK (warnings docs/
   pré-existants), vitest 112 tests OK, tsc -b + vite build OK.
 - commits : backend 5c9dab9 ; frontend 02f64a4.
+
+2026-08-19 20:51:31
+notes de frais / ocr : travailler à reconnaitre ces factures (01_TODO_01) :
+    ALLO PIZZA DI NAPOLI, DAR ZAMANE, Free EISI CONSULTING, PARKING ORY P4A,
+    (2e ticket parking) ALPHA PARKING, RESTAURATION DE PASSION, LE VAL DE SENART.
+- le parseur src/lib/receipt.ts reconnaissait déjà les 6 fixtures « propres » de
+  receipt.test.ts ; le texte OCR BRUT de 01_TODO_01 (doublons de tickets, bruit
+  typographique, montants de TVA mal lus) faisait échouer la déduction du HT du
+  ticket parking (ligne TVA « 1,92 » lue « (20,007) »).
+- frontend (soc360-front-react) :
+  - receipt.ts : findHTByVatRate() — dernier recours de findHT() : à partir d'un
+    TTC et d'une parenthèse de taux de TVA présente dans le texte (ex. « (20,00%) »,
+    reconnue même à moitié lue « (20,007) »), calcule HT = TTC / (1 + taux/100)
+    (taux autorisés 2,1 / 5,5 / 8,5 / 10 / 20). Le montant de TVA seul, s'il est bien
+    lu (1,92), continue d'être utilisé en priorité via inferHTByTax.
+  - NoteFraisList.tsx : fix erreur TS (« Type 'string | undefined' is not assignable
+    to type 'string' » au build) — `parsed.label ?? ''` en repli dans fillLineFromText.
+  - nouveau receipt.raw.test.ts : 7 tests sur les échantillons BRUTS de 01_TODO_01
+    (y compris les 2 tickets parking) — tous passent.
+- vérifs : oxlint OK (warnings docs/ pré-existants + 3 warnings src inchangés
+  SocContext/AuthContext/CraDetail), vitest 129 tests OK (13 fichiers), tsc -b + vite
+  build OK.
+- commits frontend : 2d32f20 (OCR/HT + fix TS + tests bruts) ; 36204f2 (maj _LAST_COMMIT_).
+
+2026-08-19 20:51:31
+corriger l'erreur TS2322 du build:pages (01_TODO_02) :
+    src/pages/NoteFraisList.tsx(79,5) : Type 'string | undefined' is not assignable to type 'string'.
+- cause : dans fillLineFromText(), `label: base.label.trim() ? base.label : parsed.label`
+  — parsed.label est optionnel (ReceiptParse.label?) donc l'expression était
+  `string | undefined` alors que LineForm.label est `string`.
+- fix : `parsed.label ?? ''` (repli sur chaîne vide si le parseur ne fournit pas de libellé).
+- vérifs : tsc -b + vite build OK ; oxlint OK ; vitest 129 tests OK.
+- traité avec 01_TODO_01 (commit frontend 2d32f20).
