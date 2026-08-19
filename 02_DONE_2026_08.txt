@@ -1957,3 +1957,31 @@ corriger l'erreur TS2322 du build:pages (01_TODO_02) :
 - fix : `parsed.label ?? ''` (repli sur chaîne vide si le parseur ne fournit pas de libellé).
 - vérifs : tsc -b + vite build OK ; oxlint OK ; vitest 129 tests OK.
 - traité avec 01_TODO_01 (commit frontend 2d32f20).
+
+2026-08-19 22:18:21
+page consultants : la colonne ROLE n'affiche pas la bonne valeur (01_TODO_01).
+- diagnostic (données réelles H2) : Sophie Martin (consultant id=1) est liée à un compte
+  utilisateur MANAGER « manager1 » (consultantId=1) ; ConsultantService.toDto codait le rôle
+  en dur « CONSULTANT » -> elle s'affichait « Consultant » alors qu'elle est manager, et
+  apparaissait en doublon (une fois via la table consultant, une fois via son compte MANAGER).
+- fix backend (soc360-back-java) :
+  - ConsultantService.toDto : résolution du rôle depuis le compte utilisateur lié
+    (findByConsultantId, repli findByEmail) au lieu de « CONSULTANT » codé en dur.
+  - ConsultantService.findAll : dédoublonnage — un compte MANAGER/RESPONSIBLE_SOC déjà lié
+    à un consultant (consultantId != null) n'est plus ajouté une 2e fois via toPersonDto.
+  - findAll(socId null = ADMIN) : ajout des MANAGER + RESPONSIBLE_SOC via le nouveau
+    UserAccountRepository.findByRoleInAndActiveTrue — l'admin voit désormais aussi les
+    responsables de société (avant, seul un socId renseigné les incluait ; l'admin envoyait
+    socId=undefined donc ne voyait que les consultants).
+- frontend : inchangé — la colonne Rôle affichait déjà ROLE_LABELS[c.role] ; avec le rôle
+  désormais correct côté backend, l'affichage est juste (Consultant/Manager/Responsable société).
+- tests : ConsultantServiceTest +3 (toDto_usesLinkedAccountRole,
+  findAll_doesNotDuplicateConsultantLinkedToManagerAccount,
+  findAll_nullSoc_includesManagersAndResponsibleSoc) -> 24 tests OK.
+- vérifs : mvn -Dtest=ConsultantServiceTest -> 24 OK ; mvn test -> 213 tests, 2 échecs
+  PRÉ-EXISTANTS et indépendants (NoteFraisServiceTest.create_samePeriod_stillCreatesAnotherNote
+  UnnecessaryStubbingException + SecurityIntegrationTest adminCannotDeleteActiveUser, échec
+  d'ordre d'isolation : passe isolé 16 OK).
+- commits : backend 37bf7c9.
+- (hors TODO, demandé en cours de session) menu : date du jour sous l'horloge alignée sur
+  la taille de l'horloge (text-lg) -> frontend 41eaaf2.
