@@ -1599,3 +1599,22 @@ activités du CRA ; plusieurs clients -> autant de PDF que de clients).
   adminCannotDeleteActiveUser PRÉ-EXISTANT (échec d'ordre d'isolation, indépendant) ;
   frontend : oxlint OK (warnings pré-existants inchangés), vitest 110 tests OK,
   tsc -b + vite build OK.
+
+2026-08-19 12:17:50
+on ne laisse pas le consultant saisir un autre evenement si le total est > 1j
+- backend (CraService.save) : validation ajoutée — le total des `days` d'un jour ne peut pas
+  dépasser 1 (sinon 400 « Le total du jour <date> ne peut pas dépasser 1 jour »), en plus de la
+  règle existante « 1 événement = 0,5 ou 1 jour ».
+- frontend (CraDetail.tsx) :
+  - helper allowedDaysFor(day, actIndex) : ne propose dans le select « jours » d'un événement que
+    les valeurs qui maintiennent le total du jour ≤ 1 (la valeur courante est toujours conservée
+    pour l'affichage d'éventuelles données existantes > 1j).
+  - addActivity (vue ligne + modale événement) : refus si le total du jour ≥ 1 (message d'erreur) ;
+    l'événement ajouté est pré-rempli à 0,5 j quand il ne reste que 0,5 j, sinon 1 j.
+  - updateActivity : garde — refus d'un changement de `days` qui ferait dépasser 1 j.
+  - bouton « + Ajouter un événement » désactivé (grisé) quand le total du jour ≥ 1 (les deux vues).
+- tests : CraServiceTest.save_rejectsDayTotalExceedingOneDay (2 événements de 1 j -> 400).
+- vérifs : mvn -Dtest=CraServiceTest -> 12 tests OK ; mvn test -> 198 tests, seul échec =
+  adminCannotDeleteActiveUser PRÉ-EXISTANT (échec d'ordre d'isolation, indépendant) ;
+  frontend : oxlint OK (warnings pré-existants inchangés), vitest 110 tests OK,
+  tsc -b + vite build OK.
