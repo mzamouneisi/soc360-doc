@@ -1557,3 +1557,14 @@ dans un cra ou congé, chaque evenement ne doit pas depasser 1j
 - vérifs : mvn -Dtest=CraServiceTest -> 10 tests OK ; mvn test -> 196 tests, seul échec =
   adminCannotDeleteActiveUser PRÉ-EXISTANT (échec d'ordre d'isolation, indépendant) ;
   frontend non concerné (règle déjà en place).
+
+2026-08-19 11:57:55
+un refresh navigateur de http://localhost:5173/cras génère en console :
+« In HTML, <div> cannot be a descendant of <p> » / « <p> cannot contain a nested <div> »
+- cause : MainLayout.tsx enveloppait l'horloge numérique dans un <p id="_horloge_numerique">
+  alors que HorlogeNumerique() retourne un arbre de <div> (bloc) -> HTML invalide
+  (<div> descendant d'un <p>), signalé par React comme erreur d'hydratation.
+- fix : src/layout/MainLayout.tsx -> le conteneur <p>…</p> de l'horloge devient <div>…</div>
+  (id _horloge_numerique conservé). Aucun autre <div> imbriqué dans un <p> ailleurs.
+- vérifs : oxlint OK (aucun warning nouveau, warnings pré-existants docs/ + 3 warnings src
+  inchangés) ; vitest 111 tests OK ; tsc -b + vite build OK ; backend non concerné.
