@@ -1655,3 +1655,27 @@ Export Pdf Client : colorier en jaune la case correspondant au congé.
 - vérifs : mvn -Dtest=CraServiceTest -> 13 tests OK ; mvn test -> 199 tests, seul échec =
   adminCannotDeleteActiveUser PRÉ-EXISTANT (échec d'ordre d'isolation, indépendant) ;
   frontend non concerné (aucun changement).
+
+2026-08-19 13:59:43
+Ajouter btn Export Pdf Ma Societe : on reprend la même chose que Export Pdf Client mais on ajoute
+d'autres tables : Congés, Formations, inter_contrat, ...
+- backend :
+  - CraService.exportCompanyPdf(craId) + endpoint GET /api/cras/{id}/export/company
+    (requireSocAccess sur la soc du consultant) : un PDF unique « …-societe.pdf » (pas de ZIP).
+  - refactor du rendu PDF : renderSections() partagé entre buildClientPdf et buildCompanyPdf ;
+    addDayTable() (table jour du mois : en-tête numéros, week-ends rouge clair, cases jaunes),
+    dayCounts(cra, Predicate<Activity>), congeFlags(), sum(), formatDays().
+  - buildCompanyPdf : 4 tables successives — « Missions » (activités ni CONGE ni FORMATION ni
+    INTER_CONTRAT), « Congés » (CONGE_* + jours dayType LEAVE comptés 1j, cases jaunes),
+    « Formations » (FORMATION), « Inter-contrat » (INTER_CONTRAT) ; chaque table a son Total.
+  - le PDF client (buildClientPdf) est réécrit sur les mêmes helpers, comportement inchangé.
+- frontend :
+  - api/cras.ts : crasApi.exportCompanyPdf(id) -> download /cras/{id}/export/company.
+  - CraDetail.tsx : bouton « Export Pdf Ma Societe » dans l'en-tête du CRA ouvert (à côté
+    d'« Export Pdf Client »).
+- tests : CraServiceTest.exportCompanyPdf_generatesPdf (mission -> PDF application/pdf,
+  filename « -societe.pdf »).
+- vérifs : mvn -Dtest=CraServiceTest -> 14 tests OK ; mvn test -> 200 tests, seul échec =
+  adminCannotDeleteActiveUser PRÉ-EXISTANT (échec d'ordre d'isolation, indépendant) ;
+  frontend : oxlint OK (warnings pré-existants inchangés), vitest 110 tests OK,
+  tsc -b + vite build OK.
