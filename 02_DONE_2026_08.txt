@@ -1691,3 +1691,92 @@ en l'encadrant d'une couleur bleue (et désélectionne l'ancienne ligne).
 - backend non concerné (aucun changement).
 - vérifs : frontend oxlint OK (warnings pré-existants inchangés), vitest 110 tests OK,
   tsc -b + vite build OK.
+
+2026-08-19 15:03:41
+page Tableau de bord, rôle Responsable/Manager : « Cra validés ce mois » remplacé par « Cra cette
+année » (nb de CRA en attente de validation/soumis, validés, rejetés) ; suppression du cadre CRA en
+doublon.
+- backend (DashboardService, cas RESPONSIBLE_SOC/MANAGER) : suppression de pendingCras (mois) et
+  validatedCrasThisMonth ; ajout des compteurs annuels craYearSubmitted / craYearValidated /
+  craYearRejected calculés via findByConsultantSocIdAndYearOrderByMonthDesc(socId, year) filtrés par
+  statut (SUBMITTED / VALIDATED / REJECTED). consultants et pendingNoteFrais inchangés.
+- frontend :
+  - types.ts : DashboardOverview remplace pendingCras/validatedCrasThisMonth par craYearSubmitted /
+    craYearValidated / craYearRejected.
+  - Dashboard.tsx (RESPONSIBLE_SOC/MANAGER) : les 2 cartes « CRA en attente » et « CRA validés ce
+    mois » sont remplacées par une seule carte « Cra cette année » (3 lignes En attente/Validés/
+    Rejetés avec couleurs ambre/vert/rouge + lien « Voir les CRA ») ; grille passée à 3 colonnes
+    (Consultants, Notes de frais en attente, Cra cette année).
+  - suppression du QuickLink « CRA » (cadre CRA en doublon de la navigation/menu latéral).
+- tests : DashboardServiceTest.overview_responsibleSoc_includesSocStats adapté (mock
+  findByConsultantSocIdAndYearOrderByMonthDesc + 3 statuts SUBMITTED/VALIDATED/REJECTED).
+- vérifs : mvn -Dtest=DashboardServiceTest -> 6 tests OK ; mvn test -> 200 tests, seul échec =
+  adminCannotDeleteActiveUser PRÉ-EXISTANT (échec d'ordre d'isolation, indépendant) ;
+  frontend : oxlint OK (warnings pré-existants inchangés), vitest 110 tests OK,
+  tsc -b + vite build OK.
+
+2026-08-19 15:16:51
+jours fériés spécifiques à la société : le responsable mzamouneisi a ajouté un jour férié le
+25/11/2026 mais il n'apparaît pas dans le CRA de novembre de mzamoun.
+- diagnostic (données réelles H2 ./data/soc360) : le jour férié existe bien dans soc_holiday
+  (socId 33 = EISI CONSULTING, date 2026-11-25), et mzamoun (consultant 66) est dans la soc 33,
+  mais le jour 25/11 du CRA de novembre (id 136) est initialisé à WORKED : CraService.createForMonth
+  ne prenait en compte QUE les jours fériés nationaux (public_holiday) et jamais les jours fériés
+  spécifiques de la société (soc_holiday).
+- fix backend (CraService.createForMonth) : ajout des jours fériés société de la soc du consultant
+  (socHolidayRepository.findBySocIdAndDateBetweenOrderByDateAsc) à la liste des jours fériés qui
+  marquent le type de jour en PUBLIC_HOLIDAY. Injection de SocHolidayRepository.
+- frontend : le surlignage visuel des jours fériés société dans le CRA ouvert existait déjà
+  (CraDetail charge holidaysApi + socHolidaysApi et marque PUBLIC_HOLIDAY les jours WORKED sans
+  événement) -> pour un CRA déjà créé, il s'affiche en orange au rechargement et se persiste à la
+  prochaine sauvegarde ; aucun changement nécessaire.
+- tests : CraServiceTest.createForMonth_marksSocHolidayAsPublicHoliday (un SocHoliday sur un jour
+  ouvré du mois -> le jour est PUBLIC_HOLIDAY).
+- vérifs : mvn -Dtest=CraServiceTest -> 15 tests OK ; mvn test -> 201 tests, seul échec =
+  adminCannotDeleteActiveUser PRÉ-EXISTANT (échec d'ordre d'isolation, indépendant) ;
+  frontend non concerné (aucun changement).
+
+2026-08-19 15:25:52
+(doublon) jours fériés société non visibles dans le CRA — déjà corrigé par la tâche précédente
+(commit 903393b : CraService.createForMonth prend en compte soc_holiday). Rien à faire de plus.
+
+2026-08-19 15:25:52
+export pdf ma société : si une rubrique est vide, ne pas l'afficher.
+- backend (CraService.buildCompanyPdf) : chaque rubrique (Missions, Congés, Formations,
+  Inter-contrat) n'est ajoutée que si son total de jours est > 0 via addSection() (filtre sur
+  sum(counts) > 0) -> les tables vides ne sont plus rendues dans le PDF « Ma société ».
+- vérifs : mvn compile OK ; frontend non concerné (aucun changement).
+
+2026-08-19 15:25:52
+page Notes de frais — « Nouvelle note de frais » : champs date et action élargis, formulaire
+agrandi, bouton d'upload image/PDF (ticket/facture) + champ textarea infos_facture.
+- backend :
+  - migration V34__note_frais_infos_facture.sql : colonne note_frais.infos_facture TEXT.
+  - NoteFrais : champ infosFacture (TEXT) ; NoteFraisDtos.NoteFraisDto + CreateNoteFraisRequest
+    exposent infosFacture ; NoteFraisService.create/update l'appliquent, toDto le renvoie.
+- frontend :
+  - types.ts : NoteFraisDto.infosFacture + CreateNoteFraisRequest.infosFacture.
+  - NoteFraisList.tsx :
+    - modal passée de size="lg" à "xl" (formulaire agrandi) ;
+    - ligne de dépense en grille 12 colonnes : date élargie (col-span-3), libellé/action élargi
+      (col-span-3, placeholder « Libellé / action »), catégorie 2, montant 2, remb./suppr. 1 ;
+    - bouton « Joindre une facture (image / PDF) » : input file accept image/* + application/pdf,
+      aperçu inline (img pour les images, iframe pour les PDF) + nom du fichier + bouton Retirer ;
+    - champ Textarea « Infos facture » lié à form.infosFacture, envoyé dans create/update.
+  - NoteFraisList.test.tsx adapté (placeholder + infosFacture: null dans l'appel attendu).
+- tests : mvn -Dtest=NoteFraisServiceTest -> 14 tests OK (infosFacture vérifié dans create) ;
+  mvn test -> 201 tests, seul échec = adminCannotDeleteActiveUser PRÉ-EXISTANT ;
+  frontend : oxlint OK (warnings pré-existants inchangés), vitest 110 tests OK,
+  tsc -b + vite build OK.
+
+2026-08-19 15:28:29
+Tableau de bord du responsable / manager — cadre « Cra cette année » : mise en gras + ajout de la
+valeur totale de l'année.
+- backend (DashboardService, RESPONSIBLE_SOC/MANAGER) : ajout de craYearTotal (= taille de la liste
+  des CRA de l'année de la société, yearCras.size()).
+- frontend (Dashboard.tsx + types.ts) : titre « Cra cette année » en gras (font-bold) + grande
+  valeur totale annuelle (text-3xl font-bold) au-dessus du détail ; les valeurs des 3 lignes
+  (en attente / validés / rejetés) passent en gras (font-bold).
+- tests : DashboardServiceTest.overview_responsibleSoc_includesSocStats vérifie craYearTotal == 3.
+- vérifs : mvn -Dtest=DashboardServiceTest -> 6 tests OK ; frontend : oxlint OK (warnings
+  pré-existants inchangés), vitest 110 tests OK, tsc -b + vite build OK.
