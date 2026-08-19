@@ -1568,3 +1568,34 @@ un refresh navigateur de http://localhost:5173/cras génère en console :
   (id _horloge_numerique conservé). Aucun autre <div> imbriqué dans un <p> ailleurs.
 - vérifs : oxlint OK (aucun warning nouveau, warnings pré-existants docs/ + 3 warnings src
   inchangés) ; vitest 111 tests OK ; tsc -b + vite build OK ; backend non concerné.
+
+2026-08-19 12:09:17
+page CRA : les actions des btns Exporter CSV ou PDF ne fonctionnent pas -> à remplacer par
+un btn « Export Pdf Client » quand on a ouvert un CRA (génère un PDF à envoyer au client des
+activités du CRA ; plusieurs clients -> autant de PDF que de clients).
+- cause des boutons cassés : open-in-view=false + exportCsv/exportPdf non transactionnels
+  -> LazyInitializationException sur les relations LAZY (cra.days, day.activities, activity…)
+  au moment de l'export -> 500.
+- backend :
+  - CraService.exportClientPdf(craId) @Transactional(readOnly=true) : collecte les clients
+    distincts des activités du CRA (cra_day_activity -> activity -> project -> client, dédup
+    par id) ; 1 client -> 1 PDF ; plusieurs clients (ou activités sans client) -> ZIP contenant
+    1 PDF par client (+ « interne.pdf » pour les activités sans client) ; CRA sans activité -> 1 PDF.
+  - buildClientPdf : titre « CRA de {société} », « Client : … », « Consultant : … »,
+    « Date du CRA : {mois} {année} », « Jours travaillés : » (liste des dates), « Total : … » ;
+    les jours/total sont filtrés par client (jours travaillés portant une activité de ce client).
+  - CraDtos.ClientExport(byte[] data, String filename, String contentType) ;
+    CraController : GET /api/cras/{id}/export/client (requireSocAccess sur la soc du consultant).
+  - slug() pour les noms de fichiers/entrées ZIP.
+- frontend :
+  - api/cras.ts : crasApi.exportClientPdf(id) -> download /cras/{id}/export/client.
+  - CraDetail.tsx : bouton « Export Pdf Client » dans l'en-tête du CRA ouvert (à côté d'Historique).
+  - CraList.tsx : suppression des boutons « Exporter CSV » / « Exporter PDF » (cassés) + état
+    exporting/handleExport/import Spinner retirés.
+- tests : CraServiceTest.exportClientPdf_generatesPdfForClient (client + projet + activité +
+  1 jour rempli -> PDF non vide, contentType application/pdf, filename contient le client) ;
+  CraList.test.tsx : suppression du test d'export CSV/PDF + des assertions des boutons.
+- vérifs : mvn -Dtest=CraServiceTest -> 11 tests OK ; mvn test -> 197 tests, seul échec =
+  adminCannotDeleteActiveUser PRÉ-EXISTANT (échec d'ordre d'isolation, indépendant) ;
+  frontend : oxlint OK (warnings pré-existants inchangés), vitest 110 tests OK,
+  tsc -b + vite build OK.
