@@ -1,0 +1,19 @@
+# Résumé du 19/08/2026 (d'après soc360-doc/02_DONE_2026_08.txt)
+
+- CRA : un événement ≤ 1 jour (0,5/1) et total d'un jour ≤ 1 (rejet/saisie bloquée) ; tests ajoutés.
+- Bug hydratation : horloge sortie du <p> (refresh /cras) corrigé.
+- Exports PDF CRA : boutons CSV/PDF cassés remplacés par « Export Pdf Client » (1 PDF par client,
+  table jours du mois, week-ends rouges, congés/formation exclus, case congé jaune) puis
+  « Export Pdf Ma Societe » (4 tables : Missions, Congés, Formations, Inter-contrat ; rubrique
+  vide non affichée).
+- Page CRA : ligne « Ouvrir » encadrée en bleu ; ← navigation.
+- Tableau de bord Resp/Manager : carte « Cra cette année » (soumis/validés/rejetés + total annuel).
+- Jours fériés société (soc_holiday) pris en compte à la création du CRA (PUBLIC_HOLIDAY).
+- Notes de frais : formulaire agrandi (grille 12 col.), upload image/PDF + infos_facture,
+  champs date_note/type/Nom Enseigne/Adresse/Montant HT/Montant TTC (migration V36),
+  OCR des images via tesseract.js (V34/V36 archivées, commits backend 5c9dab9, front 02f64a4).
+- Documents : partage selon le rôle (share-targets : responsable = toute sa société, manager =
+  resp + consultants gérés, consultant = son manager).
+- Consultants : le responsable_soc apparaît dans la table (colonne Rôle), peut ajouter un
+  MANAGER (migration V35), le MANAGER peut ajouter des CONSULTANTs.
+- Backend : 201→209 tests, seul échec pré-existant = adminCannotDeleteActiveUser.
