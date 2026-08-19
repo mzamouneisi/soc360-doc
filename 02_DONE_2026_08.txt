@@ -1886,3 +1886,41 @@ saisissez les informations manuellement. » — installer une lib OCR (serveur j
   d'erreur affiché) avec ../lib/ocr mocké.
 - vérifs : oxlint OK (warnings pré-existants inchangés), vitest 112 tests OK, tsc -b + vite build OK.
 - backend : aucun changement.
+2026-08-19 18:32:14
+Champs note de frais :
+date_note
+type
+Nom Enseigne
+Adresse
+Montant HT
+Montant TTC
+- la ligne d'une note de frais capture désormais tous les champs demandés
+  (date_note = date, type = catégorie existante) + les nouveaux Nom Enseigne,
+  Adresse, Montant HT, Montant TTC.
+- backend (soc360-back-java) :
+  - migration V36__note_frais_line_fields.sql : rename note_frais_line.amount ->
+    montant_ht ; ajout montant_ttc NUMERIC(12,2) NOT NULL DEFAULT 0 (backfill :
+    montant_ttc = montant_ht pour les lignes existantes -> totaux inchangés),
+    enseigne VARCHAR(250), adresse VARCHAR(500).
+  - NoteFraisLine : montantHT/montantTTC (colonnes montant_ht/montant_ttc),
+    enseigne, adresse.
+  - NoteFraisDtos : LineDto/LineRequest exposent/acceptent montantHT, montantTTC,
+    enseigne, adresse.
+  - NoteFraisService : applyLines stocke les 4 champs ; totalAmount = somme du
+    montant TTC (repli HT quand TTC = 0) ; totalsByCategory utilise le même montant
+    effectif. Isolation multi-société inchangée (filtres effectiveSocId /
+    requireSocAccess déjà en place).
+- frontend (soc360-front-react) :
+  - types.ts : NoteFraisLineDto/NoteFraisLineRequest avec montantHT, montantTTC,
+    enseigne, adresse (amount supprimé).
+  - NoteFraisList.tsx : ligne de dépense en 12 colonnes : date, catégorie (type),
+    libellé/action, Nom enseigne, Adresse, Montant HT €, Montant TTC €, Remb.,
+    Supprimer ; le total de la note affiche le TTC (repli HT) ; OCR : le montant lu
+    pré-remplit le champ Montant TTC.
+- tests : NoteFraisServiceTest (14 OK, dont 1 ajout : vérification enseigne/adresse/
+  montantHT/montantTTC et total calculé sur le TTC dans create) ; SocDeleteIntegrationTest
+  6 OK (rename setAmount -> setMontantHT).
+- vérifs : mvn test -> 209 tests, seul échec = adminCannotDeleteActiveUser PRÉ-EXISTANT
+  (échec d'ordre d'isolation, indépendant) ; frontend : oxlint OK (warnings docs/
+  pré-existants), vitest 112 tests OK, tsc -b + vite build OK.
+- commits : backend 5c9dab9 ; frontend 02f64a4.
