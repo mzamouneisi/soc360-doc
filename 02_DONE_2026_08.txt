@@ -1862,3 +1862,27 @@ le MANAGER peut ajouter un CONSULTANT qui sera managé par ce manager
   mis à jour (le responsable apparaît lui-même dans la liste de sa société, isolement intact).
 - vérifs : mvn test -> 209 tests, seul échec = adminCannotDeleteActiveUser PRÉ-EXISTANT ; frontend :
   oxlint OK (warnings pré-existants inchangés), vitest 110 tests OK, tsc -b + vite build OK.
+
+2026-08-19 17:37:15
+note de frais — OCR des images :
+
+un click sur Joindre une facture donnait l'erreur « OCR non disponible pour les images :
+saisissez les informations manuellement. » — installer une lib OCR (serveur java ou front react).
+- choix : tesseract.js (OCR côté navigateur, WASM + traineddata chargés depuis le CDN jsdelivr)
+  sur le front react — aucune dépendance native côté serveur (Azure) ni binaire à installer ;
+  le PDF reste géré par le backend (extraction de texte OpenPDF).
+- frontend :
+  - dépendance tesseract.js@7 ajoutée (package.json).
+  - src/lib/ocr.ts : isImageFile(name) (png/jpg/gif/webp/bmp) + ocrImageText(file, langs='fra+eng')
+    — createWorker(langs) -> worker.recognize(file) -> data.text, terminate() toujours appelé.
+  - NoteFraisList.tsx handleFile : si le fichier est une image -> OCR tesseract.js côté navigateur ;
+    sinon (PDF) -> POST /note-frais/extract-text (backend) inchangé. Si un texte est extrait,
+    infosFacture est rempli et la 1re ligne est pré-remplie (date/montant/catégorie/libellé).
+    Sinon message « OCR non disponible pour cette image : saisissez les informations manuellement. »
+    (PDF sans texte : « Aucun texte extrait de ce fichier : … »). Indicateur « Lecture de la
+    facture en cours (OCR)… » pendant la reconnaissance ; aperçu image réutilise isImageFile().
+- tests : NoteFraisList.test.tsx +2 (lecture d'une image -> ocrImageText appelé, champs pré-remplis
+  date 2026-03-12 / montant 25,5 / catégorie Restaurant / libellé « facture » ; OCR vide -> message
+  d'erreur affiché) avec ../lib/ocr mocké.
+- vérifs : oxlint OK (warnings pré-existants inchangés), vitest 112 tests OK, tsc -b + vite build OK.
+- backend : aucun changement.
