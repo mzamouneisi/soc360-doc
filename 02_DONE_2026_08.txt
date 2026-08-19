@@ -1618,3 +1618,28 @@ on ne laisse pas le consultant saisir un autre evenement si le total est > 1j
   adminCannotDeleteActiveUser PRÉ-EXISTANT (échec d'ordre d'isolation, indépendant) ;
   frontend : oxlint OK (warnings pré-existants inchangés), vitest 110 tests OK,
   tsc -b + vite build OK.
+
+2026-08-19 13:14:33
+btn Export Pdf Client — forme de présentation des jours travaillés : une table avec en-tête =
+numéros de jours du mois (week-ends en rouge clair), une cellule par jour (nb de jours travaillés,
+vide si rien), total en bas ; les congés et la formation ne sont pas comptés (seules les missions
+chez le client le sont).
+- backend (CraService) :
+  - isMissionActivity(Activity) : activité non comptée si type null ou code commençant par « CONGE »
+    ou égal à « FORMATION » (congés + formation exclus) ; le reste est considéré « mission client ».
+  - clientMatches(Activity, Client) : l'activité doit appartenir au projet du client concerné.
+  - exportClientPdf : ne collecte désormais que les clients ayant au moins une activité « mission »
+    (congé/formation ignorés) -> plus de PDF vide pour la société mère (proj_interne, activités
+    internes/congés).
+  - buildClientPdf : la liste de dates est remplacée par un PdfPTable de N colonnes (N = nb de jours
+    du mois) : ligne d'en-tête = numéros 1..N (week-ends samedi/dimanche fond rouge clair
+    Color(255,214,214)), ligne data = nb de jours par case (vide si 0, format FR « 0,5 ») ;
+    « Total : X jour(s) » en bas. isWeekend() calcule samedi/dimanche.
+- tests : exportClientPdf_excludesCongeAndFormationActivities (un jour rempli uniquement par un
+  congé -> export ZIP générique, aucun PDF par client) ; exportClientPdf_generatesPdfForClient
+  (mission DEV -> PDF application/pdf, filename contient le client).
+- note technique : OpenPDF 1.3.43 n'a plus com.lowagie.text.BaseColor -> couleur de fond via
+  java.awt.Color (PdfPCell.setBackgroundColor(java.awt.Color)).
+- vérifs : mvn -Dtest=CraServiceTest -> 13 tests OK ; mvn test -> 199 tests, seul échec =
+  adminCannotDeleteActiveUser PRÉ-EXISTANT (échec d'ordre d'isolation, indépendant) ;
+  frontend non concerné (aucun changement).
