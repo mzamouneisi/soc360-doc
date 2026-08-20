@@ -2070,3 +2070,30 @@ Changer le menu « Consultants » par « Collaborateurs », aussi dans le tablea
   - Dashboard.tsx : cartes « Consultants » -> « Collaborateurs » (admin + responsable/manager).
 - vérifs : oxlint OK, vitest 129 OK, build OK.
 - commits frontend : 615d142.
+
+2026-08-20 10:47:44
+dans les types d'activités par défaut d'une société : ajouter « Congé Maladie » (01_TODO_01).
+- backend (soc360-back-java) :
+  - DefaultActivityTypesSeeder : type CONGE_MALADIE (« Congé maladie », « Sick leave »,
+    couleur #f43f5e) ajouté aux 9 types par défaut d'une nouvelle société.
+  - migration V39__activity_type_conge_maladie.sql : backfill du type (et d'une activité par
+    défaut à tarif 0) pour les sociétés existantes qui ne l'ont pas.
+  - SecurityIntegrationTest.creatingSoc_seedsDefaultActivityTypes : 9 -> 10 types attendus.
+- vérifs : mvn -Dtest=SecurityIntegrationTest#creatingSoc_seedsDefaultActivityTypes OK.
+- commits : backend 52fa35e.
+
+2026-08-20 10:47:44
+Partage de Documents (01_TODO_03) : cibles de partage selon le rôle.
+- déjà en place (commit antérieur 5af5fe4) :
+  - consultant -> son manager (consultant.getManager) ;
+  - manager -> responsable de soc + ses consultants gérés (consultant.manager_id) ;
+  - responsable -> managers + consultants/collaborateurs de sa société (user_account.id_soc +
+    user_soc).
+- complément backend (DocumentController.computeShareTargets, cas MANAGER) : le manager peut
+  aussi sélectionner SON propre manager (user_account.manager_id, ex. le responsable) via
+  `userAccountRepository.findById(userId).map(getManager)`.
+- test : DocumentShareIntegrationTest +1 (manager_seesHisOwnManagerViaManagerId) -> 4 OK.
+- vérifs : mvn -Dtest=DocumentShareIntegrationTest -> 4 OK ; mvn test -> 226 tests, 2 échecs
+  PRÉ-EXISTANTS et indépendants (NoteFraisServiceTest.create_samePeriod_stillCreatesAnotherNote
+  UnnecessaryStubbingException + SecurityIntegrationTest adminCannotDeleteActiveUser).
+- commits : backend 52fa35e.
