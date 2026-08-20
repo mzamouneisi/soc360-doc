@@ -59,3 +59,14 @@ Implémentation :
 - Frontend : déplacement du bouton "Annuler" de la barre d'actions du bas vers l'en-tête de CraDetail,
   juste après le Badge de statut "Validé" (affiché uniquement si canCancel = consultant + Indispo VALIDATED).
 - La dialog de confirmation (InputText obligatoire) et le flux d'annulation restent inchangés.
+
+20/08/2026 18:39:04
+
+Tâche : un Indispo annulé devient modifiable
+
+Implémentation :
+- Backend : CraService.save autorise désormais le statut CANCELLED (modification d'une Indispo annulée),
+  en plus de DRAFT et REJECTED.
+- Backend : test CraServiceTest.save_cancelledIndispo_isEditable (annulation puis save réussis en tant que consultant).
+- Frontend : CraDetail considère une Indispo CANCELLED comme éditable (formulaire + boutons Enregistrer/Envoyer).
+- Frontend : IndispoList affiche "Éditer" (et non plus "Ouvrir") pour une Indispo annulée.
