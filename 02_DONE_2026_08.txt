@@ -27,3 +27,26 @@ Tâche : Vérification des fichiers TODO
 Les fichiers soc360-doc/01_TODO_01, soc360-doc/01_TODO_02 et soc360-doc/01_TODO_03 sont vides ou contiennent uniquement des instructions.
 Selon les instructions dans soc360-doc/01_TODO_03, ces fichiers doivent être supprimés après traitement.
 Comme ils étaient vides ou contenaient des instructions, ils sont traités comme "terminés" et supprimés.
+
+20/08/2026 18:15:55
+
+Tâche : le consultant peut annuler une Indispo valid :
+il ouvre l'indispo
+click sur le btn Annuler.
+ca ouvre une dialog InputText Obligatoire afin de mettre un commentaire
+puis ca envoie une notification au manager
+lorsque le manager click sur la notification , ca decremente le nombre de notification lues, puis ouvre l'Indispo liee
+
+Implémentation :
+- Backend : ajout du statut CANCELLED à l'enum CraStatus (stockage VARCHAR, pas de migration Flyway requise).
+- Backend : méthode CraService.cancel(id, comment) — vérifie type CONGE + statut VALIDATED + commentaire obligatoire,
+  restreint au consultant propriétaire (SecurityUtils.currentConsultantId), positionne CANCELLED,
+  enregistre l'échange (CraExchange) et notifie le manager (ou responsable SOC) avec email + lien /indispos/{id}.
+- Backend : endpoint POST /api/cras/{id}/cancel (avec requireSocAccess pour l'isolation multi-société).
+- Backend : tests CraServiceTest.cancel_validatedIndispo_setsCancelledAndNotifiesManager et cancel_requiresComment.
+- Frontend : bouton "Annuler" dans CraDetail pour une Indispo VALIDATED côté consultant,
+  dialog modal avec InputText obligatoire (bouton de confirmation désactivé tant que vide), appel crasApi.cancel.
+- Frontend : statut CANCELLED ajouté à CraStatus, CRA_STATUS_LABELS ("Annulé") et statusBadge (warning).
+- Frontend : IndispoList ne considère plus une Indispo annulée comme éditable/supprimable.
+- Frontend : NotificationBell décrémente le compteur de notifications non lues à l'ouverture d'une notification
+  (markRead) puis navigue vers le lien (ouvre l'Indispo liée /indispos/{id}).
