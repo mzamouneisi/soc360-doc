@@ -70,3 +70,21 @@ Implémentation :
 - Backend : test CraServiceTest.save_cancelledIndispo_isEditable (annulation puis save réussis en tant que consultant).
 - Frontend : CraDetail considère une Indispo CANCELLED comme éditable (formulaire + boutons Enregistrer/Envoyer).
 - Frontend : IndispoList affiche "Éditer" (et non plus "Ouvrir") pour une Indispo annulée.
+
+20/08/2026 18:51:10
+
+Tâche : lorsque Indispo ou Cra devient modifiable, le manager aura juste les btn : Rejeter, Valider.
+regle generale : le manager ne peut pas modifier un cra ou indispo qui n'est pas le sien.
+
+Implémentation :
+- Backend : ajout de managerId (manager du consultant) dans CraDtos.CraDto + toDto.
+- Backend : règle requireManagerOwnership(Cra) appliquée à validate, reject, setActivityValid, setRangeValid,
+  markPendingSend, sendIndispo : un MANAGER ne peut agir que sur les CRA/Indispos de ses consultants
+  (ADMIN/RESPONSIBLE_SOC sur tous ; sans contexte d'auth = aucun blocage pour les appels internes/tests).
+- Backend : validate/reject rendus type-aware (libellés/lien "Indispo" vs "CRA").
+- Backend : test CraServiceTest.validate_managerCannotActOnOtherConsultant.
+- Frontend : CraDetail — le manager ne voit plus que les boutons "Valider" et "Rejeter"
+  (suppression des boutons "Valider/Invalider une plage", "Enregistrer", "Envoyer l'Indispo Valid/Rejetée"
+  et des handlers markPendingSend/sendIndispo/allActivitiesValid associés).
+- Frontend : canValidate restreint — un MANAGER ne peut valider/rejeter que si cra.managerId === user.id
+  (CraDetail + CraList) ; ADMIN/RESPONSIBLE_SOC conservent l'accès complet.
