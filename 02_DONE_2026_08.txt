@@ -2082,6 +2082,33 @@ dans les types d'activités par défaut d'une société : ajouter « Congé Mala
 - vérifs : mvn -Dtest=SecurityIntegrationTest#creatingSoc_seedsDefaultActivityTypes OK.
 - commits : backend 52fa35e.
 
+20/08/2026 11:51:10
+Fiche de paie (01_TODO_04) : un consultant voit la liste de ses fiches de paie classées par
+année (chaque année = une tab) ; un manager peut partager une (ou plusieurs) fiche(s) avec
+son consultant.
+- backend (soc360-back-java) :
+  - FichePaieService.create : appelle requireCanShareWith(consultant) — ADMIN et
+    RESPONSIBLE_SOC passent toujours ; un MANAGER ne peut créer/partager une fiche que pour
+    ses propres consultants (consultant.manager_id == currentUserId), sinon 403.
+  - FichePaieController : @PreAuthorize de create et uploadFile étendu à MANAGER ; uploadFile
+    appelle aussi requireCanShareWith pour bloquer le partage d'un fichier vers un consultant
+    non géré.
+  - ConsultantService.managedSummaries() + GET /api/consultants/managed : liste des
+    consultants actifs gérés par l'utilisateur courant (pour le menu déroulant du manager).
+- frontend (soc360-front-react) :
+  - FichePaie.tsx : le consultant voit ses fiches (findByConsultant) groupées par onglets d'
+    année (total net recalculé par onglet) ; le module de création (fiche + upload PDF +
+    suppression) est ouvert à ADMIN / RESPONSIBLE_SOC / MANAGER, qui choisit le consultant
+    dans la liste des consultants gérés (consultantsApi.managed).
+  - api/consultants.ts : consultantsApi.managed().
+- tests : SecurityIntegrationTest.manager_canSharePayslipWithManagedConsultantOnly (partage
+  OK vers consultant géré, 403 vers consultant non géré).
+- vérifs : mvn -Dtest=SecurityIntegrationTest#manager_canSharePayslipWithManagedConsultantOnly
+  OK ; npm run lint + npm test (129) + npm run build OK. mvn test (227) : 2 échecs
+  PRÉ-EXISTANTS confirmés par stash (NoteFraisServiceTest UnnecessaryStubbingException +
+  SecurityIntegrationTest adminCannotDeleteActiveUser, ce dernier passe en isolation).
+- commits : backend 757b416 ; frontend 8db6e82.
+
 2026-08-20 10:47:44
 Partage de Documents (01_TODO_03) : cibles de partage selon le rôle.
 - déjà en place (commit antérieur 5af5fe4) :
