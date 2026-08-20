@@ -1985,3 +1985,22 @@ page consultants : la colonne ROLE n'affiche pas la bonne valeur (01_TODO_01).
 - commits : backend 37bf7c9.
 - (hors TODO, demandé en cours de session) menu : date du jour sous l'horloge alignée sur
   la taille de l'horloge (text-lg) -> frontend 41eaaf2.
+
+2026-08-20 10:21:35
+on peut toujours convertir un congé en cra, même s'il est validé (01_TODO_01).
+- diagnostic : CraService.convertToCra(id) ne vérifiait pas le statut : un congé (type CONGE)
+  SOUMIS ou VALIDÉ pouvait être reconverti en CRA (le frontend masquait le bouton via
+  `editable` = DRAFT/REJECTED, mais l'API restait ouverte).
+- fix backend (soc360-back-java) :
+  - CraService.convertToCra : rejette (400) si le statut est SUBMITTED ou VALIDATED
+    (« Impossible de convertir un congé soumis ou validé »). Un congé DRAFT/REJECTED reste
+    convertible ; le garde est identique à celui de delete()/submit().
+- frontend : inchangé — le bouton « Convertir en CRA » est déjà masqué pour les CRA non
+  éditables (`editable` = DRAFT/REJECTED) ; l'API est désormais le point de contrôle source.
+- tests : CraServiceTest +3 (convertToCra_draftConge_converts, convertToCra_submittedConge_throws,
+  convertToCra_validatedConge_throws) -> 18 OK.
+- vérifs : mvn -Dtest=CraServiceTest -> 18 OK ; mvn test -> 223 tests, 2 échecs PRÉ-EXISTANTS et
+  indépendants (NoteFraisServiceTest.create_samePeriod_stillCreatesAnotherNote
+  UnnecessaryStubbingException + SecurityIntegrationTest adminCannotDeleteActiveUser, échec
+  d'ordre d'isolation : passe isolé 16 OK).
+- commits : backend a609b0f.
