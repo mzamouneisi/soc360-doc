@@ -23,7 +23,7 @@ ou bien
 c:\pgm\nvm\v22.0.0
 -------------------------------------
 
-tache : _todo :
+command : /todo :
 
 lire un par un les fichiers soc360-doc/01_TODO_* (chaque tache peut se terminer par go).
 Pour chaque fichier :
@@ -35,7 +35,7 @@ Pour chaque fichier :
     avec la date du jour complete yyyy-mm-dd HH:MM:SS ;
   - supprimer le fichier 01_TODO_* traite.
 --------------------
-tache : _err_back :
+command : /errback :
 
 lire le fichier run.log du backend 
 corriger l'erreur

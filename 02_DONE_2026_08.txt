@@ -20,3 +20,10 @@ Implémentation :
 - Pour les sociétés françaises (identifiées par pays FR ou présence de SIRET), le système applique automatiquement le format pour cadres selon la convention Syntec (IDCC 1486).
 - Le PDF inclut les mentions légales appropriées pour les cadres au forfait jours.
 - Disponible via l'API backend et accessible depuis l'interface frontend.
+
+20/08/2026 14:54:22
+
+Tâche : Vérification des fichiers TODO
+Les fichiers soc360-doc/01_TODO_01, soc360-doc/01_TODO_02 et soc360-doc/01_TODO_03 sont vides ou contiennent uniquement des instructions.
+Selon les instructions dans soc360-doc/01_TODO_03, ces fichiers doivent être supprimés après traitement.
+Comme ils étaient vides ou contenaient des instructions, ils sont traités comme "terminés" et supprimés.

@@ -1,0 +1,30 @@
+On va separer les cra des congés : 
+
+ajouter un nouveau menu : Indispos : qui va ressembler au menu CRA
+il va contenir tous les congés du consultant. 
+on va donc introduire un indicateur dans activity : indispo de type boolean.
+tous les congés ont donc indispo=true. ca va remplacer type=congé.
+
+le consultant peut soumettre une Indispo à son manager.
+le manager peut valider chaque activité toute seule en clickant dans l'activité, puis cocher la case 'Valid'.
+il peut aussi valider par plage de date (date debut, date fin)
+et de meme pour invalider (decocher la case Valid)
+
+le manager peut enregistrer sans envoyer au consultant. status = En attente d'envoi au consultant.
+si toutes les activités sont valid, alors le btn d'envoi aura pour titre : Envoyer l'Indispo Valid.
+si une des activités est non valid, alors le btn d'envoi aura pour titre : Envoyer l'Indispo Rejetée. ajouter un commentaire.
+
+
+Le menu CRA ne va contenir que les Cra du consultant.
+Donc on va enlever le btn Nouveau congé dans la page Cra.
+
+lorsqu'on navigue dans le temps dans les cra, ou bien on fait un nouveau cra dans une periode :
+s'il y a deja un cra dans cette periode, on affiche ce cra
+sinon, on affiche un nouveau cra vide 
+puis on integre toutes activites valides de l'Indispo du mois s'il existe  
+les activités validés sont prioritaires aux activités non validées.
+
+le consultant ne peut pas modifier une activité valid. Mais le manager peut le faire. Il peut invalider une activité et envoyer le cra (ou indispo) en rejet.
+
+
+

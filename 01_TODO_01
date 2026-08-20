@@ -1,0 +1,7 @@
+le consultant peut annuler une Indispo valid :
+il ouvre l'indispo
+click sur le btn Annuler.
+ca ouvre une dialog InputText Obligatoire afin de mettre un commentaire 
+puis ca envoie une notification au manager 
+lorsque le manager click sur la notification , ca decremente le nombre de notification lues, puis ouvre l'Indispo liee 
+
