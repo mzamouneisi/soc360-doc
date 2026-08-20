@@ -2004,3 +2004,26 @@ on peut toujours convertir un congé en cra, même s'il est validé (01_TODO_01)
   UnnecessaryStubbingException + SecurityIntegrationTest adminCannotDeleteActiveUser, échec
   d'ordre d'isolation : passe isolé 16 OK).
 - commits : backend a609b0f.
+
+2026-08-20 10:25:13
+dans un CRA, à l'ajout/modification d'un événement, ne plus montrer la liste générique des
+types de jour (Travail, Week-end, …) au-dessus : les listes d'activités suffisent (01_TODO_02).
+- frontend (soc360-front-react, CraDetail.tsx) : EventModal — suppression du <Select> DAY_TYPES
+  (WORKED / WEEKEND / PUBLIC_HOLIDAY / LEAVE / SICK_LEAVE / OTHER) en haut de la modale
+  « Événements du … ». Le total du jour (et l'alerte « doit totaliser 1 jour ») est conservé ;
+  les listes d'activités restent l'unique contenu. Le type de jour reste modifiable dans la vue
+  Ligne (tableau). Prop onUpdate retirée de EventModal (devenue inutile).
+- vérifs : lint oxlint OK (3 warnings src pré-existants inchangés), vitest 129 OK, build OK.
+
+2026-08-20 10:25:13
+dans un CRA de type Congé, ne voir que les activités de type Congé (01_TODO_03).
+- déjà en place : CraDetail.tsx filteredActivities filtre par a.type.code startsWith('CONGE')
+  quand cra.type === 'CONGE' (utilisé partout : currentActivity, monthActivities, vue Ligne,
+  modale d'événement, remplissages). Aucun changement nécessaire ; confirmé par relecture.
+
+2026-08-20 10:25:13
+dans un CRA de type Congé, le titre doit être « Congé de … » au lieu de « CRA de … » (01_TODO_04).
+- frontend (CraDetail.tsx) : le <h2> du titre affiche désormais « Congé de {consultantName} »
+  quand cra.type === 'CONGE', sinon « CRA de {consultantName} ».
+- vérifs : lint oxlint OK, vitest 129 OK, build OK.
+- commits frontend : 93e343a (regroupe 01_TODO_02/03/04).
