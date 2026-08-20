@@ -50,3 +50,12 @@ Implémentation :
 - Frontend : IndispoList ne considère plus une Indispo annulée comme éditable/supprimable.
 - Frontend : NotificationBell décrémente le compteur de notifications non lues à l'ouverture d'une notification
   (markRead) puis navigue vers le lien (ouvre l'Indispo liée /indispos/{id}).
+
+20/08/2026 18:34:02
+
+Tâche : mettre le btn Annuler juste après le label Validé
+
+Implémentation :
+- Frontend : déplacement du bouton "Annuler" de la barre d'actions du bas vers l'en-tête de CraDetail,
+  juste après le Badge de statut "Validé" (affiché uniquement si canCancel = consultant + Indispo VALIDATED).
+- La dialog de confirmation (InputText obligatoire) et le flux d'annulation restent inchangés.
