@@ -2109,6 +2109,28 @@ son consultant.
   SecurityIntegrationTest adminCannotDeleteActiveUser, ce dernier passe en isolation).
 - commits : backend 757b416 ; frontend 8db6e82.
 
+20/08/2026 11:59:30
+Fiche de paie : service de génération du bulletin au format PDF (01_TODO_02).
+- backend (soc360-back-java) :
+  - FichePaiePdfService (OpenPDF, déjà présent dans le pom) : génère un bulletin A4 avec
+    entêtes EMPLOYEUR (nom, SIRET, NAF, URSSAF, adresse) et SALARIÉ (nom, emploi, date
+    d'embauche, n° sécu), période/d'émission, tableau Désignation/Base/Montant (brut, total
+    cotisations salariales = brut - net, net imposable, net à payer, coût employeur,
+    prélèvement à la source) et commentaire.
+  - Si la société est française (address.country FR/France* ou SIRET présent) : bulletin
+    « cadre » convention Syntec (IDCC 1486) — mention « Salarié cadre », forfait jours et
+    mention de conservation ; sinon libellés anglophones génériques.
+  - FichePaieService.generatePdf(id) + GET /api/fiche-paie/{id}/pdf (PDF téléchargeable,
+    même accès que download via requireFicheSocAccess).
+- frontend (soc360-front-react) :
+  - api/fichePaie.ts : fichePaieApi.pdf(id, period).
+  - FichePaie.tsx : bouton « Générer » à côté de « PDF » (bulletin généré si aucun fichier
+    uploadé).
+- vérifs : mvn compile OK ; mvn test -Dtest=ConsultantServiceTest (31 OK), SecurityIntegrationTest
+  (17 OK en isolation — adminCannotDeleteActiveUser reste flaky quand combiné, pré-existant) ;
+  npm run lint + build + vitest (129) OK.
+- commits : backend 408cc94 ; frontend 661ed43.
+
 2026-08-20 10:47:44
 Partage de Documents (01_TODO_03) : cibles de partage selon le rôle.
 - déjà en place (commit antérieur 5af5fe4) :
