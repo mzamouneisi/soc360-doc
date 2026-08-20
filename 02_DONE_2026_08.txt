@@ -2039,3 +2039,34 @@ avec les boutons Remplir (01_TODO_01).
   quel que soit le type de jour (WORKED, WEEKEND, PUBLIC_HOLIDAY, …). Messages d'erreur mis à jour.
 - vérifs : lint oxlint OK (3 warnings src pré-existants inchangés), vitest 129 OK, build OK.
 - commits frontend : bcb5d9e.
+
+2026-08-20 10:40:17
+le formulaire d'ajout / modification doit être le même pour tous les collaborateurs d'une
+société : Responsable, Manager, Consultant (01_TODO_02).
+- avant : deux formulaires distincts — FormState (consultant, riche) et PersonForm
+  (manager/responsable, minimal prénom/nom/email/tel).
+- backend (soc360-back-java) :
+  - ConsultantService.create : accepte désormais role RESPONSIBLE_SOC (createManager renommé
+    createPerson) ; un principal MANAGER reste limité au consultant.
+  - updatePerson : accepte un rôle (MANAGER/RESPONSIBLE_SOC) pour changer le rôle d'un
+    collaborateur ; PersonRequest : champ role ajouté (nullable).
+  - tests : updatePerson_changesRole, create_withResponsibleRole_createsResponsibleAccount
+    (ConsultantServiceTest -> 31 OK).
+- frontend (soc360-front-react, Consultants.tsx) :
+  - suppression de PersonForm / personModal / handlePersonSubmit / openEditPerson.
+  - un seul formulaire gère l'ajout et la modification pour les 3 rôles : choix « Type de
+    collaborateur » (Consultant en création, Manager, Responsable société), changement de rôle
+    manager↔responsable en édition, champs spécifiques consultant (poste, dates, NSS, salaire,
+    devise, nationalité) masqués hors rôle CONSULTANT.
+- vérifs : mvn -Dtest=ConsultantServiceTest -> 31 OK ; frontend oxlint OK (3 warnings src
+  pré-existants), vitest 129 OK, build OK.
+- commits : backend 4b4278a ; frontend 615d142.
+
+2026-08-20 10:40:17
+Changer le menu « Consultants » par « Collaborateurs », aussi dans le tableau de bord (01_TODO_05).
+- frontend (soc360-front-react) :
+  - MainLayout.tsx : entrée de menu « Collaborateurs ».
+  - Consultants.tsx : titre de page « Collaborateurs ».
+  - Dashboard.tsx : cartes « Consultants » -> « Collaborateurs » (admin + responsable/manager).
+- vérifs : oxlint OK, vitest 129 OK, build OK.
+- commits frontend : 615d142.
