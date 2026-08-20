@@ -2027,3 +2027,15 @@ dans un CRA de type Congé, le titre doit être « Congé de … » au lieu de �
   quand cra.type === 'CONGE', sinon « CRA de {consultantName} ».
 - vérifs : lint oxlint OK, vitest 129 OK, build OK.
 - commits frontend : 93e343a (regroupe 01_TODO_02/03/04).
+
+2026-08-20 10:27:53
+dans un CRA, on peut ajouter une activité manuellement le week-end ou jour férié, mais pas
+avec les boutons Remplir (01_TODO_01).
+- diagnostic : handleFillAllDays / handleFillRange ne remplissaient que les jours WORKED
+  (filtre `dayType === 'WORKED'`), alors que l'ajout manuel d'un événement est possible sur
+  n'importe quel type de jour (vue Ligne, bouton « + Ajouter un événement »).
+- fix frontend (CraDetail.tsx) : les deux boutons « Remplir tout le mois » et « Remplir une
+  plage » remplissent désormais tous les jours vides (activities.length === 0) de la plage/mois,
+  quel que soit le type de jour (WORKED, WEEKEND, PUBLIC_HOLIDAY, …). Messages d'erreur mis à jour.
+- vérifs : lint oxlint OK (3 warnings src pré-existants inchangés), vitest 129 OK, build OK.
+- commits frontend : bcb5d9e.
