@@ -87,4 +87,14 @@ Implémentation :
   (suppression des boutons "Valider/Invalider une plage", "Enregistrer", "Envoyer l'Indispo Valid/Rejetée"
   et des handlers markPendingSend/sendIndispo/allActivitiesValid associés).
 - Frontend : canValidate restreint — un MANAGER ne peut valider/rejeter que si cra.managerId === user.id
-  (CraDetail + CraList) ; ADMIN/RESPONSIBLE_SOC conservent l'accès complet.
+   (CraDetail + CraList) ; ADMIN/RESPONSIBLE_SOC conservent l'accès complet.
+
+21/08/2026 12:23:30
+
+Tâche : le managerId de CraDto doit etre le meme que le managerId du consultant du CraDto
+
+Implémentation :
+- Backend : CraService.toDto dérive déjà managerId de cra.getConsultant().getManager().getId()
+  (le manager du consultant), garantissant l'alignement demandé.
+- Backend : ajout du test CraServiceTest.craDto_managerId_equalsConsultantManagerId
+  qui vérifie que CraDto.managerId() == consultant.getManager().getId().
