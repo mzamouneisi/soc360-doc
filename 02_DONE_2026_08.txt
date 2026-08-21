@@ -151,3 +151,16 @@ Implémentation :
   (prop isIndispo passée à HistoryModal).
 - Frontend : erreur de remplissage — « … pour remplir le CRA. » → « … pour remplir l'Indispo. » selon le type.
 - Le titre « Indispo de X » et « ← Retour aux Indispos » étaient déjà dynamiques (aucun changement).
+
+21/08/2026 17:32:52
+
+Tâche : lorsque le manager valide un cra ou indispo, alors on valide toutes les evenements de ce calendrier.
+
+Implémentation :
+- Backend : CraService.validate — lors de la validation (bouton « Valider » du manager), toutes les
+  activités de chaque jour du CRA/Indispo sont marquées valid=true (itération sur cra.getDays() et
+  leurs activités) avant sauvegarde ; le statut passe à VALIDATED comme avant.
+- Backend : test CraServiceTest.validate_marksAllActivitiesValid ajouté (une Indispo soumise avec un
+  événement valid=false devient VALIDATED et tous ses événements sont valides).
+- Aucun changement frontend nécessaire : le bouton « Valider » appelle déjà crasApi.validate et la
+  réponse (événements valides) se reflète immédiatement dans l'UI (coches vertes).
