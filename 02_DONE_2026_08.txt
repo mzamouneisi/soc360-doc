@@ -97,4 +97,42 @@ Implémentation :
 - Backend : CraService.toDto dérive déjà managerId de cra.getConsultant().getManager().getId()
   (le manager du consultant), garantissant l'alignement demandé.
 - Backend : ajout du test CraServiceTest.craDto_managerId_equalsConsultantManagerId
-  qui vérifie que CraDto.managerId() == consultant.getManager().getId().
+   qui vérifie que CraDto.managerId() == consultant.getManager().getId().
+
+21/08/2026 17:07:04
+
+Tâche : lorsqu'on ouvre une indispo
+si on est consultant :
+si status valid :
+on ne peut pas modifier les evenements validés
+mais on peut ajouter d'autres evenements à valider
+le btn "soumettre" ou "envoyer pour validation" re apparait.
+les evenements validés ont une coche verte en bas à dte
+si on est manager du consultant de cet indispo :
+le btn "envoyer pour validation" ne doit pas apparaitre. mais plutot : valider, rejeter.
+si status valid :
+il peut valider ou invalider n'importe quel evenement.
+il peut modifier , supprimer , ajouter des evenements : mais lors de l'envoie (validation ou rejet), l'historique des modifications sera enregistré.
+
+Implémentation :
+- Backend : CraService.save autorise désormais la modification d'une Indispo (type CONGE) VALIDATED
+  (en plus de DRAFT/REJECTED/CANCELLED) ; la protection existante « un consultant ne peut pas
+  modifier une activité validée » (existingValidKeys) reste appliquée pour le consultant.
+- Backend : CraService.submit autorise une re-soumission depuis VALIDATED pour un CONGE
+  (status → SUBMITTED), afin que le consultant puisse re-soumettre après avoir ajouté des événements.
+- Backend : fix d'un double-delete latent dans save() — suppression des suppressions bulk
+  deleteByCraId combinées à orphanRemoval (cra.getDays().clear()) qui provoquait un
+  StaleObjectStateException au flush sur le chemin consultant (collection déjà initialisée) ;
+  remplacé par cra.getDays().clear() + craRepository.saveAndFlush(cra).
+- Backend : tests CraServiceTest ajoutés — save_validatedIndispo_isAllowed,
+  submit_validatedIndispo_reopensToSubmitted, save_validatedIndispo_consultantPreservesValidatedActivities.
+- Frontend : CraDetail — drapeaux rôle-aware pour une Indispo VALIDATED :
+  consultant = ajout d'événements + bouton « Envoyer pour validation » (pas « Enregistrer »),
+  événements validés en lecture seule avec coche verte ; manager/admin/resp = édition complète
+  (ajouter/modifier/supprimer) + case « Valid » par événement + boutons « Valider »/« Rejeter »
+  (pas « Envoyer pour validation »).
+- Frontend : le champ `valid` est désormais transmis dans la requête de sauvegarde
+  (buildSaveRequest) ; la case « Valid » de l'EventModal est une édition locale en mode éditable
+  (persistée via save), sinon conserve l'appel setActivityValid (flux SUBMITTED/PENDING_SEND).
+- Frontend : handleValidate/handleReject sauvegardent d'abord (doSave) quand le formulaire est
+  éditable, puis valident/rejettent (l'échange est enregistré dans l'historique via recordExchange).
