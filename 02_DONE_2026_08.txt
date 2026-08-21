@@ -136,3 +136,18 @@ Implémentation :
   (persistée via save), sinon conserve l'appel setActivityValid (flux SUBMITTED/PENDING_SEND).
 - Frontend : handleValidate/handleReject sauvegardent d'abord (doSave) quand le formulaire est
   éditable, puis valident/rejettent (l'échange est enregistré dans l'historique via recordExchange).
+
+21/08/2026 17:25:14
+
+Tâche : lorsqu'on est dans une indispo, on ne doit pas parler de cra
+remplacer cra par indispo
+
+Implémentation :
+- Frontend : CraDetail — ajout d'un helper statusAdjective(status, indispo) pour l'accord en genre
+  des statuts (soumise/validée/rejetée/annulée pour une Indispo).
+- Frontend : bannière « Ce CRA est … et n'est plus modifiable » → « Cette Indispo est … et n'est plus
+  modifiable » selon le type (isIndispo), avec statut accordé au féminin.
+- Frontend : modal Historique — « Aucun échange pour ce CRA. » → « Aucun échange pour cette Indispo. »
+  (prop isIndispo passée à HistoryModal).
+- Frontend : erreur de remplissage — « … pour remplir le CRA. » → « … pour remplir l'Indispo. » selon le type.
+- Le titre « Indispo de X » et « ← Retour aux Indispos » étaient déjà dynamiques (aucun changement).
