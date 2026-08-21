@@ -1,3 +1,21 @@
+le consultant peut annuler une Indispo valid :
+il ouvre l'indispo
+click sur le btn Annuler.
+ca ouvre une dialog InputText Obligatoire afin de mettre un commentaire 
+puis ca envoie une notification au manager 
+lorsque le manager click sur la notification , ca decremente le nombre de notification lues, puis ouvre l'Indispo liee 
+
+go
+=============
+page CRA :
+un manager ne voit que les cra de ses consultants.
+
+go
+=============
+avec la nouvelle organisation : on n'a plus besoin de convertir un congé en cra
+
+go
+=============
 On va separer les cra des congés : 
 
 ajouter un nouveau menu : Indispos : qui va ressembler au menu CRA
@@ -28,3 +46,15 @@ le consultant ne peut pas modifier une activité valid. Mais le manager peut le 
 
 
 
+go
+=============
+le menu Indispos sera juste en bas du menu  CRA
+
+go
+=============
+l'admin peut voir tous les cra de toutes les soc
+il peut voir toutes les Types d’activités de toutes les soc
+
+
+go
+=============
