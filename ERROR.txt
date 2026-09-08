@@ -1,0 +1,19 @@
+ src/pages/NoteFraisList.test.tsx:264:26
+    262|
+    263|     await waitFor(() =>
+    264|       expect(createMock).toHaveBeenCalledWith({
+       |                          ^
+    265|         consultantId: 10,
+    266|         month: 8,
+ ÔØ» runWithExpensiveErrorDiagnosticsDisabled node_modules/@testing-library/dom/dist/config.js:47:12
+ ÔØ» checkCallback node_modules/@testing-library/dom/dist/wait-for.js:124:77
+ ÔØ» Timeout.checkRealTimersCallback node_modules/@testing-library/dom/dist/wait-for.js:118:16
+
+ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»ÔÄ»[2/2]ÔÄ»
+
+
+ Test Files  2 failed | 11 passed (13)
+      Tests  2 failed | 127 passed (129)
+   Start at  23:05:49
+   Duration  8.21s (transform 3.09s, setup 13.61s, import 6.75s, tests 7.34s, environment 32.50s)
+

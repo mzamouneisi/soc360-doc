@@ -1,0 +1,36 @@
+08/09/2026 16:45:50
+
+Tâche : migration des colonnes et données de la table consultant vers la table user_account.
+La table user_account remplace la table consultant (qui disparaît).
+Le menu « Collaborateurs » pointe vers user_account ; le menu « Utilisateurs » disparaît.
+Rôles : ADMIN voit/modifie tout · RESPONSIBLE_SOC voit/modifie les users de sa société sélectionnée ·
+MANAGER voit/modifie les users qu'il manage dans la société sélectionnée · CONSULTANT ne voit/modifie
+que son propre profil.
+
+Implémentation :
+- Backend — Flyway V41__consultant_merge_into_user_account.sql : ajout des colonnes RH
+  (birth_date, social_number, position, base_salary, currency, nationality, hire_date,
+  emergency_contact) dans user_account ; migration des données consultant → user_account
+  (fusion dans les comptes liés via consultant_id, création de comptes role=CONSULTANT pour les
+  consultants sans compte) ; re-pointage des FK (cra, note_frais, fiche_paie, activity, hr_document,
+  histo_consultant) vers user_account.id ; suppression de user_account.consultant_id puis de la table
+  consultant.
+- Backend — suppression de l'entité Consultant et de ConsultantRepository ; UserAccount porte les
+  colonnes RH ; Cra/NoteFrais/FichePaie/Activity référencent UserAccount ; consultantId du principal
+  = user.id pour un CONSULTANT (CustomUserDetailsService) ; AuthService.toDto expose consultantId =
+  id pour un CONSULTANT.
+- Backend — ConsultantService réécrit (opère sur user_account) : findAll avec visibilité par rôle
+  (visibleUsers), create/update/delete/purge, summaries/managedSummaries/managers, historique ;
+  requireCanManage (ADMIN/RESPONSIBLE_SOC tout, MANAGER ses consultants, CONSULTANT lui-même).
+- Backend — adaptation de CraService, NoteFraisService, FichePaieService, ActivityService,
+  DashboardService, SocService, AuthService, DataSeeder, DocumentController, ConsultantImportService,
+  FichePaiePdfService.
+- Backend — username modifiable dans ConsultantService.update (avec contrôle d'unicité), soumis à
+  requireCanManage.
+- Frontend — types.ts (ConsultantDto/ConsultantRequest mis à jour) ; page Collaborateurs
+  (Consultants.tsx) pointe vers user_account (colonnes : Collaborateur, Username, Contact, Rôle,
+  Manager, Salaire, Embauche, Statut ; formulaire d'édition avec username) ; suppression de la page
+  Users.tsx, de la route /utilisateurs et du menu « Utilisateurs » (MainLayout) ; Dashboard redirigé
+  vers /consultants.
+- Tests : backend — seul échec = SecurityIntegrationTest.adminCannotDeleteActiveUser (pré-existant,
+  order-dependent) ; frontend build OK, tests 129/129, lint 0 erreur.
