@@ -26,11 +26,8 @@ c:\pgm\nvm\v22.0.0
 command : /todo :
 
 lire un par un les fichiers soc360-doc/01_TODO_* (chaque tache peut se terminer par go).
-Pour chaque fichier :
+Pour chaque fichier 01_TODO_* :
   - executer les taches de ce fichier ;
-  - tester ;
-  - si ok : committer ;
-  - si erreurs : corriger, puis si ok committer ;
   - archiver le contenu du fichier dans soc360-doc/02_DONE_<annee>_<MM>.txt
     avec la date du jour complete yyyy-mm-dd HH:MM:SS ;
   - supprimer le fichier 01_TODO_* traite.
@@ -41,6 +38,26 @@ lire le fichier run.log du backend
 corriger l'erreur
 
 ---------------------
+
+commande /errfront
+
+lire le fichier ERROR.txt
+corriger l'erreur
+---------------------
+
+commande /testback
+
+executer les tests du projet backend 
+si erreur, corriger 
+
+-----------------------------
+
+commande /testfront
+
+executer les tests du projet frontend (soc360-front-react)
+si erreur, corriger
+
+-----------------------------
 
 les repos : 
 

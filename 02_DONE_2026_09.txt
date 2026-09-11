@@ -34,3 +34,220 @@ Implémentation :
   vers /consultants.
 - Tests : backend — seul échec = SecurityIntegrationTest.adminCannotDeleteActiveUser (pré-existant,
   order-dependent) ; frontend build OK, tests 129/129, lint 0 erreur.
+
+09/09/2026 12:30:19
+
+Tâche : Indispos — statut PARTIEL, règles d'ajout et validation partielle par le manager.
+Un CONSULTANT peut ajouter/maj une Indispo dans un mois : impossible si le mois contient déjà un CRA
+(validé ou non) ; si le mois contient une Indispo « full » (tous les jours ouvrables ont une
+indisponibilité valide) → impossible ; sinon (Indispo non full ou aucun) → ajout possible dans les
+jours sans indisponibilité valide. Si l'Indispo contient des jours ouvrables non validés, il peut la
+soumettre à son manager. Le manager peut valider tous les jours remplis en un clic, ou une partie
+(case « valide » par activité). Statut : VALIDATED / REJECTED / PARTIAL. Le manager d'un user peut
+toujours modifier un CRA ou une Indispo de son user, même validé ou PARTIEL. Historique des
+modifications conservé (CraExchange).
+
+Implémentation :
+- Backend — statut PARTIAL ajouté à l'enum CraStatus.
+- Backend — CraService.getOrCreate : règle métier assertIndispoAllowed (blocage si CRA du mois, ou
+  Indispo « full » via isIndispoFull sur les jours ouvrables).
+- Backend — CraService.save : autorise l'édition par le manager (isManagerOwner) des CRA/Indispos
+  VALIDATED ou PARTIAL, et l'ajout par le consultant sur une Indispo VALIDATED/PARTIAL (jours sans
+  indisponibilité valide, activités validées préservées via existingValidKeys).
+- Backend — CraService.setActivityValid / setRangeValid : recalcul du statut (refreshIndispoStatus →
+  VALIDATED / PARTIAL / SUBMITTED) ; requireManagerable étendu à VALIDATED/PARTIAL.
+- Frontend — types.ts (CraStatus + PARTIAL), format.ts (CRA_STATUS_LABELS « Partiel », statusBadge
+  info), CraDetail.tsx (PARTIAL traité comme validé pour l'édition consultant/manager, managerCanAct
+  étendu, statusAdjective « partielle »), IndispoList.tsx (PARTIAL non supprimable).
+- Tests : CraServiceTest 30/30 (ajout getOrCreate_indispoBlockedWhenCraExists,
+  setActivityValid_partialSetsPartialStatus, setActivityValid_allValid_setsValidated) ; backend total
+  225 tests (seul échec pré-existant adminCannotDeleteActiveUser) ; frontend build OK, tests 129/129,
+  lint 0 erreur.
+
+09/09/2026 14:42:49
+
+Tâche : page Profil — ajouter les infos du manager (Nom complet, Username, Email, Tel, Role).
+
+Implémentation :
+- Backend — ajout du record UserDtos.ManagerInfo (id, fullName, username, email, phone, role) et du
+  champ `manager` dans UserDtos.UserDto ; AuthService.toDto remplit le manager depuis
+  user.getManager() (null si absent).
+- Frontend — types.ts : ajout de l'interface ManagerInfo et du champ `manager` dans UserDto ;
+  Profile.tsx : section « Manager » affichant Nom complet, Username, E-mail, Téléphone et Rôle du
+  manager (affichée seulement si user.manager présent).
+- Tests : backend 228 tests (seul échec pré-existant adminCannotDeleteActiveUser) ; frontend build OK,
+  tests 129/129, lint 0 erreur.
+
+09/09/2026 14:57:36
+
+Tâche : page CRA/Indispo — le MANAGER (et RESPONSABLE_SOC) peut modifier un CRA ou une Indispo
+validé(e). Le message devient « Ce CRA (ou cette Indispo) est validé. » sans « et n'est plus
+modifiable » (ce suffixe reste pour le CONSULTANT). Le manager peut modifier/supprimer/valider/
+invalider chaque événement (case à cocher), et valider ou invalider tout (bouton). Envoi au
+consultant via notification (validate/reject) comme d'habitude.
+
+Implémentation :
+- Frontend — CraDetail.tsx : `managerEditsValidated` étendu au CRA (VALIDATED/PARTIAL), `managerCanAct`
+  étendu à SUBMITTED/PENDING_SEND/VALIDATED/PARTIAL pour CRA et Indispo ; bannière dédiée au manager
+  « Ce CRA/Cette Indispo est validé(e)/partiel(le). » (sans « n'est plus modifiable ») ; ajout du
+  bouton « Invalider tout » (handleInvalidateAll via invalidateRange sur tout le mois) et relibellage
+  « Valider » → « Valider tout ».
+- Backend — CraService : setActivityValid/setRangeValid passent de requireManagerable (Indispo
+  uniquement) à requireReviewable (CRA + Indispo, états SUBMITTED/PENDING_SEND/VALIDATED/PARTIAL).
+- Tests : backend 228 tests (seul échec pré-existant adminCannotDeleteActiveUser) ; frontend build OK,
+  tests 129/129, lint 0 erreur.
+
+09/09/2026 15:18:14
+
+Tâche : page CRA/Indispo — le manager (et responsable_soc) a 3 boutons en bas : « Valider tout »,
+« Invalider tout », « Envoyer ». Valider tout coche tous les événements ouvrables ; Invalider tout
+les décoche ; Envoyer demande un commentaire dans une dialog (textarea), sauvegarde, envoie la
+notification puis ferme l'objet.
+
+Implémentation :
+- Frontend — CraDetail.tsx : 3 boutons manager (« Valider tout », « Invalider tout », « Envoyer »),
+  suppression du bouton « Rejeter » (et de handleReject) ; nouveau composant SendBackModal (textarea
+  obligatoire) + handler handleSendBack (doSave puis crasApi.sendBack puis fermeture via
+  onClose/navigate) ; import Textarea.
+- Frontend — cras.ts : ajout sendBack(id, comment) → POST /cras/{id}/send-back.
+- Backend — CraController : endpoint POST /{id}/send-back ; CraService.sendBack (requireManagerOwnership,
+  recordExchange + notifyConsultant, statut inchangé).
+- Backend — « Invalider tout » corrigé : le précédent requireManagerable bloquait les CRAs ; setRangeValid
+  utilise requireReviewable (CRA + Indispo) et fonctionne (test setRangeValid_invalidate_unchecksAllActivities).
+- Tests : CraServiceTest 32/32 (ajout setRangeValid_invalidate_unchecksAllActivities,
+  sendBack_recordsExchangeAndNotifiesConsultant) ; backend total 230 tests (seul échec pré-existant
+  adminCannotDeleteActiveUser) ; frontend build OK, tests 129/129, lint 0 erreur.
+
+09/09/2026 15:19:54
+
+Tâche : page CRA/Indispo — les boutons « Valider tout », « Invalider tout », « Envoyer » doivent
+être de même taille, sur la même ligne, centrés. Valider tout : vert ; Invalider tout : rouge ;
+Envoyer : bleu.
+
+Implémentation :
+- Frontend — CraDetail.tsx : les 3 boutons utilisent désormais le même composant Button (même taille),
+  dans un conteneur `flex w-full justify-center gap-3` (même ligne, centrés) ; couleurs : vert
+  (bg-green-600), rouge (bg-red-600), bleu (bg-blue-600).
+- Tests : frontend build OK, tests 129/129, lint 0 erreur.
+
+10/09/2026 11:57:14
+
+Tâche : un CRA ou une Indispo « semi valide » (contient des événements valides ET non valides) a le
+statut PARTIEL.
+
+Implémentation :
+- Backend — CraService.refreshIndispoStatus : suppression du garde « CONGE uniquement » ; le statut
+  est recalculé pour CRA ET Indispo (tous validés → VALIDATED, une partie → PARTIAL, aucun → SUBMITTED).
+- Tests : ajout setActivityValid_partialCRA_setsPartialStatus (CRA partiellement validé → PARTIAL) ;
+  CraServiceTest 33/33.
+
+Tâche : page CRA/Indispo — en bas, 4 boutons centrés sur une ligne pour le MANAGER
+(Enregistrer, Valider tout, Invalider tout, Envoyer) et 2 boutons pour le CONSULTANT
+(Enregistrer, Envoyer). Le manager peut modifier une Indispo/CRA de son collaborateur (y compris
+soumis), valider tout, invalider tout, valider partiellement. « Envoyer » : MANAGER/RESPONSABLE_SOC →
+dialog (commentaire) + save + notification au propriétaire ; CONSULTANT → save + notification à son
+manager.
+
+Implémentation :
+- Backend — CraService.save : managerEdits étendu à SUBMITTED/PENDING_SEND (le manager peut modifier
+  un CRA/Indispo soumis).
+- Frontend — CraDetail.tsx : managerEditsValidated étendu à SUBMITTED/PENDING_SEND ; boutons
+  restructurés en un conteneur `justify-center gap-3` : « Enregistrer » (si canAddEvents),
+  « Envoyer » (consultant, ex « Envoyer pour validation »), et pour le manager « Valider tout »,
+  « Invalider tout », « Envoyer » (sendBack via SendBackModal).
+- Tests : backend 231 tests (seul échec pré-existant adminCannotDeleteActiveUser) ; frontend build OK,
+  tests 129/129, lint 0 erreur.
+
+10/09/2026 12:11:07
+
+Tâche : page CRA/Indispo — une Indispo « Annulée » (CANCELLED) doit afficher les 4 boutons
+manager en bas : Enregistrer, Valider tout, Invalider tout, Envoyer.
+
+Implémentation :
+- Frontend — CraDetail.tsx : `managerCanAct` étendu à CANCELLED (ligne 296-302). Le bouton
+  « Enregistrer » apparaît déjà via `editable` qui inclut CANCELLED ; les 3 autres boutons
+  (Valider tout, Invalider tout, Envoyer) apparaissent désormais via `managerCanAct`.
+- Tests : frontend build OK, tests 129/129, lint 0 erreur.
+
+10/09/2026 12:20:52
+
+Tâche : un CRA ou une Indispo « semi valide » (contient des événements valides ET non valides) doit
+avoir le statut PARTIAL.
+
+Implémentation :
+- Backend — CraService.refreshIndispoStatus : passage d'un calcul au niveau du JOUR à un calcul au
+  niveau de l'ÉVÉNEMENT (CraDayActivity). Désormais :
+  - aucun événement rempli ou aucun événement valide → SUBMITTED ;
+  - présence d'événements valides ET non valides (y compris au sein d'un même jour) → PARTIAL ;
+  - tous les événements remplis valides → VALIDATED.
+  Avant, un jour contenant à la fois des événements valides et non valides était considéré
+  « validé » (allFilledValid au niveau jour), ce qui pouvait donner VALIDATED au lieu de PARTIAL.
+- Tests : ajout setActivityValid_mixedEventsSameDay_setsPartialStatus (1 jour = 2 événements,
+  1 validé + 1 non validé → PARTIAL) ; CraServiceTest 34/34.
+- Vérification : backend 232 tests (seul échec pré-existant adminCannotDeleteActiveUser) ;
+  backend redémarré 12:20:50.
+
+10/09/2026 12:41:14
+
+Tâche : renommer le statut PARTIAL en SEMI_VALID (chercher « partiel », « partial », « partielle »
+dans front et backend) ; et à l'enregistrement d'un CRA/Indispo, recalculer le statut depuis ses
+événements : tous valides → VALIDATED, tous non valides → REJECTED, mélange valides/non valides →
+SEMI_VALID.
+
+Implémentation :
+- Backend :
+  - CraStatus.java : `PARTIAL` → `SEMI_VALID`.
+  - CraService.java : renommage `refreshIndispoStatus` → `recomputeStatusFromEvents` ; logique
+    événement par événement : tous événements remplis valides → VALIDATED (+ validatedAt),
+    présence de valides ET non valides → SEMI_VALID, aucun valide → REJECTED, sans événement rempli
+    → on conserve le statut en cours. Appelée par setActivityValid / setRangeValid et par `save()`
+    (sauf si le statut avant save est DRAFT — un consultant qui enregistre son brouillon ne passe pas
+    en REJECTED).
+  - V42__cra_status_semi_valid.sql : `UPDATE cra SET status = 'SEMI_VALID' WHERE status = 'PARTIAL';`
+- Frontend : types.ts (SEMI_VALID), format.ts (libellé « Semi-validé », badge info), CraDetail.tsx
+  (statusAdjective « semi-validée », managerEditsValidated / consultantAddsToValidated /
+  managerCanAct / bannière), IndispoList.tsx (non-supprimable pour SEMI_VALID).
+- Tests : renommés PARTIAL→SEMI_VALID ; ajout save_submittedWithAllEventsInvalid_setsRejected et
+  save_submittedWithMixedEvents_setsSemiValid ; mise à jour
+  save_validatedIndispo_consultantPreservesValidatedActivities (VALIDATED → SEMI_VALID, consultant
+  qui ajoute un événement non valide à une Indispo validée). CraServiceTest 36/36.
+- Vérification : backend 234 tests (seul échec pré-existant adminCannotDeleteActiveUser) ;
+  frontend build OK, tests 129/129, lint 0 erreur ; Flyway V42 appliqué ; backend redémarré 12:41:04.
+
+10/09/2026 14:39:41
+
+Tâche : page CRA/Indispo — pour un CONSULTANT, le bouton « Envoyer » devient « Soumettre ». Au clic,
+l'objet passe au statut SUBMITTED, est sauvegardé, et une notification est envoyée au manager.
+
+Implémentation :
+- Frontend — CraDetail.tsx : le bouton du consultant (rendu par `canAddEvents && !managerCanAct`,
+  donc réservé au CONSULTANT) est renommé « Envoyer » → « Soumettre ». Le bouton « Envoyer » du
+  MANAGER (sendBack) et celui de la SendBackModal restent inchangés.
+- Backend — aucun changement : `CraService.submit(id)` fait déjà STATUS=SUBMITTED + save +
+  recordExchange + notification + email au(x) manager(s) (notificationRecipients du consultant).
+- Tests : frontend build OK, tests 129/129, lint 0 erreur (avertissement exhaustivedeps pré-existant
+  sur CraDetail.tsx:186).
+
+10/09/2026 14:58:25
+
+Tâche : page CRA/Indispo — droits d'édition du CONSULTANT selon le statut :
+- objet VALIDÉ : non modifiable ; mais si c'est une Indispo validée avec événements libres → le
+  consultant peut les remplir (déjà en place).
+- objet REJETÉ (aucun événement valide) : tout est modifiable (déjà en place : editable inclut REJECTED).
+- objet SEMI-VALIDÉ : le consultant peut modifier les événements invalides et remplir les événements
+  vides, mais ne peut pas modifier les événements valides.
+
+Implémentation :
+- Backend — CraService.save() : `statusEditable` accepte désormais SEMI_VALID pour tous les types
+  (CRA non-congé inclus), pas seulement CONGE. La garde existante `existingValidKeys`
+  (isConsultantPrincipal) empêche déjà le consultant de supprimer/modifier un événement validé.
+- Frontend — CraDetail.tsx : nouveau drapeau `consultantEditsSemiValid`
+  (isConsultant && status==='SEMI_VALID') ajouté à `canAddEvents` ; `consultantAddsToValidated`
+  réduit au cas VALIDATED + Indispo ; bannière dédiée pour le SEMI-VALID consultant (modifier les
+  invalides / remplir les vides puis soumettre, événements validés non modifiables) ; bandeau
+  « n'est plus modifiable » masqué dans ce cas ; canModifyActivity garde le verrou des événements validés.
+- Tests : nouveau CraServiceTest.save_semiValidCRA_consultantCanModifyInvalidAndPreservesValid
+  (SEMI_VALID CRA → le consultant enregistre en conservant l'événement valide, statut reste
+  SEMI_VALID). CraServiceTest 37/37.
+- Vérification : backend 235 tests (seul échec pré-existant adminCannotDeleteActiveUser) ;
+  frontend lint 0 erreur, tests 129/129, build OK ; backend redémarré 14:58:52.
