@@ -251,3 +251,22 @@ Implémentation :
   SEMI_VALID). CraServiceTest 37/37.
 - Vérification : backend 235 tests (seul échec pré-existant adminCannotDeleteActiveUser) ;
   frontend lint 0 erreur, tests 129/129, build OK ; backend redémarré 14:58:52.
+
+11/09/2026 16:41:30
+
+Tâche : Indisponibilité saisie durant les week-ends — actuellement, ajouter une indisponibilité sur
+un mois saisit aussi les week-ends comme indisponibilité. Comportement attendu : les indisponibilités
+sont interdites le week-end.
+
+Implémentation :
+- Frontend — CraDetail.tsx : `handleFillAllDays` (« Remplir tout le mois ») et `handleFillRange`
+  (« Remplir une plage ») ne remplissent plus que les jours ouvrables (dayType === 'WORKED') ;
+  les week-ends restent sans activité. Messages d'erreur ajustés (« Tous les jours ouvrables du mois
+  sont déjà renseignés. » / « Aucun jour ouvrable à remplir dans cette plage (déjà renseigné ou
+  week-end). »).
+- Backend — CraService.save() : toute tentative d'enregistrer une activité sur un jour de type
+  WEEKEND est rejetée (« Impossible de saisir une activité un week-end (date) »), pour CRA comme
+  pour Indispo (défense en profondeur derrière l'UI).
+- Tests : nouveau CraServiceTest.save_weekendActivity_isRejected → CraServiceTest 38/38.
+- Vérification : backend 236 tests (seul échec pré-existant adminCannotDeleteActiveUser) ;
+  frontend lint 0 erreur (warnings pré-existants), tests 129/129, build OK ; backend redémarré 16:42:00.
