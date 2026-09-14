@@ -367,3 +367,71 @@ front était `/reset-password/:token` (et que `ResetPassword.tsx` lit le token v
 **Vérification** : backend AuthServiceTest 33/33 + suite complète 239 tests (seul échec
 pré-existant connu et documenté `adminCannotDeleteActiveUser` — dépendant de l'ordre) ;
 frontend lint 0 erreur (warnings pré-existants), tests 129/129, build OK.
+
+----------------------------------------------------------------------
+### 2026-09-14 16:34:26 — Présence du bouton « Valider tout » sur un CRA déjà validé (01_TODO_01)
+
+**Problème** : sur un CRA dont le statut est `VALIDATED`, le bouton « Valider tout » était
+présent et actif ; le cliquer relançait un traitement de validation.
+
+**Correctif (frontend `CraDetail.tsx`)** : le bouton « Valider tout » est désormais désactivé
+(« grisé ») quand `cra.status === 'VALIDATED'` (`disabled` → `opacity-50` + `cursor-not-allowed`),
+avec une info-bulle « CRA déjà validé » portée par un `span` englobant (les navigateurs
+n'affichent pas le `title` d'un bouton désactivé). Aucun changement backend (le bouton
+« Invalider tout » reste actif pour pouvoir revenir en arrière).
+
+**Vérification** : frontend lint 0 erreur (warnings pré-existants), tests 129/129, build OK.
+
+----------------------------------------------------------------------
+### 2026-09-14 16:34:26 — Lien de réinitialisation reçu au format /auth/reset-password (retour utilisateur)
+
+**Problème** : l'utilisateur a reçu (avant le redémarrage du backend à 15:35) un lien
+`http://localhost:5173/auth/reset-password?token=…` (ancien format) qui aboutissait sur une
+page 404, alors que la route est `/reset-password` (composant `ResetPassword.tsx` lit le
+token via `useSearchParams`).
+
+**Correctif (frontend `App.tsx`)** : ajout d'une route d'aliasing
+`/auth/reset-password` → `<ResetPassword />` afin que les liens de l'ancien format, dont le
+jeton reste valide en base, fonctionnent. Les nouveaux emails (backend redémarré avec le
+code corrigé) envoient déjà `/reset-password?token=…`.
+
+**Vérification** : frontend lint 0 erreur, tests 129/129, build OK.
+
+----------------------------------------------------------------------
+### 2026-09-14 16:58:24 — Manager : 4 boutons après Invalider tout (01_TODO_01)
+
+**Problème** : en tant que manager, après avoir cliqué « Invalider tout » sur un CRA, seuls
+les boutons « Enregistrer » et « Soumettre » apparaissaient. Les 4 boutons attendus :
+Enregistrer, Valider tout, Invalider tout, Envoyer.
+
+**Cause** : `handleInvalidateAll` appelle `invalidateRange` → le backend passe le CRA en
+`REJECTED`. Or `managerCanAct` n'incluait pas `REJECTED`, donc les 3 boutons manager
+(Valider tout, Invalider tout, Envoyer) et le bouton « Soumettre » (consultant) se
+comportaient comme si c'était une vue consultant.
+
+**Correctif (frontend `CraDetail.tsx`)** : `managerCanAct` inclut désormais
+`cra.status === 'REJECTED'`. Impact :
+- Les 3 boutons manager réapparaissent (Valider tout, Invalider tout, Envoyer) ✓
+- Le bouton « Soumettre » (consultant) masqué pour le manager sur un CRA REJECTED ✓
+- Le checkbox « Valid » dans le jour reste actif dans EventModal (comportement cohérent) ✓
+- Le bouton « Valider tout » est désactivé uniquement quand `cra.status === 'VALIDATED'`
+  (donc actif sur REJECTED — on peut re-valider après invalidation) ✓
+
+**Vérification** : frontend lint 0 erreur (warnings pré-existants), tests 129/129, build OK.
+
+----------------------------------------------------------------------
+### 2026-09-14 17:25:05 — Manager : « Invalider tout » grisé quand tous les événements sont invalides (01_TODO_01)
+
+**Problème** : sur la page CRA, quand tous les événements sont invalides, le bouton
+« Invalider tout » restait actif.
+
+**Correctif (frontend `CraDetail.tsx`)** :
+- Nouveau calcul `allEventsInvalid = days.every(d => d.activities.every(a => !a.valid))`
+  (vrai si aucun événement n'est valide, y compris CRA vide).
+- Le bouton « Invalider tout » est désactivé (« grisé », `opacity-50` + `cursor-not-allowed`)
+  quand `allEventsInvalid` est vrai, avec info-bulle « tout est invalide » portée par un
+  `span` englobant (les navigateurs n'affichent pas le `title` d'un bouton désactivé).
+- Le calcul est réactif à l'état local `days` : re-valider une activité via la case « Valid »
+  réactive le bouton.
+
+**Vérification** : frontend lint 0 erreur (warnings pré-existants), tests 129/129, build OK.
