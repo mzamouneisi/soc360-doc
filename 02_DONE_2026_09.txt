@@ -335,3 +335,35 @@ Implémentation :
 - Backend : aucun changement — `submit()` rejette déjà tout jour travaillé ≠ 1 jour (« Le CRA est
   incomplet : le jour … doit totaliser 1 jour »).
 - Vérification : frontend lint 0 erreur (warnings pré-existants), tests 129/129, build OK.
+
+----------------------------------------------------------------------
+### 2026-09-14 15:26:00 — Impossible de réinitialiser un mot de passe (01_TODO_01)
+
+**Bug 1 (sécurité grave)** : le lien de réinitialisation était affiché sur la page
+« Mot de passe oublié » (`forgotPassword` retournait l'URL dans `ResetResponse`, et
+`ForgotPassword.tsx` l'affichait). Aujourd'hui le lien n'est envoyé QUE par email.
+
+- Backend (`AuthService.forgotPassword`) : `ResetResponse` ne contient plus l'URL
+  (`UserDtos.ResetResponse(message)` — champ `resetUrl` supprimé). Plus aucune énumération
+  de comptes : email inconnu → même message générique « Un email de réinitialisation a été
+  envoyé » (plus de `ApiException.notFound` / 404).
+
+**Bug 2 (404)** : le lien reçu menait à `/auth/reset-password?token=…` alors que la route
+front était `/reset-password/:token` (et que `ResetPassword.tsx` lit le token via
+`useSearchParams`).
+
+- Backend : l'URL du lien envoyé par email devient `baseFrontendUrl() + "/reset-password?token=" + token`.
+- Frontend : route `App.tsx` `/reset-password/:token` → `/reset-password` (le composant lit
+  le token en query param).
+
+**Fichiers touchés**
+- Backend : `AuthService.java` (forgotPassword), `UserDtos.java` (ResetResponse sans url),
+  `AuthServiceTest.java` (test création token : vérifie que le lien est dans le corps de
+  l'email et contient `/reset-password?token=` ; test email inconnu renommé
+  `forgotPassword_unknownEmail_doesNotDiscloseAccount` : message générique, aucun email envoyé).
+- Frontend : `ForgotPassword.tsx` (plus d'affichage du lien), `App.tsx` (route),
+  `api/types.ts` (ResetResponse = message seul).
+
+**Vérification** : backend AuthServiceTest 33/33 + suite complète 239 tests (seul échec
+pré-existant connu et documenté `adminCannotDeleteActiveUser` — dépendant de l'ordre) ;
+frontend lint 0 erreur (warnings pré-existants), tests 129/129, build OK.
