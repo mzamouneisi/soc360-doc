@@ -314,3 +314,24 @@ Implémentation :
 - Vérification : backend 239 tests (seul échec pré-existant adminCannotDeleteActiveUser) ;
   frontend lint 0 erreur (warnings pré-existants), tests 129/129 (échecs Register transitoires
   d'ordre non reproductibles), build OK ; backend redémarré 11:58.
+
+14/09/2026 14:47:28
+
+Tâche : Message d'erreur « CRA Incomplet » — en tant que consultant, sélectionner un mois vide puis
+cliquer sur « Nouveau CRA » affiche un CRA vide avec la bannière « CRA incomplet : 22 jours travaillés
+ne totalisent pas 1 jour… ». Comportement attendu : un CRA vide s'affiche sans ce message ; le message
+peut être sur l'info-bulle du bouton « Soumettre ».
+
+Implémentation :
+- Frontend — CraDetail.tsx :
+  - Nouveau `hasAnyActivity` (au moins une activité sur le mois). La bannière rouge « CRA incomplet »
+    n'est plus affichée sur un mois totalement vide (`!craValid && editable && hasAnyActivity`) —
+    on ne prévient que lorsqu'un remplissage est **commencé** (jours partiellement saisis) ;
+  - Le bouton « Soumettre » du consultant porte désormais une info-bulle (`title`) :
+    « CRA incomplet : chaque jour travaillé doit totaliser 1 jour. » quand il est désactivé,
+    « Soumettre pour validation » sinon.
+  - `craValid` inchangé (tous les jours travaillés totalisent exactement 1 jour) ; Soumettre reste
+    donc désactivé sur un mois vide, avec l'explication en info-bulle.
+- Backend : aucun changement — `submit()` rejette déjà tout jour travaillé ≠ 1 jour (« Le CRA est
+  incomplet : le jour … doit totaliser 1 jour »).
+- Vérification : frontend lint 0 erreur (warnings pré-existants), tests 129/129, build OK.
