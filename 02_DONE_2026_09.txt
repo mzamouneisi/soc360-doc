@@ -270,3 +270,23 @@ Implémentation :
 - Tests : nouveau CraServiceTest.save_weekendActivity_isRejected → CraServiceTest 38/38.
 - Vérification : backend 236 tests (seul échec pré-existant adminCannotDeleteActiveUser) ;
   frontend lint 0 erreur (warnings pré-existants), tests 129/129, build OK ; backend redémarré 16:42:00.
+
+14/09/2026 10:39:21
+
+Tâche : Ajout d'une nouvelle indisponibilité pour un mois totalement saisie — quand je saisis tout
+le mois en indisponibilité, le clic sur le bouton « Nouvelle Indispo » ne fait rien.
+Comportement attendu : soit un message d'information, soit le bouton désactivé.
+
+Implémentation :
+- Frontend — IndispoList.tsx : le bouton « Nouvelle Indispo » est désactivé (disabled + opacity,
+  title « Une Indispo existe déjà pour ce mois ») dès qu'une Indispo (DRAFT, soumise, validée,
+  semi-valide ou rejetée) existe déjà pour le mois sélectionné (`hasIndispoThisMonth`, calculée
+  sur la liste `data` du consultant pour l'année en cours). Un message d'information est affiché
+  sous le bouton : « Une Indispo existe déjà pour ce mois. Cliquez sur "Éditer" dans la liste
+  ci-dessus. » L'utilisateur rouvre l'Indispo existante via le bouton « Éditer » / « Ouvrir » des
+  lignes de la liste.
+- Backend : aucun changement — `assertIndispoAllowed` renvoyait déjà une erreur explicite
+  (« …ce mois est déjà complet » / « …un CRA existe déjà pour ce mois ») ; la cause du « il ne se
+  passe rien » était l'absence de retour visuel dans le flux liste/consultant quand l'Indispo du
+  mois existait déjà (danger : getOrCreate renvoyait le même mois sans effet apparent).
+- Vérification : frontend lint 0 erreur (warnings pré-existants), tests 129/129, build OK.
