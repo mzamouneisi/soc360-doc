@@ -290,3 +290,27 @@ Implémentation :
   passe rien » était l'absence de retour visuel dans le flux liste/consultant quand l'Indispo du
   mois existait déjà (danger : getOrCreate renvoyait le même mois sans effet apparent).
 - Vérification : frontend lint 0 erreur (warnings pré-existants), tests 129/129, build OK.
+
+14/09/2026 11:58:10
+
+Tâche : Liste des activités possibles pour un consultant erronée — en tant que consultant, ajouter
+une activité dans mon CRA remonte des activités en double et des activités destinées à d'autres
+consultants. Résultat attendu : seules les activités qui concernent le consultant connecté remontent.
+
+Implémentation :
+- Backend — ActivityService.findAll : quand un consultantId est fourni (avec ou sans socId), ne
+  renvoie que les activités partagées de la société (consultant == null) + celles assignées à ce
+  consultant (consultant.id == consultantId). Les activités personnelles des autres consultants
+  (ex. défauts CONGE_* créés par ensureDefaultActivitiesForConsultant pour chaque consultant)
+  — source des doublons et des activités « pour les autres » — sont écartées. Sans consultantId
+  (page de gestion ADMIN/RESPONSIBLE_SOC/MANAGER), le comportement est inchangé.
+- Frontend — CraDetail.tsx : la requête des activités passe désormais `consultantId: cra.consultantId`
+  dès que le consultant du CRA est connu (anciennement socId seul) ; la liste « fillable » 
+  (filteredActivities) du CRA/Indispo ne propose donc que les activités partagées + celles du
+  consultant concerné.
+- Tests : nouveau ActivityServiceTest (findAll_avec_socId_et_consultantId garde partagées + miennes,
+  findAll_socId seul rend tout, findAll_consultantId seul ne rend que les assignées). ActivityServiceTest 3/3,
+  CraServiceTest 38/38.
+- Vérification : backend 239 tests (seul échec pré-existant adminCannotDeleteActiveUser) ;
+  frontend lint 0 erreur (warnings pré-existants), tests 129/129 (échecs Register transitoires
+  d'ordre non reproductibles), build OK ; backend redémarré 11:58.
