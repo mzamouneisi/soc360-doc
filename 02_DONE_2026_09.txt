@@ -468,3 +468,29 @@ user_account, rétention retain=2 appliquée via runBackup, parsing URL pg avec 
 sans port, URL invalide → null) ; backend : 244 tests, seul échec pré-existant connu
 `adminCannotDeleteActiveUser` (order-dependent) ; builds H2 local OK (fichiers générés dans
 `data/backups`).
+
+----------------------------------------------------------------------
+### 2026-09-15 11:01:00 — Activité week-end dans un CRA (01_TODO_02)
+
+**Tâche** : un consultant peut ajouter une activité durant le week-end dans son CRA. Il ajoute
+manuellement (jour par jour), mais PAS via les boutons « Remplir une plage » / « Remplir tout
+le mois » (qui restent limités aux jours ouvrables). Comportement inchangé pour les Indispo
+(toujours interdites le week-end).
+
+**Implémentation**
+- Backend — `CraService.save()` : le rejet « Impossible de saisir une activité un week-end »
+  n'est plus appliqué qu'aux Indispos (`conge == true`) ; un CRA peut donc enregistrer une
+  activité sur un jour `WEEKEND`. Contrôles de complétude inchangés (seuls les jours `WORKED`
+  doivent totaliser 1 jour : `submit()`, `recomputeStatusFromEvents`), l'export ne tient toujours
+  compte que des jours travaillés.
+- Frontend — `CraDetail.tsx` : le bouton « + » (ajout manuel d'événement) de la vue calendrier
+  est désormais aussi affiché sur les jours `WEEKEND` quand il s'agit d'un CRA
+  (`!isIndispo`) ; pour une Indispo, le « + » reste réservé aux jours `WORKED`.
+- `handleFillAllDays` / `handleFillRange` **inchangés** : ils continuent de ne remplir que les
+  jours `dayType === 'WORKED'`.
+
+**Vérification** : nouveau `CraServiceTest.save_weekendActivityInCRA_isAllowed` (CRA : activité sur
+un jour week-end enregistrée, 1 activité présente après save) ; `save_weekendActivity_isRejected`
+(Indispo) conserve le rejet. CraServiceTest 39/39 ; backend 245 tests (seul échec pré-existant
+`adminCannotDeleteActiveUser`) ; frontend lint 0 erreur (warnings pré-existants sur docs/),
+tests 129/129, build OK.
