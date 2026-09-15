@@ -494,3 +494,20 @@ un jour week-end enregistrée, 1 activité présente après save) ; `save_weeken
 (Indispo) conserve le rejet. CraServiceTest 39/39 ; backend 245 tests (seul échec pré-existant
 `adminCannotDeleteActiveUser`) ; frontend lint 0 erreur (warnings pré-existants sur docs/),
 tests 129/129, build OK.
+
+----------------------------------------------------------------------
+### 2026-09-15 11:53:29 — Valider tout / Invalider tout sur un CRA validé (01_TODO_01)
+
+**Tâche** : en tant que manager (ou responsable_soc), j'ouvre un CRA validé → le bouton
+« Valider tout » doit être désactivé et le bouton « Invalider tout » actif. Si je clique sur
+« Invalider tout », celui-ci devient inactif et « Valider tout » devient actif (et vice-versa).
+
+**Implémentation** : nouveau test frontend `src/pages/CraDetail.test.tsx` qui reproduit le
+scénario — ouverture d'un CRA VALIDATED par un MANAGER (managerId = user.id), puis bascule des
+boutons « Valider tout » / « Invalider tout » → VERIFIÉ côté UI uniquement : le composant
+`CraDetail` avait déjà la logique (désactivation par `cra.status === 'VALIDATED'` et
+`allEventsInvalid`), aucun code de production à modifier.
+
+**Vérification** : test vert (bascule, assertions `toBeDisabled`/`toBeEnabled`, appels
+`invalidateRange(1, '2026-08-01', '2026-08-31')` et `validate(1)`) ; frontend 130/130 tests,
+lint 0 erreur sur le fichier ajouté (warnings pré-existants docs/).
