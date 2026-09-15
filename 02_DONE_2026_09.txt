@@ -511,3 +511,28 @@ boutons « Valider tout » / « Invalider tout » → VERIFIÉ côté UI uniquem
 **Vérification** : test vert (bascule, assertions `toBeDisabled`/`toBeEnabled`, appels
 `invalidateRange(1, '2026-08-01', '2026-08-31')` et `validate(1)`) ; frontend 130/130 tests,
 lint 0 erreur sur le fichier ajouté (warnings pré-existants docs/).
+
+----------------------------------------------------------------------
+### 2026-09-15 15:41:10 — Connexion via email (01_TODO_01)
+
+**Tâche** : en tant qu'utilisateur, je souhaite me connecter en saisissant mon email ou bien mon
+username.
+
+**Implémentation**
+- Backend — `CustomUserDetailsService.loadUserByUsername()` : résolution de l'identifiant par
+  `findByUsername` puis repli sur `findByEmail` (`Optional.or(...)`) → l'`AuthenticationManager`
+  (authentification Spring Security) accepte username OU email.
+- Backend — `AuthService.login()` : relance de recherche après authentification par
+  `findByUsername` avec repli sur `findByEmail` ; les `recordConnection` et
+  `loadUserByUsername` utilisent ensuite `user.getUsername()` (l'identifiant canonique), la
+  connexion est donc journalisée sous le username réel.
+- Frontend — `Login.tsx` : le champ devient « Email ou identifiant » (placeholder
+  « email ou identifiant ») ; le payload envoyé reste `{ username, password }` (le backend
+  accepte l'email dans ce champ).
+- `LoginRequest` / `LoginPayload` inchangés (aucune migration Flyway nécessaire).
+
+**Vérification** : nouveau `AuthServiceTest.login_withEmail_resolvesUserByEmail` (connexion avec
+l'email `jean.dupont@soc360.fr`, token généré depuis le username `jdupont`, connexion journalisée
+sous `jdupont`) ; AuthServiceTest 34/34 ; backend 246 tests, seul échec pré-existant
+`adminCannotDeleteActiveUser` (vert en isolation) ; frontend `Login.test.tsx` mis à jour
+(placeholder), 130/130 tests, lint 0 erreur sur `Login.tsx`.
