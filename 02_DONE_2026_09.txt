@@ -435,3 +435,36 @@ comportaient comme si c'était une vue consultant.
   réactive le bouton.
 
 **Vérification** : frontend lint 0 erreur (warnings pré-existants), tests 129/129, build OK.
+
+----------------------------------------------------------------------
+### 2026-09-15 10:43:11 — Processus de sauvegarde périodique de la BDD (01_TODO_01)
+
+**Tâche** : un process sauvegarde la BDD toutes les x heures, x défini dans les properties
+du serveur (par défaut x = 2). H2 : `SCRIPT TO '<fichier>.sql';`. PostgreSQL sur Azure :
+`PGSSLMODE=require pg_dump -h <host> -p 5432 -U <user> -d <db> -Fc -f <fichier>.dump`.
+
+**Implémentation**
+- Backend — `com.soc360.batch.DbBackupService` : `@Scheduled(fixedDelayString =
+  "${app.backup.interval-hours:2}h", initialDelayString = "1m")` — Spring 6.2 parse la durée
+  simple « 2h » (`DurationFormatterUtils.detectAndParse`). Première sauvegarde 1 minute après
+  le démarrage, puis toutes les x heures (délai fixe entre la fin d'un run et le début du suivant).
+- Moteur détecté automatiquement via `spring.datasource.url` :
+  - H2 (`jdbc:h2:*`) → exécution JDBC de `SCRIPT TO '<chemin absolu en />'` → fichier
+    `soc360-backup-<yyyyMMdd-HHmmss>-<nanos>.sql` (suffixe nanos pour garantir l'unicité
+    même dans la même seconde) ;
+  - PostgreSQL (`jdbc:postgresql://…`) → commande `pg_dump -h <host> -p <port> -U <user> -d <db>
+    -Fc -f <…>.dump`, host/port/base extraits de l'URL JDBC (port défaut 5432), `PGSSLMODE=require`
+    et `PGPASSWORD` injectés dans l'environnement du process enfant (ProcessBuilder), stderr+réunis
+    pour loguer le détail en cas d'échec.
+- Répertoire `app.backup.directory` (défaut `./data/backups`) créé à la volée ; rétention des N
+  dernières sauvegardes (`app.backup.retain`, défaut 30) : les plus anciennes sont supprimées.
+- `application.yml` : nouvelle section `app.backup.{interval-hours, directory, retain}`, pilotable
+  par variables d'environnement `BACKUP_INTERVAL_HOURS`, `BACKUP_DIRECTORY`, `BACKUP_RETAIN`.
+- Isolation multi-société : sans objet (sauvegarde infra, aucun objet par société manipulé).
+- Aucun changement Flyway ni frontend (nécessaire).
+
+**Vérification** : nouveau `DbBackupServiceTest` (5 tests : dump H2 réel contenant la table
+user_account, rétention retain=2 appliquée via runBackup, parsing URL pg avec port+query string,
+sans port, URL invalide → null) ; backend : 244 tests, seul échec pré-existant connu
+`adminCannotDeleteActiveUser` (order-dependent) ; builds H2 local OK (fichiers générés dans
+`data/backups`).
