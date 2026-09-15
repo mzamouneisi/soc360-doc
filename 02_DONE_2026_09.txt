@@ -536,3 +536,22 @@ l'email `jean.dupont@soc360.fr`, token généré depuis le username `jdupont`, c
 sous `jdupont`) ; AuthServiceTest 34/34 ; backend 246 tests, seul échec pré-existant
 `adminCannotDeleteActiveUser` (vert en isolation) ; frontend `Login.test.tsx` mis à jour
 (placeholder), 130/130 tests, lint 0 erreur sur `Login.tsx`.
+
+----------------------------------------------------------------------
+### 2026-09-15 16:26:33 — ERROR.txt : échec deploiement GitHub Pages dev (tsc TS2741)
+
+**Erreur** : exécution de `deploy_front_to_gh_pages.sh` bloquée au build :
+`src/pages/CraDetail.test.tsx(134,43): error TS2741: Property 'id' is missing in type '{}' but
+required in type '{ id: number; onClose?...; onChange?... }'`.
+
+**Cause** : `CraDetail` exige la prop `id` (obligatoire dans sa signature ; l'application la passe
+via `CraDetailRoute`) et le test `CraDetail.test.tsx` rendait `<CraDetail />` sans prop. Vitest
+(esbuild) ne fait pas de type-check d'où un test vert malgré le code invalide pour `tsc -b`.
+
+**Implémentation** : dans `soc360-front-react/src/pages/CraDetail.test.tsx`, le rendu de test passe
+désormais `<CraDetail id={1} />` dans un `MemoryRouter` (imports `Routes`/`Route` supprimés).
+
+**Vérification** : `npm run build:pages` (tsc -b + vite) OK ; `./deploy_front_to_gh_pages.sh dev`
+réussi de bout en bout (lint, 130/130 tests, build, commit `docs/` + push) → site dev en ligne.
+Commits front `37dbcb6` (correctif) et `1baa355` (build docs/) ; `ERROR.txt` vidé (compte rendu
+archivé ici).
