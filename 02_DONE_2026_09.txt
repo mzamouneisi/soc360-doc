@@ -555,3 +555,95 @@ désormais `<CraDetail id={1} />` dans un `MemoryRouter` (imports `Routes`/`Rout
 réussi de bout en bout (lint, 130/130 tests, build, commit `docs/` + push) → site dev en ligne.
 Commits front `37dbcb6` (correctif) et `1baa355` (build docs/) ; `ERROR.txt` vidé (compte rendu
 archivé ici).
+
+----------------------------------------------------------------------
+### 2026-09-15 23:19:39 — Gestion des indisponibilités (01_TODO_01)
+
+**Tâche** : les règles suivantes ont été convenues concernant la gestion des indisponibilités des consultants :
+
+1. **Définition d'une indisponibilité** — une indisponibilité correspond à un intervalle de jours consécutifs, défini par une date de début et une date de fin, et associé à un même type d'indisponibilité. Elle peut s'étendre sur plusieurs mois, comme dans le cas d'un congé maternité.
+2. **Soumission des indisponibilités** — le consultant peut soumettre plusieurs indisponibilités, même si le manager n'a pas encore répondu à une demande précédente.
+3. **Contrôle des chevauchements** — lorsqu'un consultant soumet une indisponibilité, l'application vérifie que l'intervalle de dates ne chevauche pas une indisponibilité déjà soumise ou validée.
+4. **Annulation d'une indisponibilité** — le consultant peut annuler une indisponibilité déjà soumise. Celle-ci repasse alors à l'état de brouillon et peut être modifiée ou soumise à nouveau.
+5. **Visualisation dans le calendrier** — en cliquant sur un élément de la liste des indisponibilités, le consultant peut visualiser, dans la partie inférieure de l'écran, l'intervalle de dates correspondant dans un calendrier. Le calendrier peut afficher plusieurs mois afin de représenter les indisponibilités de longue durée ; les autres événements du consultant (congés, missions) doivent également être visibles ; l'intervalle de l'indisponibilité sélectionnée doit être clairement mis en évidence par un encadrement bleu.
+
+**Implémentation**
+- Backend (soc360-back-java) — nouvelle fonctionnalité dédiée `unavailability` (package `com.soc360.unavailability`) : entité `Unavailability`, `UnavailabilityRepository`, `UnavailabilityService`, `UnavailabilityController` (REST `/api/unavailabilities`), DTOs (`UnavailabilityDto`, `UnavailabilityRequest`, `RejectRequest`).
+- Migration Flyway `V43__unavailability.sql` : table `unavailability` (`consultant_id`, `id_soc`, `type`, `start_date`, `end_date`, `status`, `comment`, `rejected_reason`, `submitted_at`, `validated_at`, `CHECK end_date >= start_date`, index sur `(id_soc)` et `(consultant_id)`) + INSERT des permissions `UNAVAILABILITY_*` pour les bases existantes.
+- Enums : `UnavailabilityStatus` (DRAFT, SUBMITTED, VALIDATED, REJECTED), `UnavailabilityType` (CONGE_PAYE, CONGE_RTT, CONGE_NON_PAYE, CONGE_MALADIE, CONGE_MATERNITE) ; `Feature.UNAVAILABILITY` ajouté.
+- Règles métier : le consultant peut soumettre plusieurs indisponibilités sans attendre la réponse du manager ; contrôle de chevauchement à la soumission (409 CONFLICT contre les SUBMITTED/VALIDATED) ; annulation d'une soumission → retour DRAFT puis modification/resoumission ; validation/rejet réservés aux rôles non-consultant (motif de rejet optionnel) ; suppression limitée aux brouillons/rejetés ; la soumission modifie dates/commentaire/type sans changement de statut.
+- Isolation multi-société : `SecurityUtils.effectiveSocId` / `requireSocAccess` ; un consultant ne voit/crée/annule que ses propres indisponibilités.
+- Notifications : à la soumission → managers/responsables de la soc ; à la validation/rejet → le consultant concerné (`NotificationRepository` + `EmailService`).
+- `DataSeeder.seedPermissions` rendu idempotent (comble uniquement les combinaisons manquantes au lieu de tout réinitialiser) — corrige la régression qu'aurait causée l'INSERT de permissions de V43 sur une base vierge.
+- Frontend (soc360-front-react) — page `/indisponibilites` (`pages/Unavailability.tsx`) : liste filtrable (texte + type, filière pagination `user.pageSize`), formulaire créer/éditer (type, dates, commentaire), actions Soumettre / Annuler (→ DRAFT) / Valider / Rejeter / Supprimer, sélecteur de consultant pour les managers ; module `api/unavailability.ts` ; types `UnavailabilityStatus/Types/Dto/Request` dans `api/types.ts` ; labels dans `lib/format.ts` ; route dans `App.tsx` ; entrée de navigation « Indisponibilités » dans `MainLayout`.
+- Calendrier — `pages/UnavailabilityCalendar.tsx` : affichage multi-mois (jusqu'à 3 colonnes, avec marge d'un mois si l'intervalle <= 5 mois), intervalle sélectionné encadré en bleu, autres indisponibilités en violet, congés (CRA type CONGE) en ambre, jours de mission (CRA travaillés) en vert ; les événements existants (congés/missions) sont chargés via les endpoints CRA existants (utilisés par la sélection de consultant).
+
+**Vérification** : `UnavailabilityServiceTest` (6 tests : liste isolée par consultant, création brouillon, chevauchement rejeté, annulation → DRAFT, validation par manager, édition d'un rejeté) ; backend 255 tests, seul échec pré-existant non lié `SecurityIntegrationTest.adminCannotDeleteActiveUser` (dépendant de l'ordre, vert en isolation, échoue aussi sans ces changements) ; frontend `lint` 0 erreur (warnings pré-existants sur docs/), `tsc -b` OK, 130/130 tests.
+
+----------------------------------------------------------------------
+### 2026-09-16 14:59:18 — Sauvegarde BDD : nombre maximum de fichiers de backup (01_TODO_01)
+
+**Tâche** : sauvegarde de la BDD — le nombre maximum de fichiers SQL de backups est `x = 5`, défini dans le fichier paramètres du serveur.
+
+**Implémentation**
+- Backend — `application.yml` : la propriété de rétention `app.backup.retain` (défaut 30) est remplacée par `app.backup.max-files: ${BACKUP_MAX_FILES:5}` — maximum de fichiers de sauvegarde conservés, pilotable par la variable d'environnement `BACKUP_MAX_FILES`.
+- Backend — `com.soc360.batch.DbBackupService` : le champ `retain` devient `maxFiles` (`@Value("${app.backup.max-files:5}")`) ; `retainBackups()` supprime les sauvegardes les plus anciennes (`.sql` H2 et `.dump` PostgreSQL confondus) au-delà de `maxFiles`.
+- Isolation multi-société : sans objet (sauvegarde infra, aucun objet par société).
+- Aucun changement Flyway ni frontend nécessaire.
+
+**Vérification** : `DbBackupServiceTest` 5/5 (dont `backupH2_retainsOnlyConfiguredNumberOfFiles` avec `app.backup.max-files=2` → au plus 2 fichiers conservés après 4 sauvegardes) ; `mvn -q test -Dtest=DbBackupServiceTest` OK.
+
+----------------------------------------------------------------------
+### 2026-09-16 15:03:33 — Gestion des indisponibilités : revue et mise en conformité (01_TODO_02)
+
+**Tâche** : revoir et éventuellement refaire la gestion des indisponibilités selon les règles convenues :
+1. **Définition** — une indisponibilité est un intervalle de jours consécutifs (date de début + date de fin) associé à un même type ; elle peut s'étendre sur plusieurs mois (ex. congé maternité).
+2. **Soumission** — le consultant peut soumettre plusieurs indisponibilités, même si le manager n'a pas répondu à une précédente.
+3. **Chevauchements** — à la soumission, l'application vérifie que l'intervalle ne chevauche pas une indisponibilité déjà soumise ou validée.
+4. **Annulation** — le consultant peut annuler une indisponibilité soumise : retour au brouillon, puis modification / nouvelle soumission possibles.
+5. **Calendrier** — cliquer sur un élément de la liste affiche l'intervalle dans un calendrier en bas d'écran ; le calendrier peut montrer plusieurs mois, les autres événements (congés, missions) sont visibles, et l'intervalle sélectionné est encadré en bleu.
+
+**Revue** : la fonctionnalité dédiée `unavailability` (table `unavailability`, package `com.soc360.unavailability`, page `/indisponibilites`) répond déjà aux 5 règles — intervalle/type (règle 1), soumissions multiples non bloquées (règle 2), contrôle de chevauchement à la soumission contre SUBMITTED/VALIDATED (règle 3), annulation soumise → DRAFT puis éditable/resoumettable (règle 4), calendrier multi-mois avec congés CRA (CONGE) et missions CRA visibles + encadrement bleu de l'intervalle sélectionné (règle 5). Trois faiblesses relevées et corrigées.
+
+**Implémentation (corrections)**
+- Frontend — `UnavailabilityCalendar.tsx` : l'arithmétique de dates (bornes des mois, énumération des jours de l'intervalle) utilisait des `Date` locales + `toISOString()`/`setDate()`, sensible aux changements d'heure (risque de jour dupliqué/omis aux passages DST). Remplacée par un calcul pur en composants `{y,m,d}` + `Date.UTC` (`parseDate`, `dateKey`, `addDays`, `daysBetween`, `monthWindow`) ; la clé de cellule du mois utilise `dateKey(year, month, day)`.
+- Frontend — `Unavailability.tsx` : la création par un manager/admin exige désormais la sélection d'un consultant (message « Sélectionnez un consultant. ») au lieu de laisser la requête échouer côté serveur.
+- Aucune modification de schéma (Flyway V43 déjà en place), aucune duplication du flux CRA `CONGE` existant (`/indispos`), isolation multi-société inchangée (`effectiveSocId`/`requireSocAccess`, un consultant ne voit que les siennes).
+
+**Vérification**
+- Backend — nouveau test `UnavailabilityServiceTest.submit_allowsMultipleNonOverlappingSubmissionsWhileOneIsPending` (règle 2) ; `UnavailabilityServiceTest` 7/7 ; suite complète 256 tests, seul échec pré-existant non lié `SecurityIntegrationTest.adminCannotDeleteActiveUser` (order-dependent, vert en isolation). `DbBackupServiceTest` 5/5 (tâche 01 précédente).
+- Frontend — nouveau `src/pages/Unavailability.test.tsx` (5 tests : liste + calendrier de l'intervalle sélectionné [règle 5], soumission [règle 2], annulation retour brouillon [règle 4], validation manager, garde consultant à la création) ; suite complète 15 fichiers / 135 tests OK ; `lint` 0 erreur (warnings pré-existants sur docs/) ; `tsc -b` OK.
+
+----------------------------------------------------------------------
+### 2026-09-16 15:13:03 — Page CRA / Indispos : activation conditionnelle de « Valider tout » et « Invalider tout » (01_TODO_01)
+
+**Tâche** : page CRA / Indispos — en tant que manager, le bouton « Valider tout » ne devient actif que s'il existe au moins un événement inactif ; le bouton « Invalider tout » ne devient actif que s'il existe au moins un événement actif.
+
+**Implémentation**
+- Frontend — `CraDetail.tsx` : suppression de `allEventsInvalid` (qui ne testait que « tout est invalide ») au profit de deux indicateurs sur les activités des jours : `hasInactiveEvent = days.some(d => d.activities.some(a => !a.valid))` et `hasActiveEvent = days.some(d => d.activities.some(a => a.valid))`.
+- « Valider tout » : `disabled={!hasInactiveEvent}` — actif dès qu'au moins un événement est inactif (auparavant désactivé sur `cra.status === 'VALIDATED'`).
+- « Invalider tout » : `disabled={!hasActiveEvent}` — actif dès qu'au moins un événement est actif (auparavant désactivé seulement quand tous les événements étaient invalides).
+- Attributs `title` mis à jour : « aucun événement à valider » / « aucun événement à invalider ».
+- Logique commune aux CRA et aux Indispos (même composant `CraDetail`), managers/responsables uniquement (`managerCanAct`).
+- Aucun changement backend ni Flyway : le statut `valid` des activités provient déjà de l'API ; logique purement UI.
+
+**Vérification** : `CraDetail.test.tsx` — test existant de bascule Valider/Invalider conservé (CRA validé ↔ CRA rejeté) et 2 nouveaux tests : coexistence d'événements actifs et inactifs → les deux boutons actifs ; absence de tout événement → les deux boutons inactifs. Frontend : `lint` 0 erreur (warnings pré-existants sur docs/), `tsc -b` OK, 15 fichiers / 137 tests.
+
+----------------------------------------------------------------------
+### 2026-09-16 15:40:49 — Page Indispo : validation/rejet avec commentaire + ajout de plage + historisation (01_TODO_01)
+
+**Tâche** : page indispo — en tant que manager, je peux valider ou rejeter une demande d'indispo en ajoutant un commentaire avant d'envoyer la notification à mon consultant ; je peux aussi ajouter une autre plage d'indisponibilités ; tout doit être historisé (`date_modif_indispo`, `id_indispo`, `modifier`, `comment`, `nb_events_before`, `nb_events_after`).
+
+**Implémentation**
+- Backend — migration Flyway `V44__unavailability_history.sql` : table `unavailability_history` (`id`, `date_modif_indispo`, `id_indispo` FK → `unavailability` `ON DELETE CASCADE`, `modifier` FK → `user_account` `ON DELETE SET NULL`, `comment`, `nb_events_before`, `nb_events_after`) + index sur `id_indispo`.
+- Backend — entité `UnavailabilityHistory` + `UnavailabilityHistoryRepository` (`findByUnavailabilityIdOrderByIdAsc`).
+- Backend — `UnavailabilityService` : injection du repository d'historique ; `recordHistory(...)` appelé sur création (0 → N jours), modification (N → M), soumission, annulation de la soumission, validation et rejet ; `modifier` = utilisateur courant ; `comment` préfixé de l'action (« Création », « Modification : … », « Validation : … », « Rejet : … », « Soumission », « Annulation de la soumission »).
+- Backend — `validate(Long id, String comment)` et `reject(Long id, String comment)` : le commentaire du manager est ajouté avant l'envoi de la notification et repris dans le corps de celle-ci (« Commentaire : … » / « Motif : … »).
+- Backend — `history(Long id)` : lecture de l'historique avec contrôle d'accès `SecurityUtils.requireSocAccess` (isolation multi-société).
+- Backend — DTOs : `DecisionRequest(comment)` (remplace `RejectRequest`) ; `HistoryDto(id, dateModifIndispo, unavailabilityId, modifierId, modifierName, comment, nbEventsBefore, nbEventsAfter)`.
+- Backend — `UnavailabilityController` : `POST /{id}/validate` et `POST /{id}/reject` acceptent un corps `{ "comment": "…" }` ; nouveau `GET /{id}/history`.
+- Frontend — `api/unavailability.ts` : `validate(id, comment)`, `reject(id, comment)`, `history(id)` ; `types.ts` : `UnavailabilityHistoryDto`.
+- Frontend — `pages/Unavailability.tsx` : saisie d'un commentaire (prompt) avant validation/rejet, envoyée dans la notification ; bouton « Historique » par ligne + modale (date, modifié par, commentaire, nb d'événements avant/après) ; sélecteur de consultant dans le formulaire pour permettre au manager d'ajouter une autre plage d'indisponibilités pour n'importe quel consultant de sa société.
+- Isolation multi-société : `requireSocAccess` sur la lecture de l'historique et sur l'indispo ; le consultant ne voit que ses propres données.
+
+**Vérification** : backend — `UnavailabilityServiceTest` 11/11 (dont `validate_byManagerTransitionsToValidatedAndRecordsHistory`, `reject_byManagerKeepsCommentAndRecordsHistory`, `history_returnsEntriesForAccessibleUnavailability`) ; suite complète 260 tests, seul échec pré-existant non lié `SecurityIntegrationTest.adminCannotDeleteActiveUser` (order-dependent). Frontend — `Unavailability.test.tsx` 9/9 (dont validation avec commentaire, rejet avec motif, affichage de l'historique) ; suite 15 fichiers / 141 tests, `lint` 0 erreur, `tsc -b` OK.
