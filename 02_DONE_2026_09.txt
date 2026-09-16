@@ -647,3 +647,18 @@ archivé ici).
 - Isolation multi-société : `requireSocAccess` sur la lecture de l'historique et sur l'indispo ; le consultant ne voit que ses propres données.
 
 **Vérification** : backend — `UnavailabilityServiceTest` 11/11 (dont `validate_byManagerTransitionsToValidatedAndRecordsHistory`, `reject_byManagerKeepsCommentAndRecordsHistory`, `history_returnsEntriesForAccessibleUnavailability`) ; suite complète 260 tests, seul échec pré-existant non lié `SecurityIntegrationTest.adminCannotDeleteActiveUser` (order-dependent). Frontend — `Unavailability.test.tsx` 9/9 (dont validation avec commentaire, rejet avec motif, affichage de l'historique) ; suite 15 fichiers / 141 tests, `lint` 0 erreur, `tsc -b` OK.
+
+----------------------------------------------------------------------
+### 2026-09-16 18:36:37 — Filtre « consultant » (liste) sur les pages CRA et Indisponibilités (01_TODO_01)
+
+**Tâche** : page CRA — il manque le filtre par consultant sous forme de liste : en tant que **manager** je ne vois que les consultants que je gère ; en tant que **responsable_soc** tous les consultants de la société sélectionnée ; en tant qu'**admin** tous les consultants. Idem pour la page Indisponibilités.
+
+**Implémentation**
+- Backend — `ConsultantService.filterList()` : liste des consultants (rôle CONSULTANT, actifs, triés par nom) selon le rôle de l'appelant via le helper existant `visibleUsers` : MANAGER → ses consultants (`findByManagerIdAndRole`) ; RESPONSIBLE_SOC → consultants de `SecurityUtils.currentSocId()` (société sélectionnée) ; ADMIN → tous les consultants (`findAll`).
+- Backend — `ConsultantController` : nouveau `GET /consultants/filter-list` (pas de paramètre `socId` : le périmètre est résolu côté serveur selon le rôle, pas de fuite inter-société pour un non-admin).
+- Frontend — `api/consultants.ts` : `filterList()`.
+- Frontend — `pages/CraList.tsx` : le sélecteur de consultant (liste) est affiché pour tous les non-consultants (`Tous les consultants`) et alimenté par `filterList()` ; la sélection filtre les CRA par `consultantId` (en plus de la recherche texte) ; pagination réinitialisée au changement de filtre.
+- Frontend — `pages/Unavailability.tsx` : le filtre consultant utilise désormais `filterList()` (au lieu de `summaries(socId)`), donc manager = son équipe, responsable_soc = société sélectionnée, admin = tous.
+- Isolation multi-société : le périmètre est calculé côté serveur à partir du principal (`currentSocId`/rôle) ; un responsable_soc reste limité à sa société, un manager à son équipe.
+
+**Vérification** : backend — 3 nouveaux tests `ConsultantServiceTest` (`filterList_managerReturnsOnlyManagedConsultants`, `filterList_responsableSocReturnsSocConsultantsOnly`, `filterList_adminReturnsAllConsultants`) ; `ConsultantServiceTest` 22/22 ; suite complète 264 tests, seul échec pré-existant non lié `SecurityIntegrationTest.adminCannotDeleteActiveUser`. Frontend — `CraList.test.tsx` 9/9, `Unavailability.test.tsx` 10/10 ; suite 15 fichiers / 145 tests, `lint` 0 erreur, `tsc -b` OK.
