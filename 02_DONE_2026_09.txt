@@ -662,3 +662,54 @@ archivé ici).
 - Isolation multi-société : le périmètre est calculé côté serveur à partir du principal (`currentSocId`/rôle) ; un responsable_soc reste limité à sa société, un manager à son équipe.
 
 **Vérification** : backend — 3 nouveaux tests `ConsultantServiceTest` (`filterList_managerReturnsOnlyManagedConsultants`, `filterList_responsableSocReturnsSocConsultantsOnly`, `filterList_adminReturnsAllConsultants`) ; `ConsultantServiceTest` 22/22 ; suite complète 264 tests, seul échec pré-existant non lié `SecurityIntegrationTest.adminCannotDeleteActiveUser`. Frontend — `CraList.test.tsx` 9/9, `Unavailability.test.tsx` 10/10 ; suite 15 fichiers / 145 tests, `lint` 0 erreur, `tsc -b` OK.
+
+----------------------------------------------------------------------
+### 2026-09-16 20:41:05 — Notifications du consultant : ouverture de l'objet concerné (01_TODO_01)
+
+**Tâche** : notifications du consultant — lorsque le consultant clique sur une notification : (1) le nombre de notifications non lues doit décrémenter si elle était non lue ; (2) l'objet concerné (CRA, indispo, …) doit s'afficher (comme pour le manager).
+
+**Implémentation**
+- Point (1) : déjà en place — `NotificationBell.openItem()` appelle `notificationsApi.markRead(id)` (si non lue) et décrémente le compteur (`setUnread(n => max(0, n-1))`). Aucun changement nécessaire.
+- Backend — `CraService` : les liens des notifications du consultant pointent désormais vers l'objet et non la liste. `notifyConsultant(...)` construit la cible `link + "/" + cra.getId()` (link = `/cras` ou `/indispos`) → `/cras/{id}` ou `/indispos/{id}`, exactement le format déjà utilisé par la notification « Indispo annulée » envoyée au manager. La notification de soumission au manager utilise aussi `/cras/{id}` / `/indispos/{id}`.
+- Backend — `UnavailabilityService` : le lien devient `/indisponibilites?open={id}` (`link(unavailability)`), la page Indisponibilités n'ayant pas de route `:id` (elle affiche l'objet sélectionné en bas de liste).
+- Frontend — `pages/Unavailability.tsx` : lit le paramètre `?open=` (`useSearchParams`) et sélectionne l'indisponibilité correspondante → l'objet (calendrier) s'affiche en bas.
+- Frontend — pour les CRA/Indispos, les routes existantes `/cras/:id` et `/indispos/:id` (`CraDetailRoute`) affichent l'objet concerné.
+- Le manager conserve son comportement existant ; le consultant obtient le même résultat.
+
+**Vérification** : backend — `CraServiceTest.validate_notifiesConsultantWithObjectLink` (lien = `/cras/{id}`) ; `UnavailabilityServiceTest.validate_notifiesConsultantWithOpenLink` (lien = `/indisponibilites?open=1`) ; `CraServiceTest` 45/45, `UnavailabilityServiceTest` 13/13 ; suite complète 268 tests, seul échec pré-existant non lié `SecurityIntegrationTest.adminCannotDeleteActiveUser`. Frontend — test `ouvre l'indisponibilité ciblée via le paramètre ?open` ; suite 15 fichiers / 148 tests, `lint` 0 erreur, `tsc -b` OK.
+
+----------------------------------------------------------------------
+### 2026-09-16 21:32:04 — Règles de rattachement manager des utilisateurs (01_TODO_01)
+
+**Tâche** : un user avec le rôle CONSULTANT doit avoir un manager, qui peut être un user de rôle MANAGER ou RESPONSIBLE_SOC ; un user avec le rôle MANAGER doit aussi avoir un manager (MANAGER ou RESPONSABLE_SOC). Un user qui a un manager peut faire des CRA et des Indispos.
+
+**Implémentation**
+- Backend — `ConsultantService.resolveManager()` : n'accepte plus que les comptes de rôle **MANAGER** ou **RESPONSIBLE_SOC** (ADMIN et CONSULTANT refusés, message « Le manager doit avoir le rôle MANAGER ou RESPONSIBLE_SOC »).
+- Backend — `create()` (consultant) : manager obligatoire (`requireManagerAssigned(CONSULTANT, ...)`).
+- Backend — `createPerson()` : manager obligatoire si le rôle est MANAGER ; optionnel si RESPONSIBLE_SOC.
+- Backend — `update()` : manager obligatoire lorsque le rôle résultant est CONSULTANT ou MANAGER, et interdiction d'être son propre manager.
+- Backend — `updatePerson()` : même contrôle de rattachement après changement de rôle.
+- Backend — `managers()` (liste des managers possibles) : ne renvoie plus que les MANAGER/RESPONSIBLE_SOC (les CONSULTANT en étaient inclus à tort).
+- Règle « un user qui a un manager peut faire des CRA / Indispos » : satisfaite de fait — tout CONSULTANT ayant désormais obligatoirement un manager, la création de CRA/Indispo reste possible (aucun changement nécessaire dans `CraService`).
+- Frontend — `Consultants.tsx` : le champ « Manager » est requis pour les rôles CONSULTANT et MANAGER (message d'erreur si vide) ; l'utilisateur lui-même est exclu des options de manager.
+- Isolation multi-société inchangée (`SecurityUtils.requireSocAccess` conservé).
+
+**Vérification** : backend — 4 nouveaux tests (`create_consultant_withoutManager_throws`, `create_manager_withoutManager_throws`, `create_withConsultantAsManager_throws`, `update_selfAsManager_throws`) et tests existants adaptés (manager fourni) ; `ConsultantServiceTest` 26/26 ; `SecurityIntegrationTest` adapté (consultants créés avec manager) et vert en isolation ; suite complète 272 tests, seul échec pré-existant non lié `SecurityIntegrationTest.adminCannotDeleteActiveUser` (order-dependent). Frontend — suite 15 fichiers / 148 tests, `lint` 0 erreur, `tsc -b` OK.
+
+----------------------------------------------------------------------
+### 2026-09-16 21:34:38 — Modification du rôle d'un collaborateur (RESPONSIBLE_SOC / MANAGER) (01_TODO_02)
+
+**Tâche** : un RESPONSIBLE_SOC peut modifier le rôle de l'un de ses collaborateurs en RESPONSIBLE_SOC, MANAGER ou CONSULTANT ; un MANAGER peut modifier le rôle de l'un de ses collaborateurs en MANAGER ou CONSULTANT.
+
+**Implémentation**
+- Backend — `ConsultantService.validateRoleChange(principal, cible, nouveauRole)` appelé par `update()` lorsque le rôle change réellement :
+  - RESPONSIBLE_SOC → rôles autorisés {RESPONSIBLE_SOC, MANAGER, CONSULTANT} ;
+  - MANAGER → rôles autorisés {MANAGER, CONSULTANT} (un manager ne peut donc pas promouvoir en RESPONSIBLE_SOC) ;
+  - un utilisateur ne peut pas modifier son propre rôle (sauf ADMIN) ;
+  - ADMIN sans restriction.
+  Le contrôle de périmètre existant (`requireCanManage`) reste appliqué : un manager ne modifie que ses propres consultants.
+- Backend — le rattachement manager introduit par la tâche précédente s'applique aussi : si le rôle résultant est MANAGER, un manager doit être fourni ; si le rôle résultant est CONSULTANT, un manager est également requis.
+- Frontend — `Consultants.tsx` : la liste déroulante « Type de collaborateur » affiche les rôles autorisés selon le rôle de l'utilisateur connecté (RESPONSIBLE_SOC : 3 rôles ; MANAGER : CONSULTANT/MANAGER ; sinon le rôle courant uniquement). L'option « Consultant » est désormais proposée aussi en édition (elle ne l'était qu'à la création), permettant de rétrograder un collaborateur en consultant. Le manager courant reste sélectionnable comme manager d'un collaborateur (filtre limité à l'auto-rattachement).
+- Isolation multi-société : `SecurityUtils.requireSocAccess` conservé.
+
+**Vérification** : backend — 3 nouveaux tests (`update_responsibleSocCanSetManagerRole`, `update_managerCannotSetResponsibleRole`, `update_cannotChangeOwnRole`) ; `ConsultantServiceTest` 29/29 ; suite complète 275 tests, seul échec pré-existant non lié `SecurityIntegrationTest.adminCannotDeleteActiveUser` (order-dependent). Frontend — suite 15 fichiers / 148 tests, `lint` 0 erreur, `tsc -b` OK.
