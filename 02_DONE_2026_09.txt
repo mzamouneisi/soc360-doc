@@ -740,3 +740,15 @@ archivé ici).
 - Backend — aucun changement nécessaire : `applyRhs` (utilisé par `create`, `createPerson` et `update`) applique déjà position / date d'embauche / date de naissance / n° sécurité sociale / salaire / devise / nationalité / contact d'urgence pour tous les rôles, et `toDto` renvoie déjà ces champs quel que soit le rôle.
 
 **Vérification** : frontend — `lint` 0 erreur, `tsc -b` OK, suite 15 fichiers / 150 tests. Backend non modifié.
+
+----------------------------------------------------------------------
+### 2026-09-17 12:18:18 — Filtre Année-Mois (calendrier) sur les pages CRA et Indisponibilités (01_TODO_01)
+
+**Tâche** : ajouter un filtre (Année-Mois) de type date calendar, à côté de la liste des utilisateurs, pour les interfaces d'affichage des CRA et des indisponibilités.
+
+**Implémentation**
+- Frontend — `pages/CraList.tsx` : ajout d'un champ `<input type="month">` (Année-Mois) à côté du sélecteur de consultant et de la recherche. La sélection pilote la période affichée (`openPeriod(year, month)`), en cohérence avec le sélecteur de période existant (mois/année + ←/auj/→).
+- Frontend — `pages/Unavailability.tsx` : ajout d'un champ `<input type="month">` à côté du sélecteur de consultant. La liste est filtrée sur les indisponibilités **chevauchant le mois sélectionné** (bornes `monthBounds` calculées en UTC, comparaison `startDate`/`endDate`), en combinaison avec la recherche ; la pagination est réinitialisée au changement de mois.
+- Backend : aucun changement (filtrage côté IHM).
+
+**Vérification** : frontend — nouveau test `Unavailability.test.tsx` « filtre par mois » ; suite 15 fichiers / 151 tests, `lint` 0 erreur, `tsc -b` OK.
