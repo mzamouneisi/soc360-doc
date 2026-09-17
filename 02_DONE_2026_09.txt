@@ -829,3 +829,17 @@ archivé ici).
 - Backend : aucun changement.
 
 **Vérification** : frontend — suite 15 fichiers / 154 tests, `lint` 0 erreur, `tsc -b` OK, `vite build` OK.
+
+----------------------------------------------------------------------
+### 2026-09-17 17:03:49 — Statut CRA recalculé à la consultation et renommage SEMI_VALID → VALREJ (01_TODO_01)
+
+**Tâche** : page CRA — un CRA au statut « Validé » peut avoir des événements non validés (vieux CRA mal validé) ; en tant que manager (ou responsable_soc) qui le consulte, le statut doit être remis en cohérence : `VALIDE` (tous les événements validés), `REJET` (aucun validé), `VALREJ` (au moins un validé et au moins un invalidé). Le statut `SEMI_VALID` est remplacé par `VALREJ`.
+
+**Implémentation**
+- Backend — `common/enums/CraStatus.java` : le statut `SEMI_VALID` est renommé **`VALREJ`**.
+- Backend — migration Flyway `V46__cra_status_valrej.sql` : `UPDATE cra SET status = 'VALREJ' WHERE status = 'SEMI_VALID';` (les données existantes sont migrées).
+- Backend — `CraService.recomputeStatusFromEvents` produit désormais `VALIDATED` (tous validés) / `VALREJ` (mixte) / `REJECTED` (aucun validé) ; nouveau `syncStatusFromEvents(cra)` appelé par `getById` : à la consultation, si le CRA/Indispo n'est ni en brouillon ni soumis, le statut est recalculé depuis les événements et le changement est historisé (« Mise à jour du statut selon les événements »). Aucun changement si le statut est déjà cohérent.
+- Frontend — `api/types.ts` (`CraStatus`), `lib/format.ts` (libellé **« Partiellement validé »**, badge info), `pages/CraDetail.tsx` et `pages/IndispoList.tsx` : renommage des références `SEMI_VALID` → `VALREJ`.
+- Boutons « Valider tout » / « Invalider tout » (déjà pilotés par les événements, `hasInactiveEvent` / `hasActiveEvent`) conformes : tous validés → « Valider tout » inactif et « Invalider tout » actif ; tous invalidés → l'inverse ; mixte → les deux actifs.
+
+**Vérification** : backend — nouveau test `CraServiceTest.getById_recomputesInconsistentStatusFromEvents` ; `CraServiceTest` 49/49 ; suite complète 285 tests, seul échec pré-existant non lié `SecurityIntegrationTest.adminCannotDeleteActiveUser` (order-dependent). Frontend — suite 15 fichiers / 154 tests, `lint` 0 erreur, `tsc -b` OK, `vite build` OK.
