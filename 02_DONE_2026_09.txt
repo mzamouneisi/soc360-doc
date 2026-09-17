@@ -713,3 +713,19 @@ archivé ici).
 - Isolation multi-société : `SecurityUtils.requireSocAccess` conservé.
 
 **Vérification** : backend — 3 nouveaux tests (`update_responsibleSocCanSetManagerRole`, `update_managerCannotSetResponsibleRole`, `update_cannotChangeOwnRole`) ; `ConsultantServiceTest` 29/29 ; suite complète 275 tests, seul échec pré-existant non lié `SecurityIntegrationTest.adminCannotDeleteActiveUser` (order-dependent). Frontend — suite 15 fichiers / 148 tests, `lint` 0 erreur, `tsc -b` OK.
+
+----------------------------------------------------------------------
+### 2026-09-17 10:54:24 — Périmètre de consultation des CRA / Indisponibilités selon le rôle (01_TODO_01)
+
+**Tâche** : en tant que manager, consulter la liste des indisponibilités en ne voyant que celles de son équipe ; idem pour les CRA ; en tant que RESPONSIBLE_SOC, voir les CRA / indisponibilités de toute la société sélectionnée.
+
+**Implémentation**
+- Backend — `UnavailabilityService.list` : nouveau périmètre par rôle.
+  - **MANAGER** : ne renvoie que les indisponibilités de son équipe et les siennes — identifiants calculés via `managerScopeIds` (lui-même + `userAccountRepository.findByManagerId`), requête `findByConsultantIdInOrderByStartDateDesc`. Un `consultantId` hors de ce périmètre → 403 « Ce consultant n'appartient pas à votre équipe ».
+  - **RESPONSIBLE_SOC / ADMIN** : comportement inchangé (société sélectionnée via `effectiveSocId`/`currentSocId`, ou toutes les sociétés pour l'admin).
+  - **CONSULTANT** : ses propres indisponibilités.
+- Backend — `UnavailabilityRepository.findByConsultantIdInOrderByStartDateDesc(Collection<Long>)`.
+- CRA : le manager consulte déjà les CRA de son équipe (`CraService.findByManagerYear`, + ses propres CRA fusionnés côté frontend) ; le RESPONSIBLE_SOC consulte toute la société sélectionnée (`findBySocYear` via `effectiveSocId`). Aucun changement nécessaire.
+- Isolation multi-société : le périmètre manager passe par la relation manager→collaborateur ; le RESPONSIBLE_SOC reste borné à `currentSocId()`.
+
+**Vérification** : backend — 2 nouveaux tests `UnavailabilityServiceTest` (`list_managerSeesOnlyTeamAndSelf`, `list_managerFilteringForeignConsultant_isForbidden`) ; `UnavailabilityServiceTest` 18/18 ; suite complète 282 tests, seul échec pré-existant non lié `SecurityIntegrationTest.adminCannotDeleteActiveUser` (order-dependent). Frontend — suite 15 fichiers / 150 tests, `lint` 0 erreur, `tsc -b` OK.
