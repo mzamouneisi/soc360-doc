@@ -729,3 +729,14 @@ archivé ici).
 - Isolation multi-société : le périmètre manager passe par la relation manager→collaborateur ; le RESPONSIBLE_SOC reste borné à `currentSocId()`.
 
 **Vérification** : backend — 2 nouveaux tests `UnavailabilityServiceTest` (`list_managerSeesOnlyTeamAndSelf`, `list_managerFilteringForeignConsultant_isForbidden`) ; `UnavailabilityServiceTest` 18/18 ; suite complète 282 tests, seul échec pré-existant non lié `SecurityIntegrationTest.adminCannotDeleteActiveUser` (order-dependent). Frontend — suite 15 fichiers / 150 tests, `lint` 0 erreur, `tsc -b` OK.
+
+----------------------------------------------------------------------
+### 2026-09-17 12:00:09 — Uniformisation des champs de création/modification d'utilisateur (01_TODO_01)
+
+**Tâche** : uniformiser les champs pour la création / modification d'utilisateur dans l'IHM — un consultant, un manager et un responsable_soc sont tous des salariés et doivent donc disposer des mêmes champs.
+
+**Implémentation**
+- Frontend — `Consultants.tsx` : suppression des conditions `form.role === 'CONSULTANT'` qui masquaient les champs « salarié ». Les champs **Poste, Nationalité, Date d'embauche, Date de naissance, N° de sécurité sociale, Salaire de base, Devise** sont désormais affichés pour **tous les rôles** (CONSULTANT, MANAGER, RESPONSIBLE_SOC), à la création comme en modification. La section « Compte utilisateur » de création reste inchangée (les managers/responsables ont besoin d'un compte, le consultant l'a en option).
+- Backend — aucun changement nécessaire : `applyRhs` (utilisé par `create`, `createPerson` et `update`) applique déjà position / date d'embauche / date de naissance / n° sécurité sociale / salaire / devise / nationalité / contact d'urgence pour tous les rôles, et `toDto` renvoie déjà ces champs quel que soit le rôle.
+
+**Vérification** : frontend — `lint` 0 erreur, `tsc -b` OK, suite 15 fichiers / 150 tests. Backend non modifié.
