@@ -764,3 +764,28 @@ archivé ici).
 - Backend : aucun changement.
 
 **Vérification** : frontend — `lint` 0 erreur, `tsc -b` OK, suite 15 fichiers / 152 tests.
+
+----------------------------------------------------------------------
+### 2026-09-17 16:24:09 — Filtre Année-Mois des pages CRA / Indisponibilités (01_TODO_01)
+
+**Tâche** : page CRA / Indisponibilités — remettre le filtre année-mois afin de bien voir les année-mois, en espérant que cela fonctionne dans tous les navigateurs connus si possible.
+
+**Implémentation**
+- Frontend — `components/ui.tsx` : nouveau composant `MonthInput` réutilisable. Il détecte la prise en charge de `<input type="month">` (sonde `document.createElement('input')` mémoïsée) et rend le champ natif année-mois si disponible ; sinon il retombe sur un `<input type="text" inputMode="numeric" placeholder="AAAA-MM" pattern="\d{4}-\d{2}">`, garantissant un filtre année-mois exploitable dans tous les navigateurs.
+- Frontend — `pages/CraList.tsx` : le filtre « Filtrer par mois » repasse de `type="date"` à `MonthInput` ; la valeur stockée reste `AAAA-MM` (plus de suffixe `-01`) et continue de piloter l'année affichée, le filtrage (`c.year`/`c.month`) et la réinitialisation de la pagination.
+- Frontend — `pages/Unavailability.tsx` : idem, le filtre « Filtrer par mois » utilise `MonthInput` et filtre les indisponibilités chevauchant le mois sélectionné (`monthBounds`).
+- Frontend — `pages/CraList.test.tsx` / `pages/Unavailability.test.tsx` : valeurs des tests de filtre ajustées au format année-mois (`2026-07`, `2026-11`).
+- Backend : aucun changement (filtrage côté IHM).
+
+**Vérification** : frontend — `lint` 0 erreur, `tsc -b` OK, suite 15 fichiers / 152 tests, `vite build` OK.
+
+----------------------------------------------------------------------
+### 2026-09-17 16:24:09 — Libellé du retour au mois courant sur la page CRA (01_TODO_02)
+
+**Tâche** : page CRA — remplacer « Aujourd'hui » par « Mois Courant ».
+
+**Implémentation**
+- Frontend — `pages/CraList.tsx` : le bouton de retour à la période courante affiche désormais **« Mois Courant »** (au lieu de « Aujourd'hui ») ; le titre d'aide devient « Revenir au mois courant ».
+- Backend : aucun changement.
+
+**Vérification** : frontend — `lint` 0 erreur, `tsc -b` OK, suite 15 fichiers / 152 tests, `vite build` OK.
