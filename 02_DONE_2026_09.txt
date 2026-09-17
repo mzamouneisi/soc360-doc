@@ -789,3 +789,43 @@ archivé ici).
 - Backend : aucun changement.
 
 **Vérification** : frontend — `lint` 0 erreur, `tsc -b` OK, suite 15 fichiers / 152 tests, `vite build` OK.
+
+----------------------------------------------------------------------
+### 2026-09-17 16:39:33 — Libellé « Mois : » sur la page CRA (01_TODO_01)
+
+**Tâche** : page CRA — remplacer « Période : » par « Mois : ».
+
+**Implémentation**
+- Frontend — `pages/CraList.tsx` : le libellé du sélecteur de période est renommé de « Période : » en **« Mois : »** (le `<span class="min-w-[4.5rem]">` d'alignement est conservé).
+- Backend : aucun changement.
+
+**Vérification** : frontend — `lint` 0 erreur, `tsc -b` OK, suite 15 fichiers / 153 tests, `vite build` OK.
+
+----------------------------------------------------------------------
+### 2026-09-17 16:39:33 — Historique du CRA (01_TODO_02)
+
+**Tâche** : historique du CRA manquant — on doit avoir : date modif ; modifié par ; commentaire ; statut avant ; statut après.
+
+**Implémentation**
+- Backend — migration Flyway `V45__cra_history.sql` : table `cra_history` (`id`, `date_modif`, `cra_id` FK `cra` ON DELETE CASCADE, `modifier` FK `user_account` ON DELETE SET NULL, `comment` VARCHAR(500), `status_before` VARCHAR(20) nullable, `status_after` VARCHAR(20) NOT NULL) + index `idx_cra_history_cra`.
+- Backend — `CraHistory` (entité JPA), `CraHistoryRepository.findByCraIdOrderByIdAsc`, `CraDtos.CraHistoryDto(id, dateModif, craId, modifierId, modifierName, comment, statusBefore, statusAfter)`.
+- Backend — `CraService` : helpers `recordHistory(...)`, `recordStatusChange(...)` et `currentUserOrNull()`. Chaque changement est tracé : `createForMonth` (Création, statut avant null), `save` (Modification), `submit` (Soumission), `validate` (Validation), `reject` (Rejet), `markPendingSend` (mise en attente d'envoi), `sendIndispo` (validation/rejet), `cancel` (retrait → brouillon / annulation → annulé) ; `setActivityValid` / `setRangeValid` via `recordStatusChange` (enregistré uniquement si le statut change).
+- Backend — `CraController` : nouvel endpoint `GET /api/cras/{id}/history`, protégé par l'isolation multi-société (`SecurityUtils.requireSocAccess` sur la société du consultant, comme `/{id}/exchanges`).
+- Frontend — `api/types.ts` (`CraHistoryDto`), `api/cras.ts` (`history(id)`), `pages/CraDetail.tsx` : le bouton « Historique » ouvre l'historique du CRA (tableau **Date modif / Modifié par / Commentaire / Statut avant / Statut après**), à la place de l'ancien affichage des échanges.
+- Frontend — `pages/CraDetail.test.tsx` : nouveau test « affiche l'historique des modifications du CRA ».
+
+**Vérification** : backend — `CraServiceTest` 48/48 (dont `history_recordsStatusTransitions`, `history_recordsReject`) ; suite complète 284 tests, seul échec pré-existant non lié `SecurityIntegrationTest.adminCannotDeleteActiveUser` (order-dependent). Frontend — suite 15 fichiers / 154 tests, `lint` 0 erreur, `tsc -b` OK, `vite build` OK.
+
+----------------------------------------------------------------------
+### 2026-09-17 16:41:44 — Bouton Historique par CRA dans la liste (01_TODO_03)
+
+**Tâche** : page CRA — ajouter un bouton « Historique » pour chaque élément du CRA dans la liste.
+
+**Implémentation**
+- Frontend — nouveau composant réutilisable `components/CraHistoryModal.tsx` : affiche l'historique d'un CRA/Indispo (chargement via `crasApi.history(craId)`, tableau **Date modif / Modifié par / Commentaire / Statut avant / Statut après**).
+- Frontend — `pages/CraDetail.tsx` : utilise désormais `CraHistoryModal` (le modal d'historique local est supprimé, l'état `history`/`historyLoading` et l'appel API sont délégués au composant).
+- Frontend — `pages/CraList.tsx` : chaque ligne de CRA dispose d'un bouton **« Historique »** dans la colonne Actions ; le clic ouvre `CraHistoryModal` pour ce CRA (`isIndispo` déduit du type `CONGE`).
+- Frontend — `pages/CraList.test.tsx` : nouveau test « ouvre l'historique d'un CRA depuis la liste » (mock `crasApi.history`).
+- Backend : aucun changement.
+
+**Vérification** : frontend — suite 15 fichiers / 154 tests, `lint` 0 erreur, `tsc -b` OK, `vite build` OK.
