@@ -752,3 +752,15 @@ archivé ici).
 - Backend : aucun changement (filtrage côté IHM).
 
 **Vérification** : frontend — nouveau test `Unavailability.test.tsx` « filtre par mois » ; suite 15 fichiers / 151 tests, `lint` 0 erreur, `tsc -b` OK.
+
+----------------------------------------------------------------------
+### 2026-09-17 15:14:28 — Boutons de navigation mensuelle de la liste des CRA (01_TODO_01)
+
+**Tâche** : changer le label des boutons de navigation entre les mois pour la liste des CRA — remplacer « auj » par « Aujourd'hui » ; élargir un peu la largeur du label « Période : ».
+
+**Implémentation**
+- Frontend — `pages/CraList.tsx` : le bouton de retour au mois courant affiche désormais **« Aujourd'hui »** (au lieu de « auj ») ; le titre d'aide « Revenir au mois actuel » est conservé.
+- Frontend — `pages/CraList.tsx` : le libellé « Période : » est enveloppé dans un `<span class="min-w-[4.5rem]">` et le `<label>` passe en `whitespace-nowrap`, élargissant légèrement le libellé.
+- Backend : aucun changement.
+
+**Vérification** : frontend — `lint` 0 erreur, `tsc -b` OK, suite 15 fichiers / 152 tests.
