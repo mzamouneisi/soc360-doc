@@ -1124,3 +1124,37 @@ consultants — filtre par consultant via une liste, et filtre par type d'activi
 consultant et par type » (2 activités ; filtre consultant → seule celle du consultant choisie ;
 filtre type → seule celle du type choisi ; `filterList()` appelé) ; suite 17 fichiers / 161 tests,
 `lint` 0 erreur, `tsc -b` OK, `vite build` OK. Backend non modifié.
+
+----------------------------------------------------------------------
+### 2026-09-18 17:04:11 — soc-49 : périmètre de consultation/gestion des activités par rôle (01_TODO_01)
+
+**Tâche** : consulter la liste des activités de mes consultants. En tant que manager, ne pas
+pouvoir consulter (ni gérer) les activités des consultants hors de mon équipe (les consultants
+dont je suis le manager). Le RESPONSIBLE_SOC peut voir toutes les activités de la société
+sélectionnée ; l'ADMIN peut voir toutes les activités de l'application.
+
+**Implémentation** (backend — `ActivityService`)
+- `findAll(socId, typeId, consultantId)` : pour un **MANAGER**, nouveau périmètre via
+  `managerActivities(...)` :
+  - sans `consultantId` → uniquement les activités dont le consultant a l'utilisateur courant
+    pour manager (les activités partagées et celles des autres consultants sont exclues) ;
+  - avec `consultantId` (lui-même ou un de ses consultants) → activités partagées + celles de ce
+    consultant (comportement nécessaire à la page CRA) ;
+  - un `consultantId` hors équipe → `403` « Ce consultant ne fait pas partie de votre équipe ».
+  RESPONSIBLE_SOC et ADMIN conservent le comportement précédent (société sélectionnée / toutes).
+- `findById`, `update`, `delete` : nouveau contrôle `requireCanManage(activity)` — un MANAGER ne
+  peut consulter/modifier/supprimer que les activités de ses consultants (les activités partagées
+  ou d'un autre consultant → `403` « Accès refusé : cette activité ne fait pas partie de votre
+  périmètre ») ; RESPONSIBLE_SOC borné à sa société (`requireSocAccess`) ; ADMIN accès total.
+- Helpers `isManagedByCurrentManager(...)`, `isSelfOrManagedConsultant(...)`, `requireCanManage(...)`.
+- Isolation multi-société : `requireCanManage` appelle `requireSocAccessIfAuthenticated` sur la
+  société de l'activité ; le périmètre manager reste borné à son équipe.
+- Frontend : aucun changement nécessaire — la liste `Activities.tsx` est alimentée par `findAll`
+  (désormais filtrée côté serveur pour le manager), et les filtres soc-48 s'appliquent dessus.
+
+**Vérification** : backend — 5 nouveaux tests `ActivityServiceTest`
+(`findAll_manager_returnsOnlyTeamActivities`, `findAll_managerForeignConsultant_isForbidden`,
+`findAll_managerOwnConsultant_returnsSharedAndHis`, `update_managerForeignActivity_isForbidden`,
+`delete_managerForeignActivity_isForbidden`) ; `ActivityServiceTest` 15/15 ; suite complète
+300 tests, seul échec pré-existant non lié `SecurityIntegrationTest.adminCannotDeleteActiveUser`
+(order-dependent).
