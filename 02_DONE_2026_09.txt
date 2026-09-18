@@ -883,3 +883,36 @@ responsable_soc/admin) les passe à vrai.
 `CraServiceTest` 52/52 ; suite complète 290 tests, seul échec pré-existant non lié
 `SecurityIntegrationTest.adminCannotDeleteActiveUser` (order-dependent). Frontend — `lint` 0 erreur,
 15 fichiers / 154 tests, `tsc -b` OK, `vite build` OK.
+
+----------------------------------------------------------------------
+### 2026-09-18 12:49:11 — CRA : ajout possible le week-end / jours fériés + message info si l'activité ne l'autorise pas (01_TODO_01)
+
+**Tâche** : lorsqu'on ajoute un nouveau CRA, par défaut on peut ajouter des activités le week-end
+et les jours fériés ; mais si l'activité que l'on veut ajouter ne l'autorise pas, un message
+d'information s'affiche (« Cette activité n'autorise pas … »).
+
+**Contexte** : la tâche soc-39 précédente masquait le bouton « + » et filtrait les listes
+d'activités sur les jours WEEKEND/PUBLIC_HOLIDAY, ce qui rendait l'ajout impossible sans
+explication. Cette tâche remplace ce comportement silencieux par un affichage ouvert + un
+message d'information.
+
+**Implémentation** (frontend uniquement — la règle métier backend `CraService.save` de soc-39 est conservée)
+- Frontend — `CraDetail.tsx` : suppression du filtrage `activitiesForDay` ; le bouton « + » du
+  calendrier apparaît à nouveau sur tous les jours WORKED/WEEKEND/PUBLIC_HOLIDAY ; les listes
+  déroulantes (calendrier, vue « Ligne » et modale d'événement) proposent toutes les activités.
+- Frontend — nouveau helper `activityDayRestriction(dayType, activity)` : renvoie
+  « Cette activité n'autorise pas le week-end. » (jour WEEKEND sans `weekendAllowed`) ou
+  « Cette activité n'autorise pas les jours fériés. » (jour PUBLIC_HOLIDAY sans `holidayAllowed`).
+- Frontend — bandeau d'information (bleu) en haut du CRA/Indispo dès qu'un événement viole la
+  règle ; message inline (ambre) sous la ligne concernée dans la modale d'événement.
+- Frontend — `doSave()` bloque l'enregistrement/soumission tant qu'une violation existe (le
+  message d'information est déjà affiché), ce qui évite l'erreur rouge du backend.
+- Backend : aucun changement (`Activity.weekendAllowed` / `holidayAllowed` et le contrôle dans
+  `CraService.save` restent la source de vérité).
+- Isolation multi-société : sans objet (UI, aucune nouvelle requête).
+
+**Vérification** : frontend — nouveau test `CraDetail.test.tsx` « affiche un message info si
+l'activité choisie n'autorise pas le week-end » (ouverture d'un CRA brouillon, ajout d'un
+événement un samedi avec une activité `weekendAllowed=false` → message affiché) ; suite
+15 fichiers / 155 tests, `lint` 0 erreur, `tsc -b` OK, `vite build` OK. Backend non modifié
+(dernière suite connue : 290 tests, seul échec pré-existant `adminCannotDeleteActiveUser`).
