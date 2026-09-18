@@ -1054,18 +1054,29 @@ consultant).
 - Frontend — `pages/Activities.tsx` : pour un MANAGER, la liste des consultants provient de
   `consultantsApi.managed()` (ses propres consultants) au lieu de `summaries(socId)` ; le champ
   devient obligatoire (`Consultant *`, message « Sélectionnez un de vos consultants. ») et
-  l'option **« Aucun » est retirée** (remplacée par un placeholder « Sélectionner… »). Les
-  RESPONSIBLE_SOC / ADMIN conservent l'option « Aucun » (activités partagées).
+  l'option **« Aucun » est retirée** (remplacée par un placeholder « Sélectionner… »).
+  **Correction ultérieure** : la règle est étendue au RESPONSIBLE_SOC (le bug a été reproduit en
+  local avec un compte RESPONSIBLE_SOC) — le champ consultant est obligatoire et l'option
+  « Aucun » est retirée ; seule l'ADMIN conserve l'option « Aucun » (activité partagée).
 - Isolation multi-société : `requireSocAccess` sur la société de l'activité ; un manager reste
   borné à sa société et à son équipe.
 
-**Vérification** : backend — 3 nouveaux tests `ActivityServiceTest`
+**Vérification** : backend — 5 tests `ActivityServiceTest`
 (`create_managerWithoutConsultant_isForbidden`, `create_managerWithForeignConsultant_isForbidden`,
-`create_managerWithOwnConsultant_succeeds`) ; `ActivityServiceTest` 8/8 ; suite complète 293 tests,
-seul échec pré-existant non lié `SecurityIntegrationTest.adminCannotDeleteActiveUser`
-(order-dependent). Frontend — nouveau `pages/Activities.test.tsx` (manager → `managed()` appelé,
-pas de « Aucun », option du consultant listée ; responsable_soc → `summaries(5)` appelé,
-« Aucun » présent) ; suite 17 fichiers / 159 tests, `lint` 0 erreur, `tsc -b` OK, `vite build` OK.
+`create_managerWithOwnConsultant_succeeds`, `create_responsibleSocWithoutConsultant_isForbidden`,
+`create_responsibleSocWithConsultant_succeeds`) ; `ActivityServiceTest` 10/10 ; suite complète
+295 tests, seul échec pré-existant non lié `SecurityIntegrationTest.adminCannotDeleteActiveUser`
+(order-dependent). Frontend — `pages/Activities.test.tsx` : manager → `managed()` appelé, pas de
+« Aucun » ; responsable_soc → `summaries(5)` appelé, pas de « Aucun » non plus ; admin → « Aucun »
+présent ; suite 17 fichiers / 160 tests, `lint` 0 erreur, `tsc -b` OK, `vite build` OK.
+
+**Incident local (18/09 16:08)** : malgré le correctif MANAGER, un compte **RESPONSIBLE_SOC**
+(`mzamouneisi`) a créé en local une activité `consultant_id = NULL` (id 438, « aa »). Le contrôle
+ne couvrait que le rôle MANAGER. Correctif appliqué : `ActivityService` bloque désormais
+`consultantId == null` pour **MANAGER et RESPONSIBLE_SOC** (message « Une activité doit être
+rattachée à un consultant : « Aucun » n'est pas un consultant ») ; le contrôle de rattachement
+manager→consultant reste spécifique au MANAGER. Front : `needsConsultant = MANAGER ||
+RESPONSIBLE_SOC`. `ActivityServiceTest` 10/10, front 160/160.
 
 ----------------------------------------------------------------------
 ### 2026-09-18 15:44:52 — soc-50 (rappel) : « Aucun » n'est pas un consultant, le manager ne peut pas y ajouter (01_TODO_01)
