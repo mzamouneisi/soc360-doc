@@ -1186,3 +1186,23 @@ conteneur Azure ; pour conserver les sauvegardes, définir `BACKUP_DIRECTORY` ve
 
 **Vérification** : `DbBackupServiceTest` 5/5 ; suite complète 300 tests, seul échec pré-existant
 non lié `SecurityIntegrationTest.adminCannotDeleteActiveUser` (order-dependent). `ERROR.txt` vidé.
+
+----------------------------------------------------------------------
+### 2026-09-18 18:45:12 — Logs du serveur : bouton « Copier » à droite du nom de fichier (01_TODO_01)
+
+**Tâche** : page « Logs du serveur » — ajouter un bouton à droite du nom du fichier de log qui
+permet de copier dans le presse-papiers les lignes affichées en mémoire (copier-coller).
+
+**Implémentation** (frontend uniquement)
+- Frontend — `pages/Logs.tsx` : bouton **« Copier »** (`InlineButton`, aligné à droite via
+  `ml-auto`) placé à droite du nom du fichier de log. Il copie exactement les lignes actuellement
+  affichées, donc **après application du filtre** (`visible.join('\n')`).
+  - `copyText` : `navigator.clipboard.writeText` si disponible, sinon repli par
+    `textarea` + `document.execCommand('copy')` (contextes non sécurisés).
+  - Retour visuel « Copié ! » pendant 2 s ; bouton désactivé si aucune ligne visible.
+- Backend : aucun changement.
+
+**Vérification** : frontend — nouveau test `Logs.test.tsx` « copie les lignes affichées dans le
+presse-papiers » (mock `navigator.clipboard.writeText` ; clic sur « Copier » → appel avec
+`ligne-a\nligne-b` et libellé « Copié ! ») ; suite 17 fichiers / 162 tests, `lint` 0 erreur,
+`tsc -b` OK, `vite build` OK.
