@@ -948,3 +948,37 @@ samedi puis « + Ajouter un événement » avec une activité `weekendAllowed=fa
 « Information » affiché, message affiché, et la modale du jour reste sur « Aucun événement pour
 ce jour. » (activité non ajoutée). Suite 15 fichiers / 155 tests, `lint` 0 erreur, `tsc -b` OK,
 `vite build` OK. Backend non modifié.
+
+----------------------------------------------------------------------
+### 2026-09-18 13:03:34 — CRA : sélection explicite de l'activité puis dialog info si non autorisée (01_TODO_01)
+
+**Tâche** : lorsqu'on ajoute un nouveau CRA, par défaut on peut ajouter des activités le week-end
+et les jours fériés. Flow attendu : clic sur « + » → une dialog s'ouvre pour ajouter un événement ;
+clic sur « ajouter un événement » → on **sélectionne une activité** ; si l'activité sélectionnée
+n'est pas autorisée ce jour-là, un **dialog d'information** s'affiche (« cette activité n'autorise
+pas ») et **l'activité ne doit pas être ajoutée**.
+
+**Implémentation** (frontend uniquement — la règle métier backend `CraService.save` de soc-39 est conservée)
+- Frontend — `CraDetail.tsx`, `addActivity` : création d'une ligne d'événement **sans activité
+  présélectionnée** (`activityId: ''`) — l'utilisateur choisit explicitement l'activité dans la
+  liste déroulante ; plus aucune activité n'est ajoutée automatiquement.
+- Frontend — `updateActivity` : au changement d'activité, `activityDayRestriction(dayType, activity)`
+  vérifie l'autorisation week-end / jour férié ; en cas de refus le **dialog « Information »**
+  s'affiche et la sélection **n'est pas appliquée** (la valeur reste vide).
+- Frontend — `dayTotal` / `allowedDaysFor` / `updateActivity` : nouvelle fonction `activityDays(a)`
+  qui ne compte que les lignes ayant une activité sélectionnée, afin qu'une ligne vide n'inflate
+  pas le total du jour ni la complétude.
+- Frontend — le calendrier ne rend plus de « chip » pour les lignes sans activité (évite
+  « Activité inconnue ») ; les vues « Ligne » et la modale gardent la ligne avec le sélecteur
+  « Activité… ».
+- Frontend — `doSave()` : si une violation subsiste (données antérieures), le dialog s'affiche et
+  l'enregistrement/soumission est bloqué.
+- Backend : aucun changement (`Activity.weekendAllowed` / `holidayAllowed` et le contrôle dans
+  `CraService.save` restent la source de vérité).
+- Isolation multi-société : sans objet (UI, aucune nouvelle requête).
+
+**Vérification** : frontend — test `CraDetail.test.tsx` « affiche un message info si l'activité
+choisie n'autorise pas le week-end » adapté au flow : clic « + » sur un samedi, clic « + Ajouter
+un événement » (ligne vide), puis sélection d'une activité `weekendAllowed=false` dans la liste →
+dialog « Information » affiché, message affiché, et le sélecteur reste sur la valeur vide
+(activité non ajoutée). Suite 15 fichiers / 155 tests, `lint` 0 erreur, `tsc -b` OK, `vite build` OK.
