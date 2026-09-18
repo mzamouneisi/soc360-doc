@@ -1034,3 +1034,35 @@ affectée au consultant (les activités partagée et d'un autre consultant sont 
 « Week-end : Oui » / « Jours fériés : Non » selon les droits de l'activité, aucune action
 Modifier/Supprimer, et l'appel API est bien `{ socId: 5, consultantId: 2 }`. Suite
 16 fichiers / 157 tests, `lint` 0 erreur, `tsc -b` OK, `vite build` OK.
+
+----------------------------------------------------------------------
+### 2026-09-18 13:39:27 — soc-50 : un manager ne peut ajouter une activité que pour ses propres consultants (01_TODO_01)
+
+**Tâche** : en tant que manager, je ne dois pouvoir ajouter des activités que pour mes propres
+consultants. En particulier, je ne peux pas ajouter à l'élément « Aucun » (activité sans
+consultant).
+
+**Implémentation**
+- Backend — `ActivityService.apply` (utilisé par `create` et `update`) :
+  - si le principal est un **MANAGER** et que `consultantId` est null → `403` « Un manager ne peut
+    ajouter une activité que pour ses propres consultants » ;
+  - si `consultantId` est fourni, le consultant doit avoir pour manager l'utilisateur courant,
+    sinon `403` « Ce consultant n'est pas rattaché à vous » ;
+  - contrôle d'isolation `SecurityUtils.requireSocAccess(socId)` ajouté (ignoré pour les appels
+    internes/tests sans contexte de sécurité) ;
+  - helpers `isManagerPrincipal()` / `requireSocAccessIfAuthenticated(...)`.
+- Frontend — `pages/Activities.tsx` : pour un MANAGER, la liste des consultants provient de
+  `consultantsApi.managed()` (ses propres consultants) au lieu de `summaries(socId)` ; le champ
+  devient obligatoire (`Consultant *`, message « Sélectionnez un de vos consultants. ») et
+  l'option **« Aucun » est retirée** (remplacée par un placeholder « Sélectionner… »). Les
+  RESPONSIBLE_SOC / ADMIN conservent l'option « Aucun » (activités partagées).
+- Isolation multi-société : `requireSocAccess` sur la société de l'activité ; un manager reste
+  borné à sa société et à son équipe.
+
+**Vérification** : backend — 3 nouveaux tests `ActivityServiceTest`
+(`create_managerWithoutConsultant_isForbidden`, `create_managerWithForeignConsultant_isForbidden`,
+`create_managerWithOwnConsultant_succeeds`) ; `ActivityServiceTest` 8/8 ; suite complète 293 tests,
+seul échec pré-existant non lié `SecurityIntegrationTest.adminCannotDeleteActiveUser`
+(order-dependent). Frontend — nouveau `pages/Activities.test.tsx` (manager → `managed()` appelé,
+pas de « Aucun », option du consultant listée ; responsable_soc → `summaries(5)` appelé,
+« Aucun » présent) ; suite 17 fichiers / 159 tests, `lint` 0 erreur, `tsc -b` OK, `vite build` OK.
