@@ -982,3 +982,19 @@ choisie n'autorise pas le week-end » adapté au flow : clic « + » sur un same
 un événement » (ligne vide), puis sélection d'une activité `weekendAllowed=false` dans la liste →
 dialog « Information » affiché, message affiché, et le sélecteur reste sur la valeur vide
 (activité non ajoutée). Suite 15 fichiers / 155 tests, `lint` 0 erreur, `tsc -b` OK, `vite build` OK.
+
+----------------------------------------------------------------------
+### 2026-09-18 13:04:24 — CRA : si l'activité sélectionnée autorise le jour, elle est ajoutée (01_TODO_02)
+
+**Tâche** : si l'activité sélectionnée autorise le week-end / jour férié, elle doit être ajoutée.
+
+**Implémentation** : déjà couvert par la tâche précédente (01_TODO_01) — au changement d'activité,
+`updateActivity` applique `activityId` dès que `activityDayRestriction` ne renvoie rien : la ligne
+d'événement passe de « Activité… » à l'activité choisie, le total du jour (`activityDays`) et le
+« chip » du calendrier se mettent à jour. Aucune modification de code de production nécessaire ;
+ajout d'un test de non-régression.
+
+**Vérification** : frontend — nouveau test `CraDetail.test.tsx` « ajoute l'activité sélectionnée
+si elle autorise le week-end » : clic « + » sur un samedi, « + Ajouter un événement », sélection
+d'une activité `weekendAllowed=true` → aucun dialog « Information » et le sélecteur vaut
+l'activité choisie. Suite 15 fichiers / 156 tests, `lint` 0 erreur, `tsc -b` OK, `vite build` OK.
