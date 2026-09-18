@@ -1095,3 +1095,32 @@ n'a donc été nécessaire ; vérification de non-régression effectuée.
 `create_managerWithForeignConsultant_isForbidden`, `create_managerWithOwnConsultant_succeeds`) ;
 `Activities.test.tsx` 2/2 (manager → pas d'option « Aucun » et `managed()` appelé ; responsable_soc
 → option « Aucun » présente). `01_TODO_01` (doublon) supprimé.
+
+----------------------------------------------------------------------
+### 2026-09-18 16:39:33 — soc-48 : filtrer les activités par consultant et par type (01_TODO_02)
+
+**Tâche** : en tant que manager, filtrer les activités et afficher les activités d'un de mes
+consultants — filtre par consultant via une liste, et filtre par type d'activité.
+
+**Implémentation** (frontend uniquement — `GET /api/activities` supporte déjà `typeId` et
+`consultantId`, et `GET /api/consultants/filter-list` est déjà borné par rôle)
+- Frontend — `pages/Activities.tsx` : barre de filtres au-dessus de la liste :
+  - **Consultant** (`Select`) alimenté par `consultantsApi.filterList()` — périmètre serveur selon
+    le rôle : MANAGER → ses consultants (+ lui-même), RESPONSIBLE_SOC → consultants de la société
+    sélectionnée, ADMIN → tous. Option par défaut « Tous les consultants ».
+  - **Type d'activité** (`Select`) alimenté par `activityTypesApi.findAll(workingSocId)`. Option
+    par défaut « Tous les types ».
+  - Bouton **« Réinitialiser »** affiché dès qu'un filtre est actif.
+- Filtrage côté IHM (`filtered`) : `a.consultant?.id` pour le consultant, `a.type?.id` pour le
+  type ; la `Table` paginée clampée affiche le résultat ; nouvel état vide « Aucun résultat » quand
+  des filtres excluent toutes les activités (distinct de l'état « Aucune activité » initial).
+- Le sélecteur du **formulaire** d'ajout/édition reste inchangé (`managed()` pour le manager,
+  `summaries(socId)` pour le responsable_soc) afin de respecter la règle soc-50 (consultant
+  obligatoire pour MANAGER/RESPONSIBLE_SOC).
+- Isolation multi-société : `filterList()` est borné côté serveur (manager = son équipe,
+  responsable_soc = sa société, admin = tout) ; aucune fuite inter-société.
+
+**Vérification** : frontend — nouveau test `Activities.test.tsx` « filtre les activités par
+consultant et par type » (2 activités ; filtre consultant → seule celle du consultant choisie ;
+filtre type → seule celle du type choisi ; `filterList()` appelé) ; suite 17 fichiers / 161 tests,
+`lint` 0 erreur, `tsc -b` OK, `vite build` OK. Backend non modifié.
