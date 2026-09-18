@@ -1,0 +1,10 @@
+soc-50 Ajout d'activité
+
+
+En tant que manager je ne dois pouvoir ajouter d’activités que pour mes propre consultants
+en particulier, je ne peux pas ajouter à l'element de la liste avec label : Aucun
+Car Aucun n'est pas un nom de consultant
+cela signifie Aucun consultant
+Corriger ça svp
+
+
