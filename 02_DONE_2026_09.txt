@@ -1066,3 +1066,21 @@ seul échec pré-existant non lié `SecurityIntegrationTest.adminCannotDeleteAct
 (order-dependent). Frontend — nouveau `pages/Activities.test.tsx` (manager → `managed()` appelé,
 pas de « Aucun », option du consultant listée ; responsable_soc → `summaries(5)` appelé,
 « Aucun » présent) ; suite 17 fichiers / 159 tests, `lint` 0 erreur, `tsc -b` OK, `vite build` OK.
+
+----------------------------------------------------------------------
+### 2026-09-18 15:44:52 — soc-50 (rappel) : « Aucun » n'est pas un consultant, le manager ne peut pas y ajouter (01_TODO_01)
+
+**Tâche** : re-formulation de soc-50 — en tant que manager, ne pouvoir ajouter des activités que
+pour ses propres consultants ; ne pas pouvoir ajouter à l'élément de la liste portant le libellé
+« Aucun », car « Aucun » n'est pas un nom de consultant (cela signifie « aucun consultant »).
+
+**Constat** : demande déjà satisfaite par la tâche soc-50 précédente (commits backend `8780c46`,
+frontend `fc56a80`) — pour un MANAGER, l'option « Aucun » est absente du sélecteur de consultant
+(remplacée par un placeholder « Sélectionner… »), le champ est obligatoire et le backend refuse
+tout `consultantId` null ou rattaché à un autre manager. Aucune modification de code supplémentaire
+n'a donc été nécessaire ; vérification de non-régression effectuée.
+
+**Vérification** : `ActivityServiceTest` 8/8 (dont `create_managerWithoutConsultant_isForbidden`,
+`create_managerWithForeignConsultant_isForbidden`, `create_managerWithOwnConsultant_succeeds`) ;
+`Activities.test.tsx` 2/2 (manager → pas d'option « Aucun » et `managed()` appelé ; responsable_soc
+→ option « Aucun » présente). `01_TODO_01` (doublon) supprimé.
