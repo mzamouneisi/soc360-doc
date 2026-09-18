@@ -1013,11 +1013,14 @@ sont affectées. Menu « Mes Activités », placé juste avant le menu « CRA »
   ni celles d'autres consultants). Colonnes : Activité, Type, Projet, Période, Tarif,
   « Week-end / Jours fériés » (badges **explicites « Week-end : Oui/Non » et « Jours fériés :
   Oui/Non »** indiquant si l'activité peut être saisie ces jours-là), Statut.
-- Frontend — `layout/MainLayout.tsx` : nouvel item « Mes Activités » (`/mes-activites`, icône
-  activités) inséré **juste avant « CRA »** dans la section « Activité ». D'abord réservé au
-  CONSULTANT, il est finalement affiché **pour tous les rôles** (consultant, manager,
-  responsable_soc, admin) — chaque utilisateur voit dans « Mes Activités » les activités qui lui
-  sont personnellement affectées.
+- Frontend — `layout/MainLayout.tsx` : `NavItem` accepte `roles?: Role[]` ; `NavSection` filtre
+  sur le rôle en plus de `HIDDEN_FOR_CONSULTANT`. Nouvel item « Mes Activités »
+  (`/mes-activites`, icône activités, `roles: ['CONSULTANT']`) inséré **juste avant « CRA »** dans
+  la section « Activité » — finalement **réservé au seul rôle CONSULTANT** (retiré pour
+  responsable_soc, manager et admin).
+- Frontend — `pages/Activities.tsx` (« Activités & tarifs ») : ajout de la colonne
+  « Week-end / Jours fériés » dans la liste — badges explicites « Week-end : Oui/Non » et
+  « Jours fériés : Oui/Non » d'après `weekendAllowed` / `holidayAllowed` de chaque activité.
 - Frontend — `App.tsx` : import `MyActivities` + route `/mes-activites` (avant `/cras`), accessible
   à tout utilisateur authentifié (pas de `NotConsultantRoute`).
 - Backend — aucun changement : `GET /api/activities` borne déjà par société via
