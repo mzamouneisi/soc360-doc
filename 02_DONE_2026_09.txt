@@ -998,3 +998,35 @@ ajout d'un test de non-régression.
 si elle autorise le week-end » : clic « + » sur un samedi, « + Ajouter un événement », sélection
 d'une activité `weekendAllowed=true` → aucun dialog « Information » et le sélecteur vaut
 l'activité choisie. Suite 15 fichiers / 156 tests, `lint` 0 erreur, `tsc -b` OK, `vite build` OK.
+
+----------------------------------------------------------------------
+### 2026-09-18 13:11:02 — Menu consultant « Mes Activités » (lecture seule) (01_TODO_01)
+
+**Tâche** : ajouter un menu au consultant afin qu'il voie en lecture seule les activités qui lui
+sont affectées. Menu « Mes Activités », placé juste avant le menu « CRA ».
+
+**Implémentation** (frontend uniquement)
+- Frontend — nouvelle page `pages/MyActivities.tsx` (route `/mes-activites`) : liste **lecture
+  seule** (aucune action Modifier/Supprimer) des activités affectées au consultant connecté.
+  Données chargées via `activitiesApi.findAll({ socId: user.socId, consultantId: user.id })` puis
+  filtrées sur `a.consultant?.id === user.id` (n'affiche pas les activités partagées de la société
+  ni celles d'autres consultants). Colonnes : Activité, Type, Projet, Période, Tarif,
+  « Week-end / Jours fériés » (badges **explicites « Week-end : Oui/Non » et « Jours fériés :
+  Oui/Non »** indiquant si l'activité peut être saisie ces jours-là), Statut.
+- Frontend — `layout/MainLayout.tsx` : `NavItem` accepte `roles?: Role[]` ; `NavSection` filtre
+  sur le rôle en plus de `HIDDEN_FOR_CONSULTANT`. Nouvel item « Mes Activités »
+  (`/mes-activites`, icône activités, `roles: ['CONSULTANT']`) inséré **juste avant « CRA »** dans
+  la section « Activité » — visible uniquement par le rôle CONSULTANT.
+- Frontend — `App.tsx` : import `MyActivities` + route `/mes-activites` (avant `/cras`), accessible
+  à tout utilisateur authentifié (pas de `NotConsultantRoute`).
+- Backend — aucun changement : `GET /api/activities` borne déjà par société via
+  `SecurityUtils.effectiveSocId` (le consultant ne peut pas cibler une autre société) ; le filtre
+  « affectées à moi » est appliqué côté IHM.
+- Isolation multi-société : la requête passe par `effectiveSocId` (société du consultant imposée
+  pour un non-admin) ; aucune fuite inter-société.
+
+**Vérification** : frontend — nouveau `pages/MyActivities.test.tsx` : affiche uniquement l'activité
+affectée au consultant (les activités partagée et d'un autre consultant sont exclues), affiche
+« Week-end : Oui » / « Jours fériés : Non » selon les droits de l'activité, aucune action
+Modifier/Supprimer, et l'appel API est bien `{ socId: 5, consultantId: 2 }`. Suite
+16 fichiers / 157 tests, `lint` 0 erreur, `tsc -b` OK, `vite build` OK.
