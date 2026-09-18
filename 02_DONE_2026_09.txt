@@ -843,3 +843,43 @@ archivé ici).
 - Boutons « Valider tout » / « Invalider tout » (déjà pilotés par les événements, `hasInactiveEvent` / `hasActiveEvent`) conformes : tous validés → « Valider tout » inactif et « Invalider tout » actif ; tous invalidés → l'inverse ; mixte → les deux actifs.
 
 **Vérification** : backend — nouveau test `CraServiceTest.getById_recomputesInconsistentStatusFromEvents` ; `CraServiceTest` 49/49 ; suite complète 285 tests, seul échec pré-existant non lié `SecurityIntegrationTest.adminCannotDeleteActiveUser` (order-dependent). Frontend — suite 15 fichiers / 154 tests, `lint` 0 erreur, `tsc -b` OK, `vite build` OK.
+
+----------------------------------------------------------------------
+### 2026-09-18 12:34:06 — soc-39 : activité paramétrable le week-end / les jours fériés (01_TODO_01)
+
+**Tâche** : rendre paramétrable le fait qu'une activité puisse être ajoutée durant le week-end
+ou un jour férié. Dans l'interface d'ajout/modification d'une activité, ajouter une case
+« Activité possible le week-end » et une case « Activité possible les jours fériés ». Par
+défaut non cochées → ajout interdit le week-end et les jours fériés, sauf si le manager (ou
+responsable_soc/admin) les passe à vrai.
+
+**Implémentation**
+- Backend — migration Flyway `V47__activity_weekend_holiday.sql` : ajout des colonnes
+  `weekend_allowed` et `holiday_allowed` (BOOLEAN NOT NULL DEFAULT false) à la table `activity`.
+- Backend — entité `Activity` : champs `weekendAllowed` / `holidayAllowed` (défaut false).
+- Backend — `ActivityDtos` : `ActivityDto` et `ActivityRequest` exposent `weekendAllowed` /
+  `holidayAllowed` ; `ActivityService.apply` les persiste (null → false) et `toDto` les renvoie.
+- Backend — `CraService.save` : nouvelle règle par activité — un événement sur un jour
+  `WEEKEND` exige `activity.weekendAllowed`, sur un jour `PUBLIC_HOLIDAY` exige
+  `activity.holidayAllowed` (messages « L'activité « … » n'est pas autorisée le week-end /
+  les jours fériés (date) »). Remplace l'ancien blocage spécifique aux Indispos le week-end :
+  la règle s'applique désormais à tout CRA/Indispo et est pilotée par l'activité.
+- Frontend — `Activities.tsx` : deux cases à cocher « Activité possible le week-end » et
+  « Activité possible les jours fériés » (défaut décochées) dans le formulaire de création/
+  modification ; `types.ts` (`ActivityDto`/`ActivityRequest`) mis à jour.
+- Frontend — `CraDetail.tsx` : helper `activitiesForDay(day)` (filtre `weekendAllowed` pour un
+  jour WEEKEND, `holidayAllowed` pour un jour PUBLIC_HOLIDAY) ; le bouton « + » apparaît sur
+  les jours WORKED/WEEKEND/PUBLIC_HOLIDAY uniquement si au moins une activité est autorisée ;
+  l'ajout choisit par défaut une activité autorisée et affiche un message explicite sinon ;
+  les listes déroulantes des vues calendrier, ligne et modale d'événement sont filtrées par jour.
+- Isolation multi-société : inchangée (les activités sont déjà bornées par `id_soc`, `CraService`
+  opère sur le CRA/consultant contrôlé par `requireSocAccess`), aucun impact.
+
+**Vérification** : backend — nouveaux tests `CraServiceTest.save_weekendActivityInCRA_isRejectedWhenNotAllowed`,
+`save_holidayActivityInCRA_isAllowedWhenHolidayAllowed`, `save_holidayActivityInCRA_isRejectedWhenNotHolidayAllowed`
+(+ `save_weekendActivityInCRA_isAllowed` adapté : activité `weekendAllowed=true` ;
+`save_weekendActivity_isRejected` Indispo conservé) ; `ActivityServiceTest` 5/5
+(`create_persistsWeekendAndHolidayFlags`, `create_defaultsWeekendAndHolidayFlagsToFalse`) ;
+`CraServiceTest` 52/52 ; suite complète 290 tests, seul échec pré-existant non lié
+`SecurityIntegrationTest.adminCannotDeleteActiveUser` (order-dependent). Frontend — `lint` 0 erreur,
+15 fichiers / 154 tests, `tsc -b` OK, `vite build` OK.
