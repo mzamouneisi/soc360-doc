@@ -1194,9 +1194,9 @@ non lié `SecurityIntegrationTest.adminCannotDeleteActiveUser` (order-dependent)
 permet de copier dans le presse-papiers les lignes affichées en mémoire (copier-coller).
 
 **Implémentation** (frontend uniquement)
-- Frontend — `pages/Logs.tsx` : bouton **« Copier »** (`InlineButton`, aligné à droite via
-  `ml-auto`) placé à droite du nom du fichier de log. Il copie exactement les lignes actuellement
-  affichées, donc **après application du filtre** (`visible.join('\n')`).
+- Frontend — `pages/Logs.tsx` : bouton **« Copier »** (`InlineButton`) placé à droite du nom du
+  fichier de log, à **20 px** de celui-ci (`gap-2` du conteneur + `ml-3`). Il copie exactement les
+  lignes actuellement affichées, donc **après application du filtre** (`visible.join('\n')`).
   - `copyText` : `navigator.clipboard.writeText` si disponible, sinon repli par
     `textarea` + `document.execCommand('copy')` (contextes non sécurisés).
   - Retour visuel « Copié ! » pendant 2 s ; bouton désactivé si aucune ligne visible.
