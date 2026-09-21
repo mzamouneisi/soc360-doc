@@ -1334,3 +1334,29 @@ Backend :
 et `autofillLanguage_sameSourceOrUnknownTarget_isRejected`) ; suite complète 315 tests, seul échec
 pré-existant non lié `SecurityIntegrationTest.adminCannotDeleteActiveUser` (order-dependent).
 Frontend — 18 fichiers / 171 tests, `lint` 0 erreur, `tsc -b` OK, `vite build` OK.
+
+----------------------------------------------------------------------
+### 2026-09-21 13:02:44 — soc-51 : page Langues, liste sur 5 lignes, bouton de remplissage et lib JS de traduction (01_TODO_01)
+
+**Tâche** (3 sous-parties, chacune « go ») :
+- liste « Langues connues » : nombre de lignes apparent **5** ;
+- bouton « Remplir les traductions » : **à droite de la liste**, marge **20 px**, **même largeur
+  que la liste à gauche** ;
+- ajouter une **lib JS** permettant de se connecter à un site de traduction et de remplir la
+  colonne de la langue ajoutée.
+
+**Implémentation** (frontend uniquement)
+- `pages/Languages.tsx` : `<select size={5}>` pour la liste des langues connues. Dans la section
+  « Remplir les traductions », le bouton est placé à droite du sélecteur avec `ml-5` (20 px) et
+  `w-64` (même largeur que la liste) ; conteneur sans `gap` pour que la marge fasse exactement 20 px.
+- Nouvelle dépendance **`translate@3.1.0`** (lib JS navigateur, moteur Google) et module
+  `src/lib/translate.ts` exposant `translateTexts(texts, from, to)` : traduction par lots avec
+  5 requêtes en parallèle, résultats indexés par clé, échecs/valeurs vides ignorés.
+- `autofillLanguage(code)` : récupère le bundle FR (`GET /api/public/i18n`) et la table admin,
+  ne traite que les clés dont la colonne cible est vide, traduit FR→`code` via la lib puis
+  enregistre le tout en **une requête** `POST /api/admin/i18n/import` ; message récapitulatif
+  (clés traduites / échecs), puis rechargement de la table et du bundle i18n.
+- Nouveau test `src/lib/translate.test.ts` (résultats par clé, échecs et valeurs vides ignorés).
+
+**Vérification** : frontend — 19 fichiers / 173 tests, `lint` 0 erreur, `tsc -b` OK, `vite build` OK.
+Backend non modifié.
