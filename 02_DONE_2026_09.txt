@@ -1440,3 +1440,24 @@ chaînes** (`<nb_chaines>`) ; ajouter une **colonne virtuelle** en début de tab
 
 **Vérification** : frontend — 19 fichiers / 173 tests, `lint` 0 erreur, `tsc -b` OK, `vite build` OK.
 Backend non modifié.
+
+----------------------------------------------------------------------
+### 2026-09-21 16:16:23 — soc-51 : page Langues, filtre de recherche et pagination (01_TODO_01)
+
+**Tâche** : table des chaînes traduites — ajouter un **filtre de recherche** pour retrouver une
+ligne, et **paginer** avec le nombre de lignes défini dans la préférence utilisateur « Lignes par page ».
+
+**Implémentation** (frontend uniquement — `pages/Languages.tsx`)
+- Champ **« Rechercher une ligne »** au-dessus du tableau : filtre insensible à la casse et aux
+  accents, porte sur la **clé** et sur les **valeurs traduites** (toutes langues) ; affichage
+  `résultats / total` quand une recherche est active.
+- **Pagination** réutilisant `Pagination` (`components/data.tsx`) avec `pageSize = user.pageSize`
+  (« Lignes par page ») ; la page revient à 0 quand la recherche ou la taille change ; message
+  « aucun élément » si la recherche ne retourne rien.
+- La colonne **`#`** conserve une numérotation **globale** (poursuivie d'une page à l'autre :
+  `safePage * pageSize + index + 1`).
+- Nouvelles clés statiques FR/EN/AR `languages.searchRows` / `languages.searchPlaceholder`
+  (`src/i18n/messages.ts`, objet `ar` ajouté).
+
+**Vérification** : frontend — 19 fichiers / 173 tests, `lint` 0 erreur, `tsc -b` OK, `vite build` OK.
+Backend non modifié.
