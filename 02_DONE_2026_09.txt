@@ -1423,3 +1423,20 @@ l'affichage EN).
 **Résiduel** : les messages dynamiques des autres pages (erreurs API `throw`, `confirm`/`alert`
 templated), les libellés de données (`ROLE_LABELS`, statuts, `THEMES`, catégories de documents/
 notes de frais) et les chaînes des modules `.ts` (format, api) restent en français.
+
+----------------------------------------------------------------------
+### 2026-09-21 16:11:28 — soc-51 : page Langues, compteur de chaînes et numéro de ligne (01_TODO_01)
+
+**Tâche** : sur la page Langues — afficher à droite de « Chaînes traduites » le **nombre de
+chaînes** (`<nb_chaines>`) ; ajouter une **colonne virtuelle** en début de table contenant le
+**numéro de ligne** (à partir de 1) ; `nb_chaines` = nombre total de lignes de la table.
+
+**Implémentation** (frontend uniquement — `pages/Languages.tsx`)
+- Titre de la carte remplacé par une ligne `flex` : « Chaînes traduites » suivi, à droite, du
+  compteur `entryCount = bundle.entries.length`.
+- Nouvelle première colonne **`#`** (alignée à droite, chiffres tabulaires) affichant `index + 1`
+  pour chaque ligne (`bundle.entries.map((entry, index) => …)`).
+- Les conditions vide/non-vide utilisent désormais `entryCount`.
+
+**Vérification** : frontend — 19 fichiers / 173 tests, `lint` 0 erreur, `tsc -b` OK, `vite build` OK.
+Backend non modifié.
