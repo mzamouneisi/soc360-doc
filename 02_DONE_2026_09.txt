@@ -1390,3 +1390,36 @@ l'application et mettre chaque clé dans la table `langue`. `go`.
 
 **Vérification** : frontend — 19 fichiers / 173 tests, `lint` 0 erreur, `tsc -b` OK, `vite build` OK.
 Backend — `LanguageIntegrationTest` 12/12 (migration V50 appliquée par Flyway).
+
+----------------------------------------------------------------------
+### 2026-09-21 16:05:16 — soc-51 : la page Langues reste en français quand la langue est English (01_TODO_01)
+
+**Tâche** : sur la page Langues, la chaîne « Langues et traductions » s'affiche encore en français
+alors que la langue English est sélectionnée → les chaînes en dur n'ont pas toutes été internationalisées.
+
+**Diagnostic** : les chaînes étaient bien keyées (`tr('Languages.langues.et.traductions')`), mais
+les colonnes **EN (et AR) de la table étaient vides** pour les 716 clés extraites ; le repli
+statique mappait l'anglais sur le français, d'où l'affichage français en mode English.
+
+**Implémentation**
+- Génération des **traductions EN et AR** des 716 clés via un service de traduction (endpoint
+  Google `translate_a/single`, script hors dépôt, 0 échec).
+- `src/i18n/messages.generated.ts` : ajout de `EXTRACTED_EN` et `EXTRACTED_AR` (738 clés chacune,
+  caractères de largeur nulle nettoyés) ; `messages.ts` mappe désormais
+  `en: { ...en, ...EXTRACTED_EN }` et `ar: { ...EXTRACTED_AR }` (plus de repli anglais → français).
+- Migration Flyway `V52__app_language_extracted_translations.sql` : `UPDATE ... SET en, ar` des
+  716 clés (base fraîche : V50/V51 posent le FR, V52 complète ; base dev existante : V52 s'applique).
+- Migration `V53__app_language_dynamic_messages.sql` : 22 nouvelles clés (`languages.*`) pour les
+  messages dynamiques de la page Langues (confirmations, erreurs, compteurs) avec FR/EN/AR.
+- `pages/Languages.tsx` : remplacement des dernières chaînes en dur des handlers
+  (`window.confirm`, `setMessage`, `setError`, `aria-label`, sélection) par `tr('languages.*', {…})`.
+
+**Vérification** : frontend — 19 fichiers / 173 tests, `lint` 0 erreur, `tsc -b` OK, `vite build` OK.
+Backend — `LanguageIntegrationTest` 12/12 (migrations V52/V53 appliquées par Flyway).
+En mode English, la page Langues et les 738 chaînes extraites s'affichent désormais en anglais
+(les migrations s'appliquent au prochain redémarrage du backend ; le repli statique assure déjà
+l'affichage EN).
+
+**Résiduel** : les messages dynamiques des autres pages (erreurs API `throw`, `confirm`/`alert`
+templated), les libellés de données (`ROLE_LABELS`, statuts, `THEMES`, catégories de documents/
+notes de frais) et les chaînes des modules `.ts` (format, api) restent en français.
