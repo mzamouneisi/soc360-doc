@@ -1360,3 +1360,33 @@ Frontend — 18 fichiers / 171 tests, `lint` 0 erreur, `tsc -b` OK, `vite build`
 
 **Vérification** : frontend — 19 fichiers / 173 tests, `lint` 0 erreur, `tsc -b` OK, `vite build` OK.
 Backend non modifié.
+
+----------------------------------------------------------------------
+### 2026-09-21 15:00:20 — soc-51 : extraction des chaînes en dur et remplacement par des clés i18n (01_TODO_01)
+
+**Tâche** : remplacer toutes les chaînes de caractères en dur par quelque chose du style
+`{t('...')}` (`...` = clé de la chaîne), identifier d'abord toutes les chaînes en dur de
+l'application et mettre chaque clé dans la table `langue`. `go`.
+
+**Implémentation**
+- `src/i18n/translate.ts` : nouvelle fonction **`tr(key, params?)` hors hook** (état global alimenté
+  par `I18nProvider` via `setTranslationState`), utilisée pour keyer les chaînes partout sans devoir
+  injecter `useI18n` dans chaque composant. Le provider remonte son sous-arbre par une clé
+  `language:bundleVersion` pour refléter la langue et le chargement des traductions distantes.
+- **Codemod TypeScript-AST** (`ts.createSourceFile`, exécuté hors dépôt) qui :
+  - extrait les nœuds `JsxText` (mono- et multi-lignes, espaces normalisés) et les attributs UI
+    `title / placeholder / aria-label / alt / label / description / subtitle`, ainsi que les
+    arguments de `confirm()` / `alert()` ;
+  - génère des clés `<Fichier>.<slug>` uniques (en réservant les clés déjà présentes) ;
+  - remplace par `{tr('clé')}` (ou `tr('clé')` dans les appels) et ajoute l'import `tr`.
+  Résultat : **761 remplacements / 716 clés** dans 44 fichiers `.tsx`.
+- `src/i18n/messages.generated.ts` : table FR générée (`EXTRACTED_FR`, 716 entrées), fusionnée
+  dans `MESSAGES.fr` **et** `MESSAGES.en` (repli hors ligne : l'anglais retombe sur le français
+  tant qu'il n'est pas traduit).
+- Migration Flyway `V50__app_language_extracted_strings.sql` : `INSERT INTO app_language (msg_key, fr)`
+  des 716 nouvelles clés (EN/AR laissés vides, à remplir via l'écran ADMIN « Remplir les traductions »).
+- Chaînes dynamiques/données (`ROLE_LABELS`, `THEMES`, catégories, messages d'erreur API, libellés
+  de format) non traitées dans ce lot : elles restent en français et pourront être keyées ultérieurement.
+
+**Vérification** : frontend — 19 fichiers / 173 tests, `lint` 0 erreur, `tsc -b` OK, `vite build` OK.
+Backend — `LanguageIntegrationTest` 12/12 (migration V50 appliquée par Flyway).
