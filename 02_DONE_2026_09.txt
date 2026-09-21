@@ -1461,3 +1461,34 @@ ligne, et **paginer** avec le nombre de lignes défini dans la préférence util
 
 **Vérification** : frontend — 19 fichiers / 173 tests, `lint` 0 erreur, `tsc -b` OK, `vite build` OK.
 Backend non modifié.
+
+----------------------------------------------------------------------
+### 2026-09-21 16:43:10 — soc-51 : formatage date/heure et devise selon la langue (01_TODO_01)
+
+**Tâche** : au changement de langue, l'application doit prendre en compte le **formatage
+heure/date** et la **devise** ; par défaut la langue est celle du navigateur. Vérifier d'abord
+si c'est déjà implémenté, sinon l'implémenter.
+
+**Vérification préalable** : déjà partiellement implémenté — `lib/format.ts` (`setFormatLocale`,
+`formatDate`, `formatDateTime`, `formatMoney`, `monthLabel`, `monthShort`) et l'appel
+`setFormatLocale(locale)` à chaque changement de langue dans `I18nProvider` ; langue par défaut =
+`detectBrowserLanguage()` (`navigator.language`). Manquaient : des **contournements** dans
+plusieurs composants (`MONTHS_FR` en dur, `toLocaleDateString/String('fr-FR'…)`) et la gestion
+de l'**arabe** (mois retombaient en français).
+
+**Implémentation** (frontend)
+- `lib/format.ts` : ajout des tableaux `MONTHS_AR`/`MONTHS_AR_SHORT` et prise en charge de `ar`
+  dans `setFormatLocale` ; nouveau `formatNumber()` (locale active).
+- Remplacement des `MONTHS_FR[…].slice(0,3)`/`MONTHS_FR.map(…)` par `monthLabel()`/`monthShort()`
+  et des `toLocaleDateString/toLocaleString('fr-FR'…)` par `getFormatLocale()` dans :
+  `CraDetail`, `CraList`, `Facturation`, `Holidays`, `IndispoCalendar`, `IndispoList`, `Missions`,
+  `NoteFraisList`, `UnavailabilityCalendar`, `Consultants`.
+- Devise : `formatMoney(value, currency)` formatait déjà via `Intl` selon la locale active
+  (symbole/position/séparateurs) — aucun changement nécessaire.
+- Tests : `format.test.ts` complété (mois/nombres en arabe, `getFormatLocale`).
+
+**Vérification** : frontend — 19 fichiers / 175 tests, `lint` 0 erreur, `tsc -b` OK, `vite build` OK.
+Backend non modifié.
+
+**Résiduel** : abréviations de jours des calendriers (`['Lun',…]` dans `CraDetail`/`Holidays`)
+restent en français.
