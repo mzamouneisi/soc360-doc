@@ -1247,3 +1247,57 @@ Frontend (React 19 / Vite) :
 `SecurityIntegrationTest.adminCannotDeleteActiveUser` (order-dependent).
 Frontend — nouveaux tests `src/i18n/i18n.test.tsx` (4) et `format.test.ts` (3, formatage localisé) ;
 18 fichiers / 170 tests, `lint` 0 erreur, `tsc -b` OK, `vite build` OK.
+
+----------------------------------------------------------------------
+### 2026-09-21 12:18:16 — soc-51 : table de langues en base, gestion admin et import/export JSON (01_TODO_01)
+
+**Tâche** : l'utilisateur peut modifier la langue de la plateforme. Langues gérées : FR, EN, AR.
+Chaque chaîne en dur devient une clé dans une table `langue` (`id, key, FR, EN, AR`) ; pour
+ajouter une langue on ajoute une colonne. Seul l'ADMIN peut ajouter une langue ; il peut exporter
+la table en JSON local et l'importer (insert/update par clé).
+
+**Implémentation**
+Backend :
+- Migration Flyway `V49__app_language.sql` : table `app_language (id, msg_key unique, fr, en, ar)`
+  + seed des **87 clés** i18n existantes (FR/EN depuis `messages.ts`, AR rédigé), ex.
+  `common.save` = Enregistrer / Save / حفظ.
+- `com.soc360.i18n.LanguageService` (JdbcTemplate, pas d'entité JPA → `ddl-auto: validate` intact) :
+  `availableLanguages()` (colonnes via `information_schema.columns`, ordre fr/en/ar puis colonnes
+  ajoutées), `messages(lang)`, `bundle(lang)`, `adminBundle()`, `upsert(key, translations)`,
+  `delete(id)`, `addLanguage(code)` (`ALTER TABLE app_language ADD COLUMN <code> TEXT`, code
+  `^[a-z]{2,8}$` validé), `export()` / `importPayload()` (insert/update par clé, langues inconnues
+  ignorées).
+- `I18nController` : `GET /api/public/i18n?lang=` (permitAll, utilisé avant connexion) →
+  `{ defaultLanguage, languages, language, messages }`.
+- `LanguageAdminController` (`/api/admin/i18n`, `@PreAuthorize("hasRole('ADMIN')")`) :
+  `GET` liste, `POST`/`PUT /{key}` upsert, `DELETE /{id}`, `POST /languages` (ajout de colonne),
+  `GET /export`, `POST /import`.
+- `AuthService.updateLanguage` valide désormais contre les langues réellement disponibles
+  (`LanguageService.isSupportedLanguage`) ; `null`/vide = langue du navigateur.
+
+Frontend :
+- `api/i18n.ts` : client des endpoints public + admin.
+- `i18n/index.tsx` : l'`I18nProvider` charge le bundle depuis le backend à chaque changement de
+  langue et le fusionne par-dessus les messages statiques (repli FR/EN hors ligne) ; expose
+  `languages` dynamiques, `rtl`, `preference`. `detectBrowserLanguage` reconnaît fr/en/ar.
+- `i18n/messages.ts` : `Language` devient une chaîne (langues dynamiques), ajout de l'arabe
+  (`العربية`, locale `ar`, `isRtl`), `languageLabel`.
+- Direction RTL : `document.documentElement.dir = rtl ? 'rtl' : 'ltr'` dans le provider.
+- `pages/Languages.tsx` (route `/langues`, ADMIN) : liste des langues, ajout d'une langue (colonne),
+  édition/suppression des traductions par clé, ajout de clé, **export JSON** (téléchargement) et
+  **import JSON** (fichier local). Lien de menu « Langues » dans Administration.
+- `Login` et `Settings` utilisent la liste de langues renvoyée par le backend ; le sélecteur
+  d'en-tête est dynamique.
+
+**Vérification** : backend — nouveau `LanguageIntegrationTest` 8/8 (bundle fr/en, repli langue
+inconnue, upsert insert/update, clé vide refusée, ajout de colonne + traduction, doublon/code
+invalide refusés, export→import) ; `AuthServiceTest` 37/37 ; suite complète 311 tests, seul échec
+pré-existant non lié `SecurityIntegrationTest.adminCannotDeleteActiveUser` (order-dependent).
+Frontend — `src/i18n/i18n.test.tsx` enrichi (traductions distantes prioritaires) ; 18 fichiers /
+171 tests, `lint` 0 erreur, `tsc -b` OK, `vite build` OK.
+
+**Remarque** : toutes les chaînes déjà internationalisées sont dans la table. L'extraction des
+nombreuses chaînes encore en dur dans les autres pages reste à faire progressivement : elles
+pourront être ajoutées comme clés via l'écran ADMIN (import JSON / saisie), le repli statique
+garantissant le fonctionnement hors ligne. L'ajout d'une langue est le seul DDL d'exécution,
+explicitement demandé par la story.
