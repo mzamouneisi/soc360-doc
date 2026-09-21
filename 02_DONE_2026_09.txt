@@ -1301,3 +1301,36 @@ nombreuses chaînes encore en dur dans les autres pages reste à faire progressi
 pourront être ajoutées comme clés via l'écran ADMIN (import JSON / saisie), le repli statique
 garantissant le fonctionnement hors ligne. L'ajout d'une langue est le seul DDL d'exécution,
 explicitement demandé par la story.
+
+----------------------------------------------------------------------
+### 2026-09-21 12:38:23 — soc-51 : page Langues, sélection dans une liste filtrée + remplissage automatique (01_TODO_01)
+
+**Tâche** : page Langues — remplacer l'input texte d'ajout de langue par une **liste de toutes
+les langues connues** avec un **input de filtre** au-dessus pour choisir le bon élément ;
+ajouter un bouton permettant de **remplir la traduction** de la langue nouvellement ajoutée
+(en s'appuyant sur une API).
+
+**Implémentation**
+Frontend :
+- `src/i18n/languages.ts` : catalogue des langues connues (~95 codes ISO avec libellés natifs),
+  `findKnownLanguage()` et `filterKnownLanguages(query)` (recherche par code ou libellé).
+- `pages/Languages.tsx` : l'ajout de langue se fait désormais via un **champ de filtre** + une
+  **liste déroulante** (`<select multiple size>`) des langues connues non encore présentes, puis
+  le bouton « Ajouter la langue » ; la sélection courante et le nombre de résultats sont affichés.
+- Chaque langue ajoutée (hors `fr`) dispose d'un **bouton « remplir »** (baguette) qui appelle
+  `POST /api/admin/i18n/languages/{code}/autofill` avec la langue source `fr` et affiche le
+  nombre de traductions/valeurs recopiées, puis recharge la table.
+
+Backend :
+- `LanguageService.autofillLanguage(code, source)` : pour chaque clé dont la cellule cible est
+  vide, tente une traduction via un **fournisseur HTTP configurable**
+  (`app.i18n.translate-url`, vide par défaut) appelé avec `RestClient` (format MyMemory
+  `?q=…&langpair=source|target`), sinon **replie en recopiant** la valeur source ; renvoie
+  `{ language, source, translated, copied }`. Garde-fous : code/langue source valides, source ≠ cible.
+- `POST /api/admin/i18n/languages/{code}/autofill` (`LanguageAdminController`, ADMIN) ;
+  `application.yml` : `app.i18n.translate-url: ${I18N_TRANSLATE_URL:}`.
+
+**Vérification** : backend — `LanguageIntegrationTest` 12/12 (dont `autofillLanguage_fillsEmptyCellsFromSource`
+et `autofillLanguage_sameSourceOrUnknownTarget_isRejected`) ; suite complète 315 tests, seul échec
+pré-existant non lié `SecurityIntegrationTest.adminCannotDeleteActiveUser` (order-dependent).
+Frontend — 18 fichiers / 171 tests, `lint` 0 erreur, `tsc -b` OK, `vite build` OK.
