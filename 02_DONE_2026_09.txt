@@ -1206,3 +1206,44 @@ permet de copier dans le presse-papiers les lignes affichées en mémoire (copie
 presse-papiers » (mock `navigator.clipboard.writeText` ; clic sur « Copier » → appel avec
 `ligne-a\nligne-b` et libellé « Copié ! ») ; suite 17 fichiers / 162 tests, `lint` 0 erreur,
 `tsc -b` OK, `vite build` OK.
+
+----------------------------------------------------------------------
+### 2026-09-21 09:56:44 — soc-51 : internationalisation (i18n) de la plateforme (01_TODO_01)
+
+**Tâche** : en tant qu'utilisateur, pouvoir modifier la langue de la plateforme. Prendre en
+compte le formatage des heures/dates et la devise. Par défaut, la langue est celle du navigateur.
+
+**Implémentation**
+Backend (préférence persistée par utilisateur) :
+- Migration Flyway `V48__user_language.sql` : `ALTER TABLE user_account ADD COLUMN language VARCHAR(10);`
+  (nullable → `null` = langue du navigateur).
+- `UserAccount` : champ `language` ; `UserDtos.UserDto` : `language` ; `UserDtos.LanguageRequest`.
+- `AuthService.updateLanguage(userId, language)` : normalise en minuscules, accepte `fr`/`en`
+  (`ALLOWED_LANGUAGES`), vide/`null` = retour au défaut navigateur, sinon `400`. `toDto` expose
+  `language`.
+- `AuthController` : `PUT /api/auth/me/language`.
+
+Frontend (React 19 / Vite) :
+- `src/i18n/messages.ts` : dictionnaires `fr`/`en`, langues supportées, locales (`fr-FR`, `en-US`).
+- `src/i18n/index.tsx` : `I18nProvider` + `useI18n` (langue résolue = préférence utilisateur >
+  `localStorage` `soc360.language` > `navigator.language`, repli `fr`) ; `setLanguage(lang | null)`
+  met à jour le `localStorage`, `document.documentElement.lang` et persiste côté backend via
+  `authApi.updateLanguage` + `refreshMe`.
+- `src/i18n/LanguageSelector.tsx` : sélecteur de langue (en-tête et page de connexion).
+- `src/lib/format.ts` : `setFormatLocale(locale)` ; `formatDate`/`formatDateTime`/`formatMoney`/
+  `formatSize`/`monthLabel`/`monthShort` utilisent la locale active (`Intl`), unités `o/Ko/Mo`
+  vs `B/KB/MB`. Défaut inchangé (`fr-FR`).
+- `main.tsx` : `I18nProvider` monté sous `AuthProvider`/`SocProvider`.
+- `api/types.ts` + `api/auth.ts` : `UserDto.language` et `updateLanguage`.
+- Traductions câblées : `layout/MainLayout.tsx` (navigation, groupes, horloge, en-tête),
+  `pages/Login.tsx`, `pages/Settings.tsx` (nouvelle section « Langue de l'application » +
+  préférences) et composants partagés `components/ui.tsx` (Chargement/Actualiser) et
+  `components/data.tsx` (pagination, état vide, fermeture modale). Les autres pages restent en
+  français et pourront être migrées progressivement.
+
+**Vérification** : backend — 3 nouveaux tests `AuthServiceTest` (`updateLanguage_supportedLanguage_isSaved`,
+`updateLanguage_blank_resetsToBrowserDefault`, `updateLanguage_unsupported_throwsBadRequest`) ;
+`AuthServiceTest` 37/37 ; suite complète 303 tests, seul échec pré-existant non lié
+`SecurityIntegrationTest.adminCannotDeleteActiveUser` (order-dependent).
+Frontend — nouveaux tests `src/i18n/i18n.test.tsx` (4) et `format.test.ts` (3, formatage localisé) ;
+18 fichiers / 170 tests, `lint` 0 erreur, `tsc -b` OK, `vite build` OK.
