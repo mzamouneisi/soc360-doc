@@ -1492,3 +1492,32 @@ Backend non modifié.
 
 **Résiduel** : abréviations de jours des calendriers (`['Lun',…]` dans `CraDetail`/`Holidays`)
 restent en français.
+
+----------------------------------------------------------------------
+### 2026-09-22 11:32:01 — soc-53 : uniformiser les boîtes de dialogue info / oui-non (01_TODO_01)
+
+**Tâche** : uniformiser toutes les boîtes de dialogue (info, oui/non, saisie) — ne plus utiliser
+celles du navigateur (`window.confirm`, `window.alert`, `window.prompt`). Boîtes centrées
+(600 × 500 max), ascenseur vertical si texte long, boutons arrondis avec hover, de même largeur,
+jamais pleine ligne.
+
+**Implémentation** (frontend uniquement)
+- Nouveau composant `src/components/dialog.tsx` : `DialogHost` (rendu via portal) + API impérative
+  `dialog.info / success / warning / error / confirm / prompt`. File d'attente, résolution par
+  Promise, fermeture par Échap / clic sur le fond, largeur 600 px, corps `max-h-[500px]` +
+  `overflow-y-auto` (ascenseur si texte long), deux boutons `w-32` arrondis avec hover (Annuler +
+  Confirmer), icône/couleur selon la variante et option `danger` (bouton rouge).
+- `src/main.tsx` : montage de `<DialogHost />` dans l'`I18nProvider` (App intacte).
+- Nouvelles clés statiques FR/EN `dialog.*` (`src/i18n/messages.ts`) : `ok`, `confirm`,
+  `confirmTitle`, `infoTitle`, `successTitle`, `warningTitle`, `errorTitle`, `input`.
+- Remplacement de tous les `window.confirm/alert/prompt` (24 fichiers) : pages Activities,
+  ActivityTypes, Clients, Consultants, CraDetail, CraList, Documents, Facturation, FichePaie,
+  Holidays, IndispoList, Languages, Messages, NoteFraisList, Profile, Projects, Register,
+  SocAdmin, Suppliers, Support, Tables, Unavailability et `soc/AddSocModal` ; les handlers
+  concernés passent en asynchrone (`await dialog.confirm/prompt`), les erreurs en
+  `void dialog.error(...)`.
+- Tests adaptés (CraList, NoteFraisList, Unavailability, Register) : montage de `DialogHost` et
+  interaction avec la boîte (saisie + bouton Confirmer/Supprimer) au lieu des stubs globaux.
+
+**Vérification** : frontend — 19 fichiers / 175 tests, `lint` 0 erreur, `tsc -b` OK, `vite build` OK.
+Backend non modifié.
