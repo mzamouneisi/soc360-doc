@@ -1521,3 +1521,37 @@ jamais pleine ligne.
 
 **Vérification** : frontend — 19 fichiers / 175 tests, `lint` 0 erreur, `tsc -b` OK, `vite build` OK.
 Backend non modifié.
+
+----------------------------------------------------------------------
+### 2026-09-22 15:46:08 — soc-58 : uniformiser les boutons (01_TODO_01)
+
+**Tâche** : ajouter dans la page Paramètres la config des boutons de l'application — largeur des
+boutons à texte court (OK, Cancel, Yes…) = 50 px, largeur des boutons à texte long (Export PDF
+Client, Nouvelle note de frais, Supprimer tous les événements…) = 100 px, couleur du bouton save
+= bleu, du bouton delete = rouge, etc. Boutons arrondis avec hover, appliqués à toute l'app.
+
+**Implémentation**
+- Backend — Flyway `V54__user_button_settings.sql` : colonnes `button_small_width` (défaut 50),
+  `button_large_width` (défaut 100), `button_save_color` (défaut `#1d48eb`),
+  `button_delete_color` (défaut `#dc2626`) sur `user_account`.
+- Backend — `UserAccount` (champs + valeurs par défaut), `UserDtos.UserDto` + nouveau
+  `ButtonSettingsRequest`, `AuthService.updateButtonSettings` (validation largeurs 20–400 px et
+  couleurs `#RRGGBB`), `AuthController` `PUT /api/auth/me/button-settings`. `toDto` enrichi.
+- Frontend — `api/types.ts` (UserDto) + `api/auth.ts` (`updateButtonSettings`).
+  `AuthContext` applique les variables CSS `--btn-small-width`, `--btn-large-width`,
+  `--btn-save-color`, `--btn-delete-color` sur `<html>` ; valeurs par défaut dans `index.css`.
+- Frontend — `components/ui.tsx` : `Button` (variantes primary/save, danger/delete, yellow, green,
+  neutral ; largeur `min-width` = petit/grand selon la longueur du libellé, surchargeable via
+  `size`) et `InlineButton` (variantes neutral/danger/primary) — coins arrondis (`rounded-xl`),
+  hover (`brightness`), min-width configurables.
+- Frontend — `pages/Settings.tsx` : section « Boutons » (largeur petit/texte long, couleurs
+  Enregistrer/Supprimer, aperçu) + nouvelles clés i18n `settings.buttons.*` (FR/EN).
+- Frontend — `components/dialog.tsx` : boutons Annuler/Confirmer alignés sur les variables
+  (largeur + couleur save/delete). Boutons destructifs de toutes les pages (Activities,
+  ActivityTypes, Clients, Consultants, CraDetail, CraList, Documents, FichePaie, IndispoList,
+  Languages, Messages, NoteFraisList, Profile, Projects, SocAdmin, Suppliers, Tables,
+  Unavailability) passés en `variant="danger"`.
+
+**Vérification** : backend — `mvn test` OK (315 tests ; seul échec = `SecurityIntegrationTest.
+adminCannotDeleteActiveUser`, pré-existant et order-dependent, OK en isolation). Frontend —
+19 fichiers / 175 tests, `lint` 0 erreur, `tsc -b` OK, `vite build` OK.
