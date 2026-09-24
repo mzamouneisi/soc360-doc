@@ -1945,3 +1945,23 @@ ceux de la table langue (pour la société + langue sélectionnées) lors du cha
 **Vérification** : backend — `mvn test` 324 tests, seul échec pré-existant et order-dependent
 `SecurityIntegrationTest.adminCannotDeleteActiveUser` (OK en isolation) ; Flyway V70/V71 OK.
 Frontend — `oxlint` 0 erreur, `npm test` 20 fichiers / 178 tests OK, `tsc -b` + `vite build` OK.
+
+------------------
+### 2026-09-25 00:06:14 — soc-57 : conserver filtre et focus après sauvegarde d'une re-traduction (01_TODO_01)
+
+**Tâche** : page Paramètres — après la sauvegarde d'une chaîne re-traduite, remettre la phrase saisie
+dans le filtre et redonner le focus à l'input de re-traduction (revenir où on était).
+
+**Cause** : après save/delete, `refresh()` recharge le bundle i18n ; `I18nProvider` change la clé du
+`Fragment` (`language:bundleVersion`), ce qui remonte tout le sous-arbre et réinitialise l'état local
+de la page (filtre, sélection, input) et le focus.
+
+**Implémentation** — `pages/Settings.tsx` :
+- Mémoire module `trUiMemory` (search/selectedKey/override/focus) initialisant les états de la section
+  « Traductions de la société » au remontage ; synchronisation continue via `useEffect`.
+- `handleTrSave`/`handleTrDelete` renseignent `trUiMemory` (dont `focus = true`) avant `refresh()`.
+- Effet de restauration du focus : une fois les chaînes rechargées et la sélection retrouvée, focus
+  sur l'input de re-traduction via un `ref` conteneur.
+
+**Vérification** : frontend — `oxlint` 0 erreur, `npm test` 20 fichiers / 178 tests OK,
+`tsc -b` + `vite build` OK. (Aucun changement backend.)
