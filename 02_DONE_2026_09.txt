@@ -1965,3 +1965,20 @@ de la page (filtre, sélection, input) et le focus.
 
 **Vérification** : frontend — `oxlint` 0 erreur, `npm test` 20 fichiers / 178 tests OK,
 `tsc -b` + `vite build` OK. (Aucun changement backend.)
+
+------------------
+### 2026-09-25 00:12:13 — soc-57 : revenir à la section « Traductions de la société » après sauvegarde (01_TODO_01)
+
+**Tâche** : page Paramètres — après sauvegarde/suppression d'une re-traduction, en plus de remettre
+le filtre, le focus dans l'input et de se souvenir de la phrase re-traduite, faire défiler la page
+(ascenseur) jusqu'à la partie « Traductions de la société » pour revenir là où on était.
+
+**Implémentation** — `pages/Settings.tsx` :
+- `trSectionRef` sur la section « Traductions de la société ».
+- L'effet de restauration (déclenché après le rechargement des chaînes quand la re-traduction a été
+  sauvegardée/supprimée) fait `scrollIntoView({ block: 'start', behavior: 'smooth' })` sur la
+  section avant de redonner le focus à l'input de re-traduction.
+- La phrase re-traduite reste mémorisée (`trUiMemory.override`, déjà en place).
+
+**Vérification** : frontend — `oxlint` 0 erreur, `npm test` 20 fichiers / 178 tests OK,
+`tsc -b` + `vite build` OK. (Aucun changement backend.)
