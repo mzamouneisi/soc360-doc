@@ -1913,3 +1913,35 @@ CRA/indispo.
 **Vérification** : backend — `mvn test` 322 tests, seul échec pré-existant et order-dependent
 `SecurityIntegrationTest.adminCannotDeleteActiveUser` (OK en isolation) ; Flyway V69 OK.
 Frontend — `oxlint` 0 erreur, `npm test` 20 fichiers / 178 tests OK, `tsc -b` + `vite build` OK.
+
+------------------
+### 2026-09-24 21:23:04 — soc-57 : re-traductions par société (01_TODO_01)
+
+**Tâche** : en tant que RESPONSIBLE_SOC, personnaliser une langue pour l'une de ses sociétés. Page
+Paramètres : liste des chaînes traduites (table langue) dans la langue sélectionnée en haut, recherche,
+et à droite un input de re-traduction + boutons copy / save / suppr. Les mots re-traduits remplacent
+ceux de la table langue (pour la société + langue sélectionnées) lors du changement de langue.
+
+**Implémentation**
+- Backend — Flyway `V70__company_translation.sql` : table `company_translation`
+  (company_id, language, msg_key, translation, unique (company_id, language, msg_key)).
+- Backend — `com.soc360.i18n` : entité `CompanyTranslation`, `CompanyTranslationRepository`,
+  `LanguageService` (messages(lang, socId) qui applique les surcharges, `entries`, `saveOverride`,
+  `deleteOverride`), `CompanyLanguageController` (`GET /api/i18n/company/entries`,
+  `PUT/DELETE /api/i18n/company/overrides`, réservé ADMIN/RESPONSIBLE_SOC, isolation via
+  `effectiveSocId`/`currentSocIdOrNull` + `requireSocAccess`).
+- Backend — le bundle public `/api/public/i18n` applique désormais les surcharges de la société
+  courante (`SecurityUtils.currentSocIdOrNull()`), sans casser l'accès non authentifié.
+- Backend — Flyway `V71__i18n_company_translations.sql` : 14 clés i18n FR/EN/AR ; tests
+  `LanguageIntegrationTest` (bundle avec surcharge + clé inconnue).
+- Frontend — `api/client.ts` : `subscribeSocId` (notification de changement de société) ;
+  `i18n/index.tsx` : rechargement du bundle au changement de société ; `api/i18n.ts` :
+  `companyEntries`, `saveCompanyOverride`, `deleteCompanyOverride`.
+- Frontend — `pages/Settings.tsx` : section « Traductions de la société » (langue courante) avec
+  recherche, liste des chaînes (valeur + surcharge), input de re-traduction, boutons copier
+  (confirmation d'écrasement), enregistrer et supprimer (icônes) ; rafraîchissement du bundle après
+  opération. `messages.generated.ts` : 14 clés FR/EN/AR.
+
+**Vérification** : backend — `mvn test` 324 tests, seul échec pré-existant et order-dependent
+`SecurityIntegrationTest.adminCannotDeleteActiveUser` (OK en isolation) ; Flyway V70/V71 OK.
+Frontend — `oxlint` 0 erreur, `npm test` 20 fichiers / 178 tests OK, `tsc -b` + `vite build` OK.
