@@ -1886,3 +1886,30 @@ dans la page Paramètres (variables au choix, format HTML).
 **Vérification** : backend — `mvn test` 322 tests, seul échec pré-existant et order-dependent
 `SecurityIntegrationTest.adminCannotDeleteActiveUser` (OK en isolation) ; Flyway V67/V68 OK.
 Frontend — `oxlint` 0 erreur, `npm test` 20 fichiers / 178 tests OK, `tsc -b` + `vite build` OK.
+
+------------------
+### 2026-09-24 19:44:14 — soc-57 (suite) : templates d'emails validation / rejet / annulation (01_TODO_01)
+
+**Tâche** : compléter la personnalisation des templates d'emails avec les événements :
+soumission CRA, soumission indispo, annulation de soumission, validation CRA/indispo, rejet
+CRA/indispo.
+
+**Implémentation**
+- Backend — `EmailTemplateService` : 5 nouveaux templates par défaut avec variables :
+  `CRA_VALIDATION` (recipient, label, period), `CRA_REJECTION` (… + comment),
+  `CRA_CANCELLATION` (recipient, consultant, period, comment),
+  `UNAVAILABILITY_VALIDATION` (recipient, type, startDate, endDate),
+  `UNAVAILABILITY_REJECTION` (… + comment). (Les soumissions CRA/indispo existaient déjà.)
+- Backend — `CraService.notifyConsultant(...)` étendu (clé de template + variables) et émission
+  d'email sur validate/reject (CRA et Indispo) ; `CraService.cancel` (indispo annulée) utilise
+  `CRA_CANCELLATION`. `sendBack` conserve la notification in-app sans email.
+- Backend — `UnavailabilityService.notifyConsultant(...)` étendu ; emails sur validate
+  (`UNAVAILABILITY_VALIDATION`) et reject (`UNAVAILABILITY_REJECTION`).
+- Backend — Flyway `V69__i18n_email_templates_extra.sql` : 5 libellés i18n FR/EN/AR des nouveaux
+  templates (affichés dans la page Paramètres).
+- Frontend — `messages.generated.ts` : 5 clés FR/EN/AR (aucun autre changement : la section
+  Paramètres liste dynamiquement les templates renvoyés par l'API).
+
+**Vérification** : backend — `mvn test` 322 tests, seul échec pré-existant et order-dependent
+`SecurityIntegrationTest.adminCannotDeleteActiveUser` (OK en isolation) ; Flyway V69 OK.
+Frontend — `oxlint` 0 erreur, `npm test` 20 fichiers / 178 tests OK, `tsc -b` + `vite build` OK.
