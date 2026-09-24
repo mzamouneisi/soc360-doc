@@ -1751,3 +1751,31 @@ les identifiants de schéma français restants.
 **Vérification** : backend — `mvn test` 315 tests OK (dont `SecurityIntegrationTest`),
 `ddl-auto=validate` OK, Flyway V65 appliqué en H2 ; schéma final 100 % anglais (dump
 INFORMATION_SCHEMA vérifié). Aucun changement frontend.
+
+------------------
+### 2026-09-24 17:55:35 — soc-58 : boutons d'action en icônes (01_TODO_01)
+
+**Tâche** : transformer tous les boutons en icônes, le maximum possible.
+
+**Implémentation**
+- Frontend — nouveau `components/icons.tsx` : jeu d'icônes SVG (edit, delete, history, save,
+  cancel, add, close, search, download, upload, send, view, check, reject, refresh, filter, copy,
+  print, ban, toggleOn, toggleOff, chevronLeft/Right, key, logout, settings, calendar, mail) +
+  composant `Icon` (même style que les icônes existantes).
+- Frontend — `components/ui.tsx` : nouveau composant `IconButton` (icône seule, `label` utilisé
+  comme `title` et `aria-label` — préserve le nom accessible donc les tests ; prop `loading`
+  affichant le `Spinner`). `RefreshButton` refactoré pour utiliser `Icon`.
+- Frontend — ~90 boutons d'action convertis en `IconButton` (icône seule) sur 21 fichiers :
+  Activities, ActivityTypes, Clients, Consultants, CraDetail, CraList, Documents, FichePaie,
+  IndispoList, Languages, Messages, NoteFraisList, Profile, Projects, SocAdmin, Suppliers, Support,
+  Tables, Unavailability + `components/CraHistoryModal`. Mapping : Modifier→edit,
+  Supprimer→delete, Historique→history, Annuler→cancel, Enregistrer→save, Créer→add, Fermer→close,
+  Désactiver/Réactiver→toggleOff/toggleOn, Importer→upload, Envoyer→send, Valider→check,
+  Rejeter→reject, Valider/Soumettre→check, Éditer/Ouvrir→edit/view (dynamique).
+- Les boutons de formulaire primaires (Connexion, Inscription, mot de passe oublié, créer un
+  ticket) et les boutons de dialogue OK/Annuler restent en texte. Les boutons « + Nouveau… »
+  conservent leur libellé.
+
+**Vérification** : frontend — `oxlint` 0 erreur, `npm test` 20 fichiers / 178 tests OK (les tests
+par rôle+nom continuent de passer grâce aux `aria-label`), `tsc -b` + `vite build` OK.
+(Aucun changement backend.)
