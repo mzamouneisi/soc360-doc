@@ -1645,3 +1645,22 @@ un salarié, ce champ est renommé « TJM Interne ».
 
 **Vérification** : frontend — `oxlint` 0 erreur, `npm test` 20 fichiers / 178 tests OK,
 `tsc -b` + `vite build` OK. (Aucun changement backend.)
+
+------------------
+### 2026-09-24 15:50:01 — soc-59 (suite) : case « Salarié » déplacée en haut du formulaire collaborateur (01_TODO_01)
+
+**Tâche** (modifier collaborateur) : déplacer la case à cocher « Consultant salarié » vers le haut,
+à droite du « type de collaborateur » ; son libellé devient « Salarié » ; pour un nouveau
+collaborateur elle est cochée par défaut.
+
+**Implémentation**
+- Frontend — `pages/Consultants.tsx` : la case est déplacée en haut du formulaire dans la même
+  grille que le sélecteur « Type de collaborateur » (colonne de droite, alignée en bas) ; l'ancienne
+  case en bas (après le mode de paiement) est supprimée. Le libellé utilise la nouvelle clé
+  `Consultants.salarie.label` = « Salarié ». Le défaut coché pour une création était déjà en place
+  (`emptyForm.salarie = true`).
+- Backend — Flyway `V63__i18n_consultant_salarie_label.sql` : clé `Consultants.salarie.label`
+  (FR « Salarié », EN « Salaried », AR « بأجر ») + ajout dans `messages.generated.ts`.
+
+**Vérification** : frontend — `oxlint` 0 erreur, `npm test` 20 fichiers / 178 tests OK,
+`tsc -b` + `vite build` OK. Backend — Flyway V63 appliqué en H2 (contexte OK).
