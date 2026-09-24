@@ -1590,3 +1590,40 @@ cache mis à jour à chaque changement de langue (lib `translate`).
 `tsc -b` + `vite build` OK. Backend — `mvn test` 315 tests, seul échec pré-existant et
 order-dependent `SecurityIntegrationTest.adminCannotDeleteActiveUser` (OK en isolation). Flyway
 V56 appliqué avec succès en H2.
+
+------------------
+### 2026-09-24 15:23:14 — soc-59 : informations professionnelles du consultant (01_TODO_01)
+
+**Tâche** : page Consultants/Collaborateurs — ajouter l'adresse du consultant (saisie libre ou
+recherche d'adresse valide en France), les informations professionnelles (statut professionnel,
+Position, Coefficient, Matricule), le mode de paiement et le TJM interne, ainsi qu'une case à
+cocher « Consultant salarié » conditionnant l'affichage du statut pro / position / coefficient /
+matricule (servira ensuite au calcul du solde de congés des seuls salariés).
+
+**Implémentation**
+- Backend — Flyway `V61__consultant_professional_info.sql` : colonnes `address` (255),
+  `statut_professionnel` (60), `position_professionnelle` (30), `coefficient` (20),
+  `matricule` (30), `mode_paiement` (30), `tjm_interne` DECIMAL(12,2), `salarie` BOOLEAN
+  NOT NULL DEFAULT FALSE sur `user_account`.
+- Backend — `UserAccount` (champs + getters/setters), `ConsultantDtos.ConsultantDto` et
+  `ConsultantRequest` (champs ajoutés en fin de record), `ConsultantService.applyRhs`
+  (affectation), `toDto` et `snapshot` (historique). `ConsultantImportService` et
+  `ConsultantServiceTest` mis à jour pour les nouveaux composants de record.
+- Backend — Flyway `V62__i18n_consultant_pro_info.sql` : 11 clés FR/EN/AR (`Consultants.adresse`,
+  `adresse.placeholder`, `adresse.rechercher`, `adresse.aucun`, `statut.professionnel`,
+  `position`, `coefficient`, `matricule`, `mode.paiement`, `tjm.interne`, `salarie`).
+- Frontend — `api/types.ts` : `ConsultantDto`/`ConsultantRequest` enrichis. `messages.generated.ts`
+  : 11 clés FR/EN/AR.
+- Frontend — `pages/Consultants.tsx` : état de formulaire étendu (adresse + champs pro), champ
+  Adresse avec saisie libre + bouton « Rechercher une adresse » interrogeant l'API Base Adresse
+  Nationale (`api-adresse.data.gouv.fr`) et affichant une liste de suggestions cliquables ; champs
+  Mode de paiement (défaut « Virement ») et TJM interne ; case à cocher « Consultant salarié » qui
+  affiche conditionnellement Statut professionnel, Position, Coefficient et Matricule. Les champs
+  conditionnels ne sont envoyés (non nuls) que si le consultant est salarié.
+- Isolation multi-société inchangée : création/mise à jour passent toujours par `requireSocAccess`
+  côté service.
+
+**Vérification** : frontend — `oxlint` 0 erreur, `npm test` 20 fichiers / 178 tests OK,
+`tsc -b` + `vite build` OK. Backend — `mvn test` 315 tests, seul échec pré-existant et
+order-dependent `SecurityIntegrationTest.adminCannotDeleteActiveUser` (OK en isolation) ; Flyway
+V61/V62 appliqués avec succès en H2.
