@@ -1830,3 +1830,25 @@ l'ADMIN tous les éléments/chiffres de l'application.
 **Vérification** : backend — `DashboardServiceTest` OK ; `mvn test` 316 tests, seul échec
 pré-existant et order-dependent `SecurityIntegrationTest.adminCannotDeleteActiveUser`
 (OK en isolation).
+
+------------------
+### 2026-09-24 18:54:54 — errback : LazyInitializationException sur /api/documents/share-targets (run.log)
+
+**Cause racine** (run.log, `GlobalExceptionHandler — Erreur non gérée`) :
+`org.hibernate.LazyInitializationException: Could not initialize proxy
+[com.soc360.user.UserAccount#100] - no session` levée dans
+`DocumentController.computeShareTargets` (`DocumentController.java:97`), appelée par
+`GET /api/documents/share-targets`. Le contrôleur n'est pas transactionnel
+(`spring.jpa.open-in-view=false`) : `userRepository.findById(...).map(UserAccount::getManager)` renvoyait un proxy
+lazy `manager`, et `.filter(UserAccount::isActive)` tentait de l'initialiser hors session →
+500.
+
+**Fix** : ajout de `UserAccountRepository.findManagerOf(userId)`
+(`@Query("SELECT u.manager FROM UserAccount u WHERE u.id = :userId")`) qui charge le manager comme
+résultat de requête (initialisé) ; `computeShareTargets` utilise désormais `findManagerOf(...)` pour
+les cas MANAGER et CONSULTANT au lieu de `findById(...).getManager()`. Plus aucun accès à un proxy
+lazy hors session dans cette méthode.
+
+**Vérification** : backend — `mvn test` 316 tests, seul échec pré-existant et order-dependent
+`SecurityIntegrationTest.adminCannotDeleteActiveUser` (OK en isolation). Compilation OK ; l'accès
+lazy fautif est supprimé.
