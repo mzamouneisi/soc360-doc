@@ -1555,3 +1555,38 @@ Client, Nouvelle note de frais, Supprimer tous les événements…) = 100 px, co
 **Vérification** : backend — `mvn test` OK (315 tests ; seul échec = `SecurityIntegrationTest.
 adminCannotDeleteActiveUser`, pré-existant et order-dependent, OK en isolation). Frontend —
 19 fichiers / 175 tests, `lint` 0 erreur, `tsc -b` OK, `vite build` OK.
+
+------------------
+### 2026-09-24 11:33:38 — soc-51 : internationalisation des textes restants (01_TODO_01)
+
+**Tâche** (contenu de 01_TODO_01) : internationaliser les derniers textes codés en dur des pages
+Activités / Types d'activité, Projets, Sociétés, Clients, Collaborateurs et Dashboard (libellés
+« Nouveau/Nouvelle… », en-têtes de colonnes, boutons Modifier/Supprimer/Annuler/Enregistrer/Créer,
+libellés d'actions et messages d'erreur), et traduire à la volée les valeurs issues de la base
+(rôles utilisateur, statuts actif/active, week-end / jours fériés, statut CRA du dashboard) via un
+cache mis à jour à chaque changement de langue (lib `translate`).
+
+**Implémentation**
+- Frontend — nouvelle infra de traduction dynamique : `src/lib/dynamicTranslate.ts` (cache par
+  langue, file d'attente + `translateTexts`, abonnements, `setDynamicLanguage`) et
+  `src/lib/useDynamicTranslate.ts` (hook `useSyncExternalStore`). Branchée dans `I18nProvider`
+  (`setDynamicLanguage(language)` à chaque changement de langue).
+- Frontend — 105 nouvelles clés i18n dans `src/i18n/messages.generated.ts` (FR/EN/AR) : namespace
+  `common.*` (new, edit, delete, create, disable, enable, active, inactive, status, type, period,
+  role, company, history, importCsv, unexpectedError, yes, no, notes, search…) + clés par page
+  (`ActivityTypes.*`, `Projects.*`, `Activities.*`, `SocAdmin.*`, `Clients.*`, `Consultants.*`,
+  `Dashboard.chez`).
+- Frontend — internationalisation des pages ActivityTypes, Projects, Activities, SocAdmin,
+  Consultants, Clients et Dashboard (libellés, modales et dialogues de confirmation via
+  `tr(key, { params })`).
+- Frontend — traduction dynamique des valeurs BDD : rôles (`ROLE_LABELS`) et statuts CRA / notes
+  de frais du Dashboard via `useDynamicTranslate` ; week-end / jours fériés et actif/inactif via
+  les clés `common.yes`/`common.no`/`common.active`/`common.inactive`.
+- Backend — Flyway `V56__i18n_remaining_strings.sql` : 105 `INSERT INTO app_language (msg_key, fr,
+  en, ar)` correspondant aux nouvelles clés (aucune modification de schéma).
+- Tests — nouveau `src/lib/dynamicTranslate.test.ts` (3 tests).
+
+**Vérification** : frontend — `npm run lint` OK (0 erreur), `npm test` 20 fichiers / 178 tests OK,
+`tsc -b` + `vite build` OK. Backend — `mvn test` 315 tests, seul échec pré-existant et
+order-dependent `SecurityIntegrationTest.adminCannotDeleteActiveUser` (OK en isolation). Flyway
+V56 appliqué avec succès en H2.
