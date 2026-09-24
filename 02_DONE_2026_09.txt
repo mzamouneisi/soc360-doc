@@ -1779,3 +1779,28 @@ INFORMATION_SCHEMA vérifié). Aucun changement frontend.
 **Vérification** : frontend — `oxlint` 0 erreur, `npm test` 20 fichiers / 178 tests OK (les tests
 par rôle+nom continuent de passer grâce aux `aria-label`), `tsc -b` + `vite build` OK.
 (Aucun changement backend.)
+
+------------------
+### 2026-09-24 18:10:09 — soc-58 : boutons « Nouveau/Nouvelle », Notes de frais et Jours fériés en icônes (01_TODO_01)
+
+**Tâche** : passer en icône les boutons du style « nouveau …, nouvelle …, … » ; page Notes de frais :
+les boutons « Soumettre » et « Suppr. » ; page Jours fériés : les boutons « préc » / « suiv » (en
+flèches).
+
+**Implémentation**
+- Frontend — boutons de création « + Nouveau/Nouvelle… » convertis en `IconButton icon="add"`
+  (icône seule) : Activities (×2), ActivityTypes (×2), Clients, Consultants, Projects,
+  SocAdmin (`Nouvelle société` + `Société démo` avec `loading={demoCreating}`), Suppliers,
+  NoteFraisList (`Nouvelle note de frais`), et les deux boutons « Ajouter une ligne » de Tables.
+  Le libellé accessible (aria-label) devient le texte sans le préfixe « + ».
+- Frontend — NoteFraisList : « Soumettre » → `IconButton icon="send" variant="soft"` ;
+  « Suppr. » → `IconButton icon="delete" variant="danger"` (libellés accessibles conservés :
+  « Soumettre » et « Suppr. »).
+- Frontend — Holidays : « préc » → `IconButton icon="chevronLeft"`, « suiv » →
+  `IconButton icon="chevronRight"` (le bouton « Aujourd'hui » reste en texte).
+- Nettoyage des imports `Button`/`InlineButton` devenus inutiles.
+- Tests mis à jour : `Activities.test.tsx` et `NoteFraisList.test.tsx` (noms accessibles sans le
+  préfixe « + », ex. « Nouvelle activité », « Nouvelle note de frais »).
+
+**Vérification** : frontend — `oxlint` 0 erreur, `npm test` 20 fichiers / 178 tests OK,
+`tsc -b` + `vite build` OK. (Aucun changement backend.)
