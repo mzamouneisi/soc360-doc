@@ -1664,3 +1664,33 @@ collaborateur elle est cochée par défaut.
 
 **Vérification** : frontend — `oxlint` 0 erreur, `npm test` 20 fichiers / 178 tests OK,
 `tsc -b` + `vite build` OK. Backend — Flyway V63 appliqué en H2 (contexte OK).
+
+------------------
+### 2026-09-24 16:03:13 — soc-59 (suite) : renommage colonnes user_account + affichage is_employee (01_TODO_02)
+
+**Tâche** : table `user_account` — renommer `salarie` en `is_employee`, renommer `base_salary` en
+`salary`, supprimer `tjm_interne` ; la colonne `salary` joue le rôle de TJM interne quand
+`is_employee=false`. IHM : afficher la colonne `is_employee` (avec traduction) dans la table des
+collaborateurs.
+
+**Implémentation**
+- Backend — Flyway `V64__user_account_employee_salary.sql` : `RENAME COLUMN salarie TO
+  is_employee`, `RENAME COLUMN base_salary TO salary`, `DROP COLUMN tjm_interne`.
+- Backend — `UserAccount` : champ `salary` (remplace `baseSalary`), champ `employee`
+  (`@Column(name = "is_employee", nullable = false)`), suppression de `tjmInterne`.
+- Backend — `ConsultantDtos` : `ConsultantDto`/`ConsultantRequest` — `baseSalary` → `salary`,
+  suppression de `tjmInterne`, `salarie` → `employee` (boolean, nommé sans préfixe `is` pour
+  éviter l'ambiguïté Jackson sur les records booléens).
+- Backend — `ConsultantService` (`applyRhs`, `toDto`, `snapshot`), `DataSeeder`,
+  `ConsultantImportService` et `ConsultantServiceTest` adaptés.
+- Frontend — `api/types.ts` : `salary` / `employee` (suppression de `baseSalary`/`tjmInterne`/
+  `salarie`). `pages/Consultants.tsx` : `FormState` unifié (`salary`, `employee`), le champ unique
+  affiche « Salaire de base » si salarié sinon « TJM Interne » (même valeur `salary`) ; case
+  « Salarié » liée à `employee` ; nouveau bouton/colonne de table « Salarié » affichant
+  Oui/Non (`common.yes`/`common.no`) via le libellé `Consultants.salarie.label` (déjà traduit
+  FR/EN/AR).
+
+**Vérification** : frontend — `oxlint` 0 erreur, `npm test` 20 fichiers / 178 tests OK,
+`tsc -b` + `vite build` OK. Backend — `mvn test` 315 tests, seul échec pré-existant et
+order-dependent `SecurityIntegrationTest.adminCannotDeleteActiveUser` (OK en isolation) ; Flyway
+V64 appliqué avec succès en H2.
