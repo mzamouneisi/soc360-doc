@@ -1852,3 +1852,37 @@ lazy hors session dans cette méthode.
 **Vérification** : backend — `mvn test` 316 tests, seul échec pré-existant et order-dependent
 `SecurityIntegrationTest.adminCannotDeleteActiveUser` (OK en isolation). Compilation OK ; l'accès
 lazy fautif est supprimé.
+
+------------------
+### 2026-09-24 19:36:06 — soc-57 : templates d'emails personnalisables (01_TODO_01)
+
+**Tâche** : en tant que Responsable ESN, personnaliser les templates d'emails via des textareas
+dans la page Paramètres (variables au choix, format HTML).
+
+**Implémentation**
+- Backend — Flyway `V67__email_template.sql` : table `email_template` (company_id, template_key,
+  subject, body, contrainte unique (company_id, template_key)).
+- Backend — feature `com.soc360.mail` : `EmailTemplate` (entité), `EmailTemplateRepository`,
+  `EmailTemplateDtos` (TemplateView/SaveRequest), `EmailTemplateService` (définitions par défaut +
+  variables `{{nom}}` + liste/upsert/reset/render avec échappement HTML des valeurs),
+  `EmailTemplateController` (`GET/PUT/DELETE /api/email-templates`, réservé ADMIN/RESPONSIBLE_SOC,
+  isolation via `effectiveSocId` + `requireSocAccess`).
+  Templates fournis : VERIFICATION, PASSWORD_RESET, CRA_SUBMISSION, NOTE_FRAIS_SUBMISSION,
+  UNAVAILABILITY_SUBMISSION.
+- Backend — `EmailService.sendTemplate(to, socId, key, variables)` (injection `@Autowired(required=false)`
+  pour ne pas casser le constructeur/test existant) ; les emails de vérification et de reset
+  (AuthService), de soumission CRA (CraService), de note de frais (NoteFraisService) et
+  d'indisponibilité (UnavailabilityService) utilisent désormais le template de la société
+  (repli sur le template par défaut).
+- Backend — Flyway `V68__i18n_email_templates.sql` : 16 clés i18n FR/EN/AR (section Paramètres +
+  libellés des templates).
+- Backend — tests : `EmailTemplateServiceTest` (6 tests) ; `AuthServiceTest`/`NoteFraisServiceTest`
+  adaptés pour vérifier `sendTemplate` (clé + variables).
+- Frontend — `api/emailTemplates.ts` ; `pages/Settings.tsx` : section « Templates d'emails »
+  (visible ADMIN/RESPONSABLE_SOC) avec sélecteur de template, sujet, textarea HTML, liste des
+  variables, boutons enregistrer/rétablir (icônes) et messages de statut.
+- Frontend — `messages.generated.ts` : 16 clés FR/EN/AR.
+
+**Vérification** : backend — `mvn test` 322 tests, seul échec pré-existant et order-dependent
+`SecurityIntegrationTest.adminCannotDeleteActiveUser` (OK en isolation) ; Flyway V67/V68 OK.
+Frontend — `oxlint` 0 erreur, `npm test` 20 fichiers / 178 tests OK, `tsc -b` + `vite build` OK.
