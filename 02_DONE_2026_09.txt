@@ -1627,3 +1627,21 @@ matricule (servira ensuite au calcul du solde de congés des seuls salariés).
 `tsc -b` + `vite build` OK. Backend — `mvn test` 315 tests, seul échec pré-existant et
 order-dependent `SecurityIntegrationTest.adminCannotDeleteActiveUser` (OK en isolation) ; Flyway
 V61/V62 appliqués avec succès en H2.
+
+------------------
+### 2026-09-24 15:41:45 — soc-59 (suite) : salaire de base / TJM interne selon « Consultant salarié » (01_TODO_01)
+
+**Tâche** : pour la saisie du collaborateur — le champ « Salaire de base » doit apparaître
+lorsqu'on coche la case « Consultant salarié », qui doit être cochée par défaut ; si ce n'est pas
+un salarié, ce champ est renommé « TJM Interne ».
+
+**Implémentation**
+- Frontend — `pages/Consultants.tsx` : case « Consultant salarié » cochée par défaut
+  (`emptyForm.salarie = true`). Le champ unique (colonne de gauche, à côté de la devise) affiche
+  « Salaire de base » si salarié, sinon « TJM Interne » (mêmes attributs number). Suppression de
+  l'ancien champ TJM Interne toujours affiché ; « Mode de paiement » reste toujours visible.
+- Frontend — payload : `baseSalary` envoyé uniquement si salarié, `tjmInterne` uniquement si non
+  salarié (les autres champs pro restant déjà conditionnés au statut salarié).
+
+**Vérification** : frontend — `oxlint` 0 erreur, `npm test` 20 fichiers / 178 tests OK,
+`tsc -b` + `vite build` OK. (Aucun changement backend.)
