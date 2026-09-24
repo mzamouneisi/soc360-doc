@@ -1694,3 +1694,20 @@ collaborateurs.
 `tsc -b` + `vite build` OK. Backend — `mvn test` 315 tests, seul échec pré-existant et
 order-dependent `SecurityIntegrationTest.adminCannotDeleteActiveUser` (OK en isolation) ; Flyway
 V64 appliqué avec succès en H2.
+
+------------------
+### 2026-09-24 16:40:41 — soc-51 : boutons « Actualiser » en boutons à icône (01_TODO_02)
+
+**Tâche** : transformer les boutons « Actualiser » en boutons à icône (icône standard de
+rafraîchissement), comme dans les applications standard.
+
+**Implémentation**
+- Frontend — `components/ui.tsx` : `RefreshButton` affiche désormais uniquement l'icône de
+  rafraîchissement (plus de texte par défaut), avec `title` et `aria-label` = `common.reload`,
+  et un nouveau prop `disabled`. Le prop `label` reste optionnel pour afficher un libellé.
+- Frontend — remplacement des boutons texte « Actualiser » par `RefreshButton` :
+  `CraList`, `IndispoList` (icône + texte → icône seule), `Logs`, `Tables`, `Languages`
+  (boutons texte → icône). Suppression du `t` devenu inutile dans `Languages`.
+
+**Vérification** : frontend — `oxlint` 0 erreur, `npm test` 20 fichiers / 178 tests OK,
+`tsc -b` + `vite build` OK. (Aucun changement backend.)
