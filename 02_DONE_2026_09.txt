@@ -1711,3 +1711,43 @@ rafraîchissement), comme dans les applications standard.
 
 **Vérification** : frontend — `oxlint` 0 erreur, `npm test` 20 fichiers / 178 tests OK,
 `tsc -b` + `vite build` OK. (Aucun changement backend.)
+
+------------------
+### 2026-09-24 17:01:08 — soc-59 : noms de tables/colonnes tous en anglais (01_TODO_01)
+
+**Tâche** : les noms de tables, colonnes, etc. doivent tous être en anglais → renommage de tous
+les identifiants de schéma français restants.
+
+**Implémentation** — Flyway `V65__english_schema_names.sql` :
+- Tables : `soc`→`company`, `soc_holiday`→`company_holiday`, `histo_soc`→`company_history`,
+  `histo_consultant`→`consultant_history`, `note_frais`→`expense_report`,
+  `note_frais_line`→`expense_report_line`, `fiche_paie`→`payslip`, `cra`→`timesheet`,
+  `cra_configuration`→`timesheet_configuration`, `cra_day`→`timesheet_day`,
+  `cra_day_activity`→`timesheet_day_activity`, `cra_exchange`→`timesheet_exchange`,
+  `cra_history`→`timesheet_history`, `user_soc`→`user_company`.
+- Colonnes FK : `id_soc`→`company_id` (activity, activity_type, client, supplier, project,
+  subscription, hr_document, unavailability, user_account, timesheet_configuration,
+  company_holiday, expense_report, user_company), `id_soc_parent`→`parent_company_id`,
+  `cra_id`→`timesheet_id`, `cra_day_id`→`timesheet_day_id`, `note_frais_id`→`expense_report_id`.
+- `company` : `id_user`→`user_id`, `infos_web`→`web_info`, `gerant`→`manager`,
+  `categorie_entreprise`→`company_category`, `date_creation`→`creation_date`,
+  `date_fermeture`→`closing_date`, `code_naf`→`naf_code`.
+- `activity.indispo`→`is_leave`.
+- Historiques : `date_maj`→`updated_at`, `infos_avant`→`info_before`, `infos_apres`→`info_after`,
+  `date_modif`/`date_modif_indispo`→`modified_at`, `modifier`→`modified_by`,
+  `id_indispo`→`unavailability_id`, `nb_events_before/after`→`events_before/after`,
+  `id_consultant`→`consultant_id`, `id_user`→`user_id`.
+- `expense_report` : `infos_facture`→`invoice_info` ; `expense_report_line` :
+  `montant_ht`→`amount_excl_tax`, `montant_ttc`→`amount_incl_tax`, `enseigne`→`merchant`,
+  `adresse`→`address`.
+- `user_account` : `statut_professionnel`→`professional_status`,
+  `position_professionnelle`→`professional_position`, `mode_paiement`→`payment_method`,
+  `matricule`→`employee_number`.
+- Entités JPA mises à jour (`@Table`, `@JoinColumn`, `@Column`, `@JoinTable`,
+  `@UniqueConstraint`) pour les 20+ entités concernées. Les noms de champs Java et les DTO/JSON
+  restent inchangés (aucun impact frontend). `siret`, `urssaf`, `naf_code`, `label_fr/en/ar` et
+  les codes de langue sont conservés (identifiants/propres).
+
+**Vérification** : backend — `mvn test` 315 tests OK (dont `SecurityIntegrationTest`),
+`ddl-auto=validate` OK, Flyway V65 appliqué en H2 ; schéma final 100 % anglais (dump
+INFORMATION_SCHEMA vérifié). Aucun changement frontend.
