@@ -2065,3 +2065,22 @@ Flyway V80/V81 OK.
 
 **Vérification** : frontend — `oxlint` 0 erreur, `npm test` 20 fichiers / 178 tests OK,
 `tsc -b` + `vite build` OK. (Aucun changement backend.)
+
+------------------
+### 2026-09-25 18:54:36 — soc-64 (suite) : ids des titres/sous-titres de PageHeader (id = clé i18n) (01_TODO_01)
+
+**Tâche** : constat IHM — le sous-titre traduit rendu par `<p class="mt-1 text-sm text-gray-500">`
+(ex. `Feuilles de temps par consultant et par mois` sur la page CRA) n'a pas d'`id`, donc non
+ciblable dans l'inspecteur. Compléter soc-64 sur les éléments issus de `PageHeader`.
+
+**Implémentation** (frontend)
+- `components/data.tsx` : `PageHeader` accepte deux props optionnels `titleId` (appliqué au `<h2>`)
+  et `subtitleId` (appliqué au `<p>` du sous-titre) ; `id = clé i18n` du libellé.
+- Passe sur les 25 appelants de `PageHeader` : `titleId`/`subtitleId` renseignés avec la clé de
+  traduction correspondante.
+  - Cas dynamiques : `CraList` (sous-titre selon le rôle : consultant / manager / autre),
+    `SocAdmin` (titre et sous-titre selon `scope` et `isAdmin`), `Tables` (`titleId` indéfini quand un
+    nom de table est affiché à la place de la clé).
+
+**Vérification** : frontend — `oxlint` 0 erreur, `npm test` 20 fichiers / 178 tests OK,
+`tsc -b` + `vite build` OK. (Aucun changement backend, aucune migration Flyway.)
