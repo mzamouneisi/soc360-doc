@@ -2015,3 +2015,32 @@ indisponibilités (label « Modifier l'indisponibilité », colonne commentaire 
 
 **Vérification** : frontend — `oxlint` 0 erreur, `npm test` 20 fichiers / 178 tests OK,
 `tsc -b` + `vite build` OK. Backend — Flyway V73/V74 appliqués en H2 (contexte OK).
+
+------------------
+### 2026-09-25 16:24:47 — soc-65 : couleurs des autres boutons (Annuler, Soumettre…) (01_TODO_01)
+
+**Tâche** : paramétrer, dans la page Paramètres, la couleur de texte et la couleur de fond des
+autres boutons (Annuler, Soumettre, etc.) en plus des boutons Enregistrer/Supprimer déjà
+configurables.
+
+**Implémentation**
+- Backend — Flyway `V80__user_button_more_colors.sql` : colonnes `button_cancel_color`,
+  `button_cancel_text_color`, `button_submit_color`, `button_submit_text_color` sur `user_account`.
+- Backend — `UserAccount` (champs), `UserDtos.UserDto` + `ButtonSettingsRequest`, `AuthService.
+  updateButtonSettings` (validation `#RRGGBB` pour les 4 nouvelles couleurs), `AuthController`
+  `PUT /api/auth/me/button-settings`.
+- Frontend — `api/types.ts`, `api/auth.ts`, `auth/AuthContext.tsx` (variables CSS
+  `--btn-cancel-color`, `--btn-cancel-text-color`, `--btn-submit-color`,
+  `--btn-submit-text-color`), `index.css` (défauts).
+- Frontend — `components/ui.tsx` : la variante `neutral` (boutons Annuler) utilise désormais les
+  couleurs Annuler (fond + texte) ; la variante `soft` (boutons Soumettre/Valider) utilise les
+  couleurs Soumettre (fond + texte). `components/dialog.tsx` : bouton Annuler des dialogues
+  aligné sur ces couleurs.
+- Frontend — `pages/Settings.tsx` : 4 sélecteurs de couleur (fond/texte Annuler, fond/texte
+  Soumettre), intégrés à `changed`/sauvegarde, + aperçu de ces deux boutons.
+- Backend — Flyway `V81__i18n_button_colors.sql` : 4 libellés i18n FR/EN/AR.
+
+**Vérification** : frontend — `oxlint` 0 erreur, `npm test` 20 fichiers / 178 tests OK,
+`tsc -b` + `vite build` OK. Backend — `mvn test` 324 tests, seul échec pré-existant et
+order-dependent `SecurityIntegrationTest.adminCannotDeleteActiveUser` (OK en isolation) ;
+Flyway V80/V81 OK.
