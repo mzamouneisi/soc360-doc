@@ -1982,3 +1982,36 @@ le filtre, le focus dans l'input et de se souvenir de la phrase re-traduite, fai
 
 **Vérification** : frontend — `oxlint` 0 erreur, `npm test` 20 fichiers / 178 tests OK,
 `tsc -b` + `vite build` OK. (Aucun changement backend.)
+
+------------------
+### 2026-09-25 12:05:56 — soc-51 : traductions CRA / indisponibilités / jours fériés / dialogues (01_TODO_01)
+
+**Tâche** : corriger les traductions restantes — page CRA (boutons « Éditer »/« Ouvrir », boutons du
+bas en icônes, sigle CRA), dialogues « supprimer/annuler » incomplètement traduits, page
+indisponibilités (label « Modifier l'indisponibilité », colonne commentaire de l'historique traduite
+à la volée), page jours fériés (dialogue non traduit), page profil (dialogue suppression société).
+
+**Implémentation**
+- Backend — Flyway `V73__i18n_dialogs_and_cra.sql` : clés `dialog.*` (ok, confirm, confirmTitle,
+  infoTitle, successTitle, warningTitle, errorTitle, input — jusqu'ici absentes de la base donc
+  repli FR en EN/AR), `common.rejectionReason`, `common.erase`, `CraList.editer`,
+  `CraList.ouvrir`, libellés indispos/jours fériés/documents/fiche de paie/tables ; mise à jour
+  `CraList.cra` (en « Timesheets », ar « الجداول الزمنية » — traduction du sigle CRA).
+- Backend — Flyway `V74__i18n_cra_indispo_holidays.sql` : clés complémentaires (messages de
+  suppression CRA/indispo, indisponibilité nouvelle/retour brouillon/suppression/états vides,
+  feedback et duplication des jours fériés).
+- Frontend — remplacement de tous les `okLabel: 'Supprimer'` par `tr('common.delete')`
+  (+ `'Effacer'` → `tr('common.erase')`) et des erreurs `'Erreur inattendue'` par
+  `tr('common.unexpectedError')` sur l'ensemble des pages.
+- Frontend — `CraList` : labels `Éditer`/`Ouvrir` traduits ; pagination et navigation de mois en
+  `IconButton` chevrons (icônes, taille réduite) ; messages de suppression/rejet traduits.
+- Frontend — `Unavailability` : titres de formulaire traduits, prompts validation/rejet traduits,
+  confirmation de suppression traduite, état vide traduit, colonne **commentaire de l'historique
+  traduite à la volée** (`dt`) dans le modal d'historique.
+- Frontend — `Holidays` : dialogue de cellule traduit (libellé + valeur par défaut), confirmation
+  de suppression/duplication et messages de feedback traduits.
+- Frontend — `Profile` (suppression société), `Documents`, `FichePaie`, `Tables` : confirmations
+  traduites. `messages.generated.ts` : clés FR/EN/AR correspondantes.
+
+**Vérification** : frontend — `oxlint` 0 erreur, `npm test` 20 fichiers / 178 tests OK,
+`tsc -b` + `vite build` OK. Backend — Flyway V73/V74 appliqués en H2 (contexte OK).
