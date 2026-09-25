@@ -2044,3 +2044,24 @@ configurables.
 `tsc -b` + `vite build` OK. Backend — `mvn test` 324 tests, seul échec pré-existant et
 order-dependent `SecurityIntegrationTest.adminCannotDeleteActiveUser` (OK en isolation) ;
 Flyway V80/V81 OK.
+
+------------------
+### 2026-09-25 18:25:33 — soc-64 : ids HTML sur les éléments visibles (id = clé i18n) (01_TODO_01)
+
+**Tâche** : ajouter des `id` sur les éléments HTML visibles de l'IHM ; pour les libellés traduits,
+`id` = clé de traduction.
+
+**Implémentation** (frontend)
+- `components/ui.tsx` : `Field` accepte un prop `id` appliqué au `<label>` (donc `id` = clé i18n du
+  libellé).
+- `components/data.tsx` : chaque `<th>` de `Table` reçoit `id={col.key}` (en-tête de colonne).
+- `layout/MainLayout.tsx` : ids structurels `app-sidebar`, `app-header`, `app-main`.
+- Passe automatique sur les pages/composants : ajout de `id="<clé>"` aux `Field` dont le libellé est
+  `tr('clé')`/`t('clé')`, aux `IconButton` dont le `label` est traduit, et aux titres `<h1>…<h6>`
+  dont le texte est `tr('clé')`/`t('clé')` (30 fichiers modifiés).
+
+**Convention** : tout libellé issu de l'i18n porte un `id` égal à sa clé de traduction (ex.
+`id="settings.language.title"`), ce qui permet de cibler les éléments par clé depuis l'IHM/tests.
+
+**Vérification** : frontend — `oxlint` 0 erreur, `npm test` 20 fichiers / 178 tests OK,
+`tsc -b` + `vite build` OK. (Aucun changement backend.)
