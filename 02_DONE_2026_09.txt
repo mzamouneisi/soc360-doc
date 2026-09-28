@@ -2232,3 +2232,49 @@ export désactivé avec moins de 2 langues) ; `oxlint` 0 erreur, 23 fichiers / 1
 `tsc -b` + `vite build` OK. Backend — suite complète 329 tests (88 migrations Flyway appliquées,
 `LanguageIntegrationTest` 14/14), seul échec pré-existant et order-dependent
 `SecurityIntegrationTest.adminCannotDeleteActiveUser` (vert en isolation).
+
+------------------
+### 2026-09-28 12:52:39 — soc-66 : une indisponibilité validée apparaît dans le CRA (non modifiable) (01_TODO_01)
+
+**Tâche** : en tant que consultant, j'ajoute une indisponibilité (page `/indisponibilites`) sur un
+mois X et la soumets ; mon manager la valide ; je crée un nouveau CRA pour ce mois X. Attendu :
+l'indisponibilité validée apparaît dans le CRA et n'est pas modifiable (elle ne l'était pas —
+seule l'ancienne « Indispo » basée sur un CRA `CONGE` était reprise par `integrateIndispo`).
+
+**Implémentation**
+- Backend — `CraService` : nouvelle `integrateUnavailabilities(cra)` appelée à la création du CRA
+  (`createForMonth`, type CRA) et sur un CRA brouillon existant (`getOrCreate`). Pour chaque
+  `Unavailability` **VALIDATED** du consultant recouvrant le mois : chaque jour couvert devient un
+  jour de congé (`DayType.LEAVE`, ou `SICK_LEAVE` pour `CONGE_MALADIE`) et reçoit une activité de
+  congé (`valid=true`, 1 jour) résolue via le type d'activité `CONGE_*` du consultant ; les
+  activités déjà présentes (intégration de l'Indispo historique) sont conservées. Un CRA est
+  construit sans activité si aucun type de congé correspondant n'existe.
+- Backend — `CraService.save` : garde d'immuabilité pour le consultant — un jour couvert par une
+  indisponibilité validée doit rester `LEAVE`/`SICK_LEAVE` et ne peut porter que des activités
+  validées ; toute autre modification → `400` « Ce jour est couvert par une indisponibilité validée
+  et n'est pas modifiable ». Méthodes utilitaires `resolveLeaveActivity`, `firstActivityType`,
+  `validatedUnavailabilityDates`. Injection de `UnavailabilityRepository`, `ActivityTypeRepository`
+  et `ActivityService` (pas de cycle de dépendances).
+- Backend — `CraDtos.CraDayDto` : nouveau champ `unavailable` (couverture calculée à la lecture
+  dans `toDto` via `validatedUnavailabilityDates`), pour que l'IHM cible les jours verrouillés.
+- Backend — `DefaultActivityTypesSeeder`/`ActivityService` : ajout du type `CONGE_MATERNITE` et des
+  activités de congé par défaut `CONGE_MALADIE` / `CONGE_MATERNITE` (repli sur `CONGE_PAYE` si le
+  type n'existe pas sur une société ancienne) pour que les types d'indisponibilité aient une
+  activité de congé.
+- Frontend — `api/types.ts` (`CraDayDto.unavailable?`), `pages/CraDetail.tsx` : le jour couvert est
+  affiché en jaune (`LEAVE`) avec le chip de congé validé (lecture seule) ; en vue « Ligne », le
+  sélecteur de type de jour est **désactivé** et le bouton « Ajouter un événement » **masqué** pour
+  le consultant sur ces jours (info-bulle « Jour couvert par une indisponibilité validée »). Le
+  calendrier n'affiche déjà pas de « + » sur les jours non travaillés.
+- i18n — clé `CraDetail.jour.indisponible` (FR/EN/AR) dans `messages.generated.ts` + Flyway
+  `V89__i18n_cra_unavailability_day.sql`.
+- Isolation multi-société : inchangée (le CRA est déjà borné par `requireSocAccess` ; les
+  indisponibilités sont chargées par `consultantId`).
+
+**Vérification** : backend — nouveaux tests `CraServiceTest` (`createForMonth_integratesValidatedUnavailabilityAsLeaveDay`,
+`save_consultantCannotModifyValidatedUnavailabilityDay`, `save_consultantKeepsUnavailabilityDay_isAllowed`) ;
+`CraServiceTest` 55/55 ; suite complète 332 tests, seul échec pré-existant et order-dependent
+`SecurityIntegrationTest.adminCannotDeleteActiveUser` (vert en isolation). `SecurityIntegrationTest`
+adapté (11 types d'activité par défaut suite à l'ajout de `CONGE_MATERNITE`). Frontend — nouveau test
+`CraDetail.test.tsx` « rend non modifiable le jour couvert par une indisponibilité validée
+(consultant) » ; `oxlint` 0 erreur, 23 fichiers / 187 tests OK, `tsc -b` + `vite build` OK.
