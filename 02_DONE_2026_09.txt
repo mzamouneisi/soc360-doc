@@ -2157,3 +2157,40 @@ order-dependent `SecurityIntegrationTest.adminCannotDeleteActiveUser` (vert en i
 Frontend — nouveau test `Holidays.test.tsx` « recharge les jours fériés nationaux lorsqu'on change
 d'année » (12 clics sur « Suiv » → appel `findByCountryYear('FR', annee+1)`) ; `oxlint` 0 erreur,
 22 fichiers / 182 tests OK, `tsc -b` + `vite build` OK.
+
+------------------
+### 2026-09-28 11:13:36 — soc-54 : export / import CSV des traductions (01_TODO_01)
+
+**Tâche** : page Langues — ajouter export / import CSV. Lors de l'export, on choisit la langue de
+référence et la langue à saisir ; le CSV exporté comporte 3 colonnes : clé, langue de référence,
+langue à saisir.
+
+**Implémentation** (frontend uniquement pour la logique CSV ; backend : migration i18n)
+- Frontend — `pages/Languages.tsx` : nouvelle section « Export / Import CSV » sous l'export/import
+  JSON, avec deux sélecteurs de langue : **Langue de référence** (défaut `fr`) et **Langue à
+  saisir** (défaut : première langue ≠ référence), plus les boutons « Exporter CSV » et
+  « Importer CSV » (input fichier caché `accept="text/csv,.csv"`).
+  - Export (`exportCsv`) : construit le CSV depuis l'`adminBundle` (valeurs courantes du tableau,
+    éditions non enregistrées incluses) — en-tête `cle,<ref>,<target>` puis une ligne par clé
+    `key,<valeur langue de référence>,<valeur langue à saisir>`. Téléchargement `text/csv`
+    UTF-8 avec BOM (`\uFEFF`) pour Excel, séparateur virgule, échappement RFC 4180
+    (`csvCell` : guillemets/retours ligne/virgules), nom de fichier
+    `soc360-langues-<ref>-<target>-<AAAA-MM-JJ>.csv`.
+  - Import (`importCsv`) : parseur CSV maison (`parseCsv`, gère BOM, guillemets doublés, `\r\n`,
+    champs multi-lignes), ignore une éventuelle ligne d'en-tête (`cle`/`clé`/`key`/`msg_key`),
+    puis met à jour la **langue à saisir** sélectionnée via `i18nApi.importAll({ entries })` en
+    ignorant les lignes sans clé ou sans valeur cible (pas d'écrasement par une cellule vide).
+- Frontend — i18n : 8 nouvelles clés FR/EN/AR (`Languages.export.import.csv`,
+  `Languages.csv.description`, `Languages.langue.de.reference`, `Languages.langue.a.saisir`,
+  `Languages.exporter.csv`, `Languages.importer.csv`, `Languages.csv.exporte`,
+  `Languages.csv.invalide`) ajoutées à `messages.generated.ts` pour le repli hors ligne.
+- Backend — Flyway `V87__i18n_languages_csv.sql` : insertion des 8 clés dans la table
+  `app_language` (fr/en/ar). Aucune modification de schéma.
+- Isolation multi-société : sans objet (page réservée ADMIN, table `app_language` globale).
+
+**Vérification** : frontend — nouveau `pages/Languages.test.tsx` 2/2 (export CSV : en-tête
+`cle,fr,en` + lignes `common.save,Enregistrer,Save` ; import CSV : `importAll` appelé avec les
+entrées de la langue à saisir) ; `oxlint` 0 erreur, 23 fichiers / 184 tests OK,
+`tsc -b` + `vite build` OK. Backend — `LanguageIntegrationTest` 14/14 (Flyway V87 appliqué en H2) ;
+suite complète 329 tests, seul échec pré-existant et order-dependent
+`SecurityIntegrationTest.adminCannotDeleteActiveUser` (vert en isolation).
