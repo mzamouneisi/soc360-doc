@@ -2334,3 +2334,32 @@ tous rôles dont lui-même, admin → « Aucun ») ; `oxlint` 0 erreur, 23 fichi
 
 **Vérification** : frontend — `MyActivities.test.tsx` complété (« Tarif » absent du tableau) ;
 `oxlint` 0 erreur, 23 fichiers / 187 tests OK, `tsc -b` + `vite build` OK.
+
+------------------
+### 2026-09-28 15:38:19 — soc-66 (suite) : le consultant ne peut pas supprimer les events validés (01_TODO_01)
+
+**Tâche** : Indisponibilité et CRA — le consultant ne doit pas pouvoir supprimer les événements
+validés (notamment ceux issus d'une indisponibilité validée intégrée au CRA).
+
+**Constat** : l'édition/suppression unitaire d'un événement était déjà verrouillée
+(`canModifyActivity` → un consultant ne peut pas modifier/supprimer un événement `valid`), et le
+backend refuse déjà de retirer une activité validée (`existingValidKeys`, `400` « Impossible de
+modifier une activité validée »). **Mais** le bouton « Supprimer tous les événements »
+(`removeAllEvents`) vidait *toutes* les activités, y compris les validées, avant l'erreur serveur.
+
+**Implémentation**
+- Frontend — `pages/CraDetail.tsx` : `removeAllEvents()` préserve désormais les activités validées
+  pour un CONSULTANT (`activities: isConsultant ? d.activities.filter(a => a.valid) : []`). Le
+  bouton « Supprimer tous les événements » ne supprime donc, pour le consultant, que les
+  événements non validés ; les managers gardent le comportement complet.
+- Backend — aucun changement de production (la garde existe déjà) ; ajout d'un test de
+  non-régression.
+- Isolation multi-société : sans objet (CRA déjà borné par `requireSocAccess`).
+
+**Vérification** : frontend — nouveau test `CraDetail.test.tsx` « un consultant ne peut pas
+supprimer les événements validés (supprimer tous) » (mix validé/non validé → après « Supprimer tous
+les événements », l'événement validé subsiste, l'invalide disparaît) ; `oxlint` 0 erreur,
+23 fichiers / 188 tests OK, `tsc -b` + `vite build` OK. Backend — nouveau test
+`CraServiceTest.save_consultantRemovingValidatedActivity_isForbidden` ; `CraServiceTest` 56/56 ;
+suite complète 336 tests, seul échec pré-existant et order-dependent
+`SecurityIntegrationTest.adminCannotDeleteActiveUser` (vert en isolation).
