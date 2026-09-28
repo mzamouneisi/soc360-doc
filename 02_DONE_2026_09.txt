@@ -2363,3 +2363,45 @@ les événements », l'événement validé subsiste, l'invalide disparaît) ; `o
 `CraServiceTest.save_consultantRemovingValidatedActivity_isForbidden` ; `CraServiceTest` 56/56 ;
 suite complète 336 tests, seul échec pré-existant et order-dependent
 `SecurityIntegrationTest.adminCannotDeleteActiveUser` (vert en isolation).
+
+------------------
+### 2026-09-28 16:32:36 — soc-51 : internationalisation restante (profil, CRA, documents, fiche de paie, calendriers) (01_TODO_01)
+
+**Tâche** : corriger les textes encore en dur / non traduits à la volée :
+- page Profil : « Le nouveau mot de passe doit contenir au moins 8 caractères » ;
+- tous les calendriers (ou champs de type date) : traduire à la volée ;
+- page Missions : statut à traduire à la volée ;
+- page CRA : « Aucun CRA pour cette année », « Aucun CRA saisi » ;
+- page Documents : boutons et colonnes du tableau ;
+- page Fiche de paie : « Ajouter la première fiche de paie » ;
+- formulaire de modification d'un collaborateur : textes du calendrier, « Virement ».
+
+**Implémentation** (frontend ; backend : migration i18n)
+- `components/ui.tsx` — `Input` : les champs `type="date"`/`type="month"` reçoivent
+  automatiquement `lang={getFormatLocale()}` → le sélecteur natif de date suit la langue de
+  l'application (tous les champs date de l'app, y compris le formulaire collaborateur).
+- `lib/format.ts` — nouvelle fonction `weekdayShortLabels()` (jours de la semaine abrégés via
+  `Intl.DateTimeFormat` dans la locale active) ; utilisée par `CraDetail` et `Holidays` en
+  remplacement des tableaux `['Lun','Mar',…]` codés en dur.
+- `pages/Profile.tsx` — messages de changement de mot de passe via `tr(...)`
+  (`Profile.le.nouveau.mot.de.passe…`, `Profile.les.mots.de.passe.ne.correspondent.pas`).
+- `pages/Missions.tsx` — statut de mission traduit à la volée : `dt(meta.label)` via
+  `useDynamicTranslate` (En cours / À venir / Terminée).
+- `pages/CraList.tsx` — messages d'état vide via `tr(...)` (Aucun CRA pour cette année, Aucun CRA
+  saisi., Aucun CRA ne correspond au filtre, Modifiez votre recherche., Cliquez sur « Nouveau
+  Cra »…).
+- `pages/Documents.tsx` — colonnes (Document, Catégorie, Description, Expire le, Partagé par) et
+  boutons (Télécharger, Supprimer, Annuler, Partager, Choisir un fichier, Sélectionnez un fichier)
+  via `tr(...)`.
+- `pages/FichePaie.tsx` — « Ajoutez la première fiche de paie. » / « Aucune fiche disponible. »
+  via `tr(...)`.
+- `pages/Consultants.tsx` — mode de paiement en `Select` (valeurs canoniques Virement / Prélèvement
+  / Chèque / Espèces) avec libellés traduits à la volée `dt(value)` ; une valeur hors liste est
+  conservée en option. Les valeurs stockées restent canoniques ; seul l'affichage est traduit.
+- i18n — 16 nouvelles clés FR/EN/AR dans `messages.generated.ts` + Flyway
+  `V91__i18n_profile_cra_payslip_documents.sql`.
+- Isolation multi-société : sans objet (libellés uniquement).
+
+**Vérification** : frontend — `oxlint` 0 erreur (warnings pré-existants), 23 fichiers / 188 tests OK,
+`tsc -b` + `vite build` OK. Backend — suite complète 336 tests (Flyway v91), seul échec pré-existant
+et order-dependent `SecurityIntegrationTest.adminCannotDeleteActiveUser` (vert en isolation).
