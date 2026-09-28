@@ -2194,3 +2194,41 @@ entrées de la langue à saisir) ; `oxlint` 0 erreur, 23 fichiers / 184 tests OK
 `tsc -b` + `vite build` OK. Backend — `LanguageIntegrationTest` 14/14 (Flyway V87 appliqué en H2) ;
 suite complète 329 tests, seul échec pré-existant et order-dependent
 `SecurityIntegrationTest.adminCannotDeleteActiveUser` (vert en isolation).
+
+------------------
+### 2026-09-28 12:14:46 — refonte IHM export/import de la langue (01_TODO_01)
+
+**Tâche** : refaire l'IHM de la partie export / import de la langue. Section unique « Export/Import
+de la langue » avec : choix des colonnes à exporter (au moins 2) sous forme de cases à cocher
+devant chaque langue (`[] fr-Français`, `[] en-English`, …) ; type d'export en 2 boutons radio
+`() CSV  () JSON` ; boutons « Exporter » et « Importer ».
+
+**Implémentation** (frontend uniquement ; backend : migration i18n)
+- Frontend — `pages/Languages.tsx` : remplacement des deux blocs précédents (export/import JSON
+  séparé + section CSV avec sélecteurs « langue de référence » / « langue à saisir ») par une
+  section unifiée « Export/Import de la langue » :
+  - **Colonnes à exporter** : une case à cocher par langue disponible, libellé `code-Libellé`
+    (`fr-Français`, `en-English`, …). Initialisation automatique aux 2 premières langues ; au moins
+    2 colonnes requises (bouton « Exporter » désactivé et message si < 2).
+  - **Type d'export** : boutons radio **CSV** (défaut) et **JSON**.
+  - **Exporter** : construit le fichier depuis l'`adminBundle` (éditions non enregistrées incluses)
+    avec comme colonnes la clé + les langues cochées — CSV (`cle,<langues…>`, échappement RFC 4180,
+    BOM UTF-8) ou JSON (`{ version, languages, entries }`).
+  - **Importer** : lit le fichier au format sélectionné et met à jour uniquement les langues cochées
+    (`i18nApi.importAll`) ; CSV : en-tête facultatif (mappage des colonnes par code de langue, repli
+    positionnel) + parseur maison (BOM, guillemets, `\r\n`, multi-lignes) ; JSON : `entries[].translations`
+    filtrées sur les langues cochées ; les cellules vides sont ignorées (pas d'écrasement).
+- Frontend — i18n : 8 nouvelles clés FR/EN/AR (`Languages.export.import.langue`,
+  `Languages.colonnes.a.exporter`, `Languages.au.moins.deux.langues`, `Languages.type.export`,
+  `Languages.exporter`, `Languages.importer`, `Languages.exporte`, `Languages.fichier.invalide`)
+  ajoutées à `messages.generated.ts`. Les anciennes clés CSV (référence/cible) restent en base.
+- Backend — Flyway `V88__i18n_languages_export_import.sql` : insertion des 8 clés dans
+  `app_language` (fr/en/ar). Aucune modification de schéma.
+- Isolation multi-société : sans objet (page ADMIN, table `app_language` globale).
+
+**Vérification** : frontend — `pages/Languages.test.tsx` 4/4 (export CSV des colonnes cochées,
+export JSON quand le radio JSON est sélectionné, import CSV mettant à jour les langues cochées,
+export désactivé avec moins de 2 langues) ; `oxlint` 0 erreur, 23 fichiers / 186 tests OK,
+`tsc -b` + `vite build` OK. Backend — suite complète 329 tests (88 migrations Flyway appliquées,
+`LanguageIntegrationTest` 14/14), seul échec pré-existant et order-dependent
+`SecurityIntegrationTest.adminCannotDeleteActiveUser` (vert en isolation).
