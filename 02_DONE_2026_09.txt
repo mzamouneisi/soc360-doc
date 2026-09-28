@@ -2122,3 +2122,38 @@ fériés de la société, faire apparaître les jours fériés nationaux (couleu
 `tsc -b` + `vite build` OK. Backend — `LanguageIntegrationTest` 14/14 (Flyway V86 appliqué en H2) ;
 suite complète 324 tests, seul échec pré-existant et order-dependent
 `SecurityIntegrationTest.adminCannotDeleteActiveUser` (vert en isolation).
+
+------------------
+### 2026-09-28 10:34:40 — soc-62 (suite) : jours fériés nationaux des autres années lors de la navigation (01_TODO_01)
+
+**Tâche** : afficher aussi les jours fériés des mois des autres années lorsqu'on parcourt les mois
+en avançant / reculant dans le calendrier des jours fériés.
+
+**Cause** : la table `public_holiday` n'était renseignée que pour l'année courante (DataSeeder,
+année unique) ; `GET /api/holidays/FR/{year}` ne renvoyait donc rien pour les autres années, et le
+calendrier ne pouvait pas afficher leurs jours fériés nationaux.
+
+**Implémentation**
+- Backend — nouveau `com.soc360.holiday.PublicHolidayService` : `findByCountryYear(country, year)`
+  renvoie les jours fériés stockés pour l'année, et pour la France y ajoute (ou remplace par label)
+  les 10 jours fériés nationaux calculés pour n'importe quelle année. Les dates mobiles (Lundi de
+  Pâques, Ascension) sont calculées à partir du dimanche de Pâques (algorithme grégorien / Meeus)
+  → `easterSunday(year)` ; les dates fixes (Jour de l'an, Fête du Travail, Victoire 1945, Fête
+  nationale, Assomption, Toussaint, Armistice, Noël) sont ajoutées directement. Les jours fériés
+  personnalisés présents en base (label non standard) sont conservés ; les entrées DB portant un
+  label standard sont ignorées au profit de la date calculée (corrige au passage les dates mobiles
+  erronées du seed de démo 2026). Les jours générés sont transitoires (non persistés, `id` null).
+- Backend — `PublicHolidayController` délègue `findByCountryYear`, `countries`, `create` et
+  `delete` au service (`create` conserve le contrôle de doublon et `ApiException.conflict`).
+- Frontend — aucun changement de production : `pages/Holidays.tsx` recharge déjà les jours fériés
+  nationaux (`holidaysApi.findByCountryYear('FR', annee)`) à chaque changement d'année ; le
+  calendrier affiche désormais ces jours en jaune aussi pour les autres années.
+- Isolation multi-société : sans objet (référentiel national global, aucune donnée par société).
+
+**Vérification** : backend — `PublicHolidayServiceTest` 5/5 (dates de Pâques 2024-2027, jeu de 10
+jours fériés 2027, remplissage d'une année absente, conservation des extras et priorité aux dates
+calculées, pays non-FR rendu tel quel) ; suite complète 329 tests, seul échec pré-existant et
+order-dependent `SecurityIntegrationTest.adminCannotDeleteActiveUser` (vert en isolation).
+Frontend — nouveau test `Holidays.test.tsx` « recharge les jours fériés nationaux lorsqu'on change
+d'année » (12 clics sur « Suiv » → appel `findByCountryYear('FR', annee+1)`) ; `oxlint` 0 erreur,
+22 fichiers / 182 tests OK, `tsc -b` + `vite build` OK.
