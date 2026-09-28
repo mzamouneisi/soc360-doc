@@ -2278,3 +2278,44 @@ seule l'ancienne « Indispo » basée sur un CRA `CONGE` était reprise par `int
 adapté (11 types d'activité par défaut suite à l'ajout de `CONGE_MATERNITE`). Frontend — nouveau test
 `CraDetail.test.tsx` « rend non modifiable le jour couvert par une indisponibilité validée
 (consultant) » ; `oxlint` 0 erreur, 23 fichiers / 187 tests OK, `tsc -b` + `vite build` OK.
+
+------------------
+### 2026-09-28 14:58:20 — SOC-67 : formulaire d'activité, liste de collaborateurs (tous rôles) (01_TODO_01)
+
+**Tâche** : dans le formulaire « Nouvelle activité », la liste des consultants devient une liste de
+**collaborateurs** (tous rôles). Aujourd'hui elle ne contient que les CONSULTANT, or une mission
+(commerciale…) peut être affectée à un MANAGER, et un RESPONSIBLE_SOC doit pouvoir se l'affecter
+à lui-même.
+
+**Implémentation**
+- Backend — `ConsultantService.collaborators(socId)` + `ConsultantController` `GET
+  /api/consultants/collaborators` : collaborateurs pouvant se voir affecter une activité, selon le
+  rôle — MANAGER → ses consultants (il ne peut affecter qu'à son équipe) ; RESPONSIBLE_SOC → tous
+  les utilisateurs actifs de la société sélectionnée (lui-même inclus) ; ADMIN → utilisateurs de la
+  société demandée ou tous si aucune ; CONSULTANT → liste vide. Les comptes ADMIN sont exclus ;
+  tri par nom ; périmètre résolu côté serveur (`SecurityUtils.effectiveSocId`).
+- Backend — nouveau DTO `ConsultantDtos.CollaboratorSummary(id, fullName, position, email, role)`.
+- Backend — `ActivityService.apply` acceptait déjà un `consultantId` correspondant à n'importe quel
+  utilisateur de la société (contrôle de rattachement manager→consultant pour le seul MANAGER) :
+  aucun changement nécessaire, l'affectation à un MANAGER ou au RESPONSIBLE_SOC lui-même fonctionne.
+- Frontend — `api/types.ts` (`CollaboratorSummary`), `api/consultants.ts`
+  (`collaborators(socId?)`).
+- Frontend — `pages/Activities.tsx` : le formulaire et le filtre utilisent désormais
+  `consultantsApi.collaborators(effectiveSocId)` au lieu de `managed()`/`summaries()`/`filterList()` ;
+  libellés renommés « Consultant » → « Collaborateur » (`Activities.collaborateur`,
+  `.obligatoire`, `tous.les.collaborateurs`, `selectionnez.un.collaborateur`,
+  `selectionnez.un.de.vos.collaborateurs`). La règle « pas d'option Aucun » reste pour
+  MANAGER/RESPONSIBLE_SOC ; l'ADMIN conserve « Aucun » (activité partagée).
+- i18n — 5 clés FR/EN/AR dans `messages.generated.ts` + Flyway
+  `V90__i18n_activity_collaborators.sql`.
+- Isolation multi-société : le périmètre est calculé côté serveur (`effectiveSocId` / société
+  sélectionnée) ; un manager reste borné à son équipe, un RESPONSIBLE_SOC à sa société.
+
+**Vérification** : backend — 3 nouveaux tests `ConsultantServiceTest`
+(`collaborators_managerReturnsManagedConsultants`,
+`collaborators_responsableSocReturnsAllRolesExceptAdmin`, `collaborators_consultantReturnsEmpty`) ;
+`ConsultantServiceTest` 33/33 ; suite complète 335 tests (Flyway v90), seul échec pré-existant et
+order-dependent `SecurityIntegrationTest.adminCannotDeleteActiveUser` (vert en isolation).
+Frontend — `Activities.test.tsx` adapté (manager → collaborateurs de l'équipe, responsable_soc →
+tous rôles dont lui-même, admin → « Aucun ») ; `oxlint` 0 erreur, 23 fichiers / 187 tests OK,
+`tsc -b` + `vite build` OK.
