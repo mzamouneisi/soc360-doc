@@ -2428,3 +2428,28 @@ n'est pas contrôlée par l'attribut `lang` (Chrome suit la locale du navigateur
 **Vérification** : frontend — `oxlint` 0 erreur, 23 fichiers / 188 tests OK, `tsc -b` + `vite build`
 OK. Backend — suite complète 336 tests (Flyway v92), seul échec pré-existant et order-dependent
 `SecurityIntegrationTest.adminCannotDeleteActiveUser` (vert en isolation).
+
+------------------
+### 2026-09-28 16:58:08 — soc-51 (suite) : champ mois via lib `react-datepicker` (page CRA) (01_TODO_01)
+
+**Tâche** : trouver une librairie de champ date permettant de traduire les valeurs d'un champ
+équivalent à `<input type="month">`, et remplacer sur la page CRA le filtre par mois par ce champ.
+
+**Implémentation** (frontend uniquement — aucune migration ni clé i18n supplémentaire)
+- Dépendance ajoutée : **`react-datepicker@9.1.0`** (compatible React 19 ; dépend de `date-fns@4`,
+  `@floating-ui/react`, `clsx`).
+- Nouveau composant `components/MonthPicker.tsx` : `DatePicker` de `react-datepicker` configuré en
+  `showMonthYearPicker` (sélection d'un mois) avec `dateFormat="MMMM yyyy"` et la locale `date-fns`
+  correspondant à la langue de l'application (`fr` / `en-US` / `ar` via `useI18n()`). Les libellés
+  de mois et la navigation sont donc **traduits à la volée** (contrairement au champ natif). La
+  valeur échangée reste `AAAA-MM` ; `isClearable` permet de revenir à « tous les mois ». Le CSS
+  `react-datepicker/dist/react-datepicker.css` est importé par le composant.
+- `pages/CraList.tsx` : le filtre « Filtrer par mois » utilise désormais `MonthPicker` (id
+  `CraList.filtrer.par.mois`, placeholder « Tous les mois ») — comportement de filtrage inchangé
+  (mise à jour de `monthFilter` et de l'année affichée).
+- La page Indisponibilités conserve le `MonthSelect` précédent (hors périmètre de la tâche).
+- Isolation multi-société : sans objet (libellé/filtre côté IHM).
+
+**Vérification** : frontend — `CraList.test.tsx` mis à jour (sélection du mois via la cellule
+localisée « juil. » du calendrier) ; `oxlint` 0 erreur, 23 fichiers / 188 tests OK,
+`tsc -b` + `vite build` OK (bundle +~190 Ko). Aucun changement backend.
