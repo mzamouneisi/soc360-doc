@@ -2453,3 +2453,30 @@ OK. Backend — suite complète 336 tests (Flyway v92), seul échec pré-existan
 **Vérification** : frontend — `CraList.test.tsx` mis à jour (sélection du mois via la cellule
 localisée « juil. » du calendrier) ; `oxlint` 0 erreur, 23 fichiers / 188 tests OK,
 `tsc -b` + `vite build` OK (bundle +~190 Ko). Aucun changement backend.
+
+------------------
+### 2026-09-28 17:04:42 — soc-51 (suite) : généralisation du champ date localisé à toutes les pages
+
+**Tâche** : généraliser le champ date localisé (`react-datepicker`) partout en remplaçant les
+`<input type="date">`.
+
+**Implémentation** (frontend uniquement)
+- Nouveau composant `components/DateField.tsx` : `DatePicker` de `react-datepicker` en mode jour,
+  localisé via les locales `date-fns` (`fr`/`en-US`/`ar`) — format d'affichage (`dd/MM/yyyy`,
+  `MM/dd/yyyy`), placeholder (`jj/mm/aaaa`, …), navigation et noms de mois traduits à la volée.
+  Valeur échangée au format `AAAA-MM-JJ` ; supporte `minDate`/`maxDate`, `disabled`, `isClearable`,
+  `id`, `title`, `className`.
+- `components/ui.tsx` — `Input` : quand `type="date"`, il délègue désormais à `DateField` (en
+  synthétisant un `ChangeEvent` `{ target: { value } }`). **Tous** les appels existants
+  `<Input type="date" … />` sont donc convertis d'un coup, sans modifier les pages :
+  AddSocModal, Activities, Consultants (embauche/naissance), CraDetail (plages), Documents
+  (expiration), FichePaie (émission), NoteFraisList (ligne), Projects, Register, SocAdmin,
+  Unavailability.
+- `components/MonthPicker.tsx` : désormais utilisé aussi par la page Indisponibilités (filtre
+  « Filtrer par mois ») pour homogénéiser ; l'ancien `MonthSelect` (select natif) est supprimé.
+- Aucune nouvelle clé i18n (les libellés des calendriers viennent des locales `date-fns`).
+- Isolation multi-société : sans objet (composants d'IHM).
+
+**Vérification** : frontend — `CraList.test.tsx` et `Unavailability.test.tsx` mis à jour
+(sélection du mois via la cellule localisée) ; `oxlint` 0 erreur, 23 fichiers / 188 tests OK,
+`tsc -b` + `vite build` OK. Aucun changement backend ni migration.
