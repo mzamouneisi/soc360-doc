@@ -2405,3 +2405,26 @@ suite complète 336 tests, seul échec pré-existant et order-dependent
 **Vérification** : frontend — `oxlint` 0 erreur (warnings pré-existants), 23 fichiers / 188 tests OK,
 `tsc -b` + `vite build` OK. Backend — suite complète 336 tests (Flyway v91), seul échec pré-existant
 et order-dependent `SecurityIntegrationTest.adminCannotDeleteActiveUser` (vert en isolation).
+
+------------------
+### 2026-09-28 16:45:13 — soc-51 (suite) : « Filtrer par mois » localisé sur la page CRA (01_TODO_01)
+
+**Tâche** : page CRA — le champ « Filtrer par mois » (et son équivalent sur la page Indisponibilités)
+n'était pas traduit : `<input type="month">` affiche le placeholder du navigateur, dont la langue
+n'est pas contrôlée par l'attribut `lang` (Chrome suit la locale du navigateur).
+
+**Implémentation** (frontend ; backend : migration i18n)
+- Frontend — `components/ui.tsx` : nouveau composant réutilisable **`MonthSelect`** — un `<select>`
+  listant les 12 mois (libellés traduits via `monthLabel`, croissance annuelle) + une option
+  « Tous les mois » ; valeur `AAAA-MM`. Contrairement au champ natif, l'affichage suit la langue de
+  l'application dans tous les navigateurs.
+- Frontend — `pages/CraList.tsx` et `pages/Unavailability.tsx` : le filtre « Filtrer par mois »
+  utilise désormais `MonthSelect` (au lieu de `MonthInput`) ; comportement inchangé (même valeur
+  `AAAA-MM`, mise à jour de l'année affichée côté CRA).
+- Frontend — `messages.generated.ts` : clé `common.allMonths` (FR/EN/AR).
+- Backend — Flyway `V92__i18n_all_months.sql` (`common.allMonths`).
+- Isolation multi-société : sans objet (libellé uniquement).
+
+**Vérification** : frontend — `oxlint` 0 erreur, 23 fichiers / 188 tests OK, `tsc -b` + `vite build`
+OK. Backend — suite complète 336 tests (Flyway v92), seul échec pré-existant et order-dependent
+`SecurityIntegrationTest.adminCannotDeleteActiveUser` (vert en isolation).
