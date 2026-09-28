@@ -2319,3 +2319,18 @@ order-dependent `SecurityIntegrationTest.adminCannotDeleteActiveUser` (vert en i
 Frontend — `Activities.test.tsx` adapté (manager → collaborateurs de l'équipe, responsable_soc →
 tous rôles dont lui-même, admin → « Aucun ») ; `oxlint` 0 erreur, 23 fichiers / 187 tests OK,
 `tsc -b` + `vite build` OK.
+
+------------------
+### 2026-09-28 15:16:30 — soc-62 (suite) : masquer la colonne Tarif sur « Mes Activités » (01_TODO_01)
+
+**Tâche** : page « Mes Activités » (consultant) — masquer la colonne **Tarif**.
+
+**Implémentation** (frontend uniquement)
+- Frontend — `pages/MyActivities.tsx` : suppression de la colonne `price` (« Tarif ») du tableau
+  (la page reste en lecture seule). L'import `formatMoney` devenu inutile est retiré.
+- Backend : aucun changement (la donnée `price` reste exposée par l'API, simplement non affichée
+  pour le consultant sur cette page ; aucune migration Flyway, aucune nouvelle clé i18n).
+- Isolation multi-société : sans objet (page consultant, lecture de ses propres activités).
+
+**Vérification** : frontend — `MyActivities.test.tsx` complété (« Tarif » absent du tableau) ;
+`oxlint` 0 erreur, 23 fichiers / 187 tests OK, `tsc -b` + `vite build` OK.
