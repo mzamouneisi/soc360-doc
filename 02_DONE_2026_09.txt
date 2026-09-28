@@ -2083,4 +2083,42 @@ ciblable dans l'inspecteur. Compléter soc-64 sur les éléments issus de `PageH
     nom de table est affiché à la place de la clé).
 
 **Vérification** : frontend — `oxlint` 0 erreur, `npm test` 20 fichiers / 178 tests OK,
-`tsc -b` + `vite build` OK. (Aucun changement backend, aucune migration Flyway.)
+  `tsc -b` + `vite build` OK. (Aucun changement backend, aucune migration Flyway.)
+
+------------------
+### 2026-09-28 10:28:56 — soc-62 : tableau de bord consultant et jours fériés nationaux (01_TODO_01)
+
+**Tâche** : en tant que consultant — page dashboard : ne plus voir les boutons « clients » /
+« missions » et ajouter « Mes Activités », « CRA » et « Indisponibilités » ; menu Jours fériés :
+ne pas voir le label « Définissez les jours fériés spécifiques de la société » ; en plus des jours
+fériés de la société, faire apparaître les jours fériés nationaux (couleur jaune).
+
+**Implémentation**
+- Frontend — `pages/Dashboard.tsx` : les raccourcis du bas deviennent dépendants du rôle. Pour un
+  CONSULTANT : « Mes Activités » (/mes-activites), « CRA » (/cras), « Indisponibilités »
+  (/indisponibilites) et « Notes de frais » (/notes-frais) — les raccourcis « Clients » et
+  « Missions » (pages interdites aux consultants, `NotConsultantRoute`) ne sont plus affichés.
+  Les autres rôles conservent « Notes de frais », « Clients », « Missions » ; l'ADMIN garde en plus
+  ses raccourcis Tables / Logs / Langues.
+- Frontend — `pages/Holidays.tsx` : le sous-titre « Définissez les jours fériés spécifiques de la
+  société » n'est affiché que pour les rôles éditeurs (`canEdit` = ADMIN / RESPONSIBLE_SOC /
+  MANAGER) ; un CONSULTANT voit donc la page sans ce label.
+- Frontend — `pages/Holidays.tsx` : chargement parallèle des jours fériés de la société
+  (`socHolidaysApi.list(year)`) et des jours fériés nationaux (`holidaysApi.findByCountryYear('FR',
+  year)`, repli silencieux sur `[]`). Les jours nationaux sont rendus en **jaune** (bordure/fond
+  `yellow-50`, texte `yellow-600/800`), les jours de la société restant en bleu (brand) ; un jour
+  peut cumuler les deux libellés. L'interaction d'ajout/suppression de jour société est inchangée.
+- Frontend — i18n : 3 nouvelles clés FR/EN/AR (`Dashboard.mes.activites.description`,
+  `Dashboard.cra.description`, `Dashboard.indisponibilites.description`) ajoutées à
+  `messages.generated.ts` pour les descriptions des raccourcis consultant ; les titres réutilisent
+  les clés `nav.myActivities` / `nav.cra` / `nav.unavailability` existantes.
+- Backend — Flyway `V86__i18n_consultant_dashboard.sql` : insertion des 3 clés dans la table
+  `app_language` (fr/en/ar).
+- Isolation multi-société : sans objet (aucune nouvelle requête backend ; le tableau de bord et la
+  page Jours fériés utilisent le client API qui injecte `X-SOC-Id`).
+
+**Vérification** : frontend — `oxlint` 0 erreur (warnings pré-existants sur `docs/`),
+`npm test` 22 fichiers / 181 tests OK (nouveaux `Dashboard.test.tsx` et `Holidays.test.tsx`),
+`tsc -b` + `vite build` OK. Backend — `LanguageIntegrationTest` 14/14 (Flyway V86 appliqué en H2) ;
+suite complète 324 tests, seul échec pré-existant et order-dependent
+`SecurityIntegrationTest.adminCannotDeleteActiveUser` (vert en isolation).
