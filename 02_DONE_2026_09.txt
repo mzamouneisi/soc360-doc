@@ -2790,3 +2790,25 @@ Node.js version. » → utiliser une version de Node compatible avec Vite 8.
 - Contrôle de version testé : `v22.0.0`/`v20.18.0`/`v21.0.0` → refusés ; `v22.12.0`/`v20.19.0`/
   `v24.1.0` → acceptés. `bash -n deploy_front_to_gh_pages.sh` OK.
 - `oxlint` 0 erreur, 23 fichiers / 191 tests OK, `tsc -b` + `vite build` OK.
+
+======================================================================
+### 2026-09-29 16:22:39 — page CRA : bouton « Déclarer une absence » visible pour tous les rôles sauf ADMIN
+
+**Demande** : le bouton « Déclarer une absence » doit être visible pour les autres rôles (CONSULTANT,
+MANAGER, RESPONSIBLE_SOC) sauf l'ADMIN.
+
+**Implémentation**
+- Frontend — `pages/CraDetail.tsx` : le bouton passe de `isConsultant` à `!isAdmin` (et hors Indispo) :
+  visible pour CONSULTANT / MANAGER / RESPONSIBLE_SOC sur un CRA brouillon (ou rejeté/annulé),
+  masqué pour l'ADMIN. Ajout d'un drapeau local `isAdmin` (`user?.role === 'ADMIN'`).
+- Backend — `CraService.declareAbsence` : ajout de `requireManagerOwnership(cra)` après
+  `requireConsultantOwner` — un MANAGER ne peut déclarer une absence que sur les CRA de **ses**
+  consultants ; RESPONSIBLE_SOC sur toute la société ; ADMIN partout ; un CONSULTANT reste borné à son
+  propre CRA. Isolation multi-société inchangée (`requireSocAccess`).
+- Aucun changement de schéma (Flyway inchangé) ni de clé i18n.
+
+**Vérification** : backend — `CraServiceTest` 64/64 ; suite complète 344 tests, seul échec pré-existant
+et order-dependent `SecurityIntegrationTest.adminCannotDeleteActiveUser` (vert en isolation).
+Frontend — 2 nouveaux tests `CraDetail.test.tsx` (« affiche “Déclarer une absence” pour un manager »,
+« masque “Déclarer une absence” pour un admin ») ; `oxlint` 0 erreur, 23 fichiers / 193 tests OK,
+`tsc -b` + `vite build` OK.
