@@ -2737,3 +2737,56 @@ accessible continuent de passer), `tsc -b` + `vite build` OK. Backend non modifi
 directement depuis son CRA » renforcé (vérifie que `save` est appelé avec l'id du CRA **avant**
 `declareAbsence`) ; `oxlint` 0 erreur, 23 fichiers / 191 tests OK, `tsc -b` + `vite build` OK.
 Backend non modifié.
+
+======================================================================
+### 2026-09-29 15:33:53 — git push rejeté sur soc360-back-java (fetch first) : intégration de origin/main puis push (01_TODO_01)
+
+**Tâche** : le `git push` de `soc360-back-java` était rejeté
+(`! [rejected] main -> main (fetch first)`) car `origin/main` contenait 2 commits absents en local
+(`8512d51 save 2026_09_25_23_29_59`, `5e214d9 save`). Le commit local soc-69 (`440ef2b`) ne pouvait
+pas être poussé en fast-forward.
+
+**Diagnostic / résolution**
+- `git fetch origin` : local `main` **ahead 34 / behind 2** par rapport à `origin/main` ; base commune
+  = `4747d46` (soc-58 fond…). Les 2 commits distants étaient des sauvegardes ("save") quasiment
+  identiques au contenu local (seul `test.txt` était réellement nouveau).
+- `git merge origin/main` : fusion automatique **sans conflit** (stratégie `ort`) ; les fichiers
+  distants étaient déjà identiques au contenu local, la fusion n'a apporté que `test.txt`.
+  Commit de fusion `1259b1e` créé.
+- `git push origin main` : réussi (`5e214d9..1259b1e  main -> main`). `main` est désormais en phase
+  avec `origin/main`.
+- Aucune perte de code : la branche locale contenait déjà tout le travail (`applyAbsence`,
+  migrations V86→V94, etc.) ; pas de `force-push`, pas de réécriture d'historique.
+- Frontend (`soc360-front-react`) et doc (`soc360-doc`) déjà en phase avec leur `origin/main`.
+
+**Vérification** : `git -C soc360-back-java status -sb` → `## main...origin/main` (à jour) ;
+historique local : `1259b1e (merge)`, `440ef2b (soc-69)`, … Aucune modification de code (la fusion
+n'a ajouté que `test.txt`).
+
+======================================================================
+### 2026-09-29 15:39:31 — avertissement Node.js au build front (`build:pages`) : passage à Node 22.12+ (01_TODO_01)
+
+**Tâche** : le build `npm run build:pages` émet l'avertissement
+« You are using Node.js 22.0.0. Vite requires Node.js version 20.19+ or 22.12+. Please upgrade your
+Node.js version. » → utiliser une version de Node compatible avec Vite 8.
+
+**Implémentation**
+- Environnement : Node `v22.12.0` est déjà installé via nvm (`c:/pgm/nvm/v22.12.0`) et activé
+  (`node -v` → v22.12.0). Vite 8 est donc satisfait.
+- Frontend — `soc360-front-react/deploy_front_to_gh_pages.sh` : l'installation nvm **épinglée**
+  `v22.12.0` est désormais privilégiée dans `find_npm` (avant le repli PATH) ; ajout d'un contrôle
+  `node_supported` (accepte Node 20.19+ ou 22.12+) et d'un message d'erreur explicite + arrêt si la
+  version de Node utilisée est incompatible (ex. 22.0.0), au lieu de laisser Vite émettre un
+  avertissement.
+- Frontend — nouveau fichier `.nvmrc` (`22.12.0`) : `nvm use` sélectionne automatiquement la bonne
+  version.
+- Frontend — `package.json` : champ `"engines": { "node": "^20.19.0 || >=22.12.0" }`.
+- Doc — `soc360-doc/AGENTS.md` et `AGENTS.md` (racine) : chemins node mis à jour de `v22.0.0` à
+  `v22.12.0`.
+- Aucun changement backend / Flyway ; schéma et isolation multi-société inchangés.
+
+**Vérification**
+- Build front avec Node 22.12.0 : **plus d'avertissement Node.js** (`vite build` OK).
+- Contrôle de version testé : `v22.0.0`/`v20.18.0`/`v21.0.0` → refusés ; `v22.12.0`/`v20.19.0`/
+  `v24.1.0` → acceptés. `bash -n deploy_front_to_gh_pages.sh` OK.
+- `oxlint` 0 erreur, 23 fichiers / 191 tests OK, `tsc -b` + `vite build` OK.

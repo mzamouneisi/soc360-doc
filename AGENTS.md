@@ -18,9 +18,9 @@ ou bien
 c:\pgm\apache-maven-3.9.9\bin\mvn
 --------------------------------------
 node : 
-/c/pgm/nvm/v22.0.0
+/c/pgm/nvm/v22.12.0
 ou bien 
-c:\pgm\nvm\v22.0.0
+c:\pgm\nvm\v22.12.0
 -------------------------------------
 
 command : /todo :
