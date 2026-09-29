@@ -28,6 +28,7 @@ command : /todo :
 lire un par un les fichiers soc360-doc/01_TODO_* (chaque tache peut se terminer par go).
 Pour chaque fichier 01_TODO_* :
   - executer les taches de ce fichier ;
+  - implementer ses tests unitaires et les executer. si erreurs, corriger.
   - archiver le contenu du fichier dans soc360-doc/02_DONE_<annee>_<MM>.txt
     avec la date du jour complete yyyy-mm-dd HH:MM:SS ;
   - supprimer le fichier 01_TODO_* traite.
