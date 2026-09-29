@@ -2505,3 +2505,235 @@ valeurs de la colonne *Commentaire*.
 
 **Vérification** : frontend — `oxlint` 0 erreur, 23 fichiers / 188 tests OK (en français, `dt`
 renvoie la chaîne d'origine → tests inchangés), `tsc -b` + `vite build` OK. Aucun changement backend.
+
+======================================================================
+### 2026-09-29 11:23:41 — soc-69 : déclarer une absence (congé payé / RTT) depuis le remplissage du CRA (01_TODO_01)
+
+**Tâche** : en tant que consultant, je souhaite renseigner une absence (congés payés ou RTT) durant
+le remplissage de mon CRA. Workflow : un consultant saisit son CRA, il s'est absenté sans avoir validé
+en avance un congé ou un RTT ; il doit pouvoir saisir une absence directement dans le CRA, l'enregistrer
+et soumettre son CRA. Côté manager : deux notifications (validation de l'indisponibilité/l'absence, puis
+validation du CRA) ; le manager ne peut pas valider le CRA sans valider l'absence en amont.
+
+**Implémentation**
+- Backend — Flyway `V93__unavailability_timesheet_link.sql` : colonne `timesheet_id` sur
+  `unavailability` (FK vers `timesheet` `ON DELETE SET NULL`, index) + lien d'entité
+  `Unavailability.timesheet` (CRA d'origine, null pour une indisponibilité classique).
+- Backend — `UnavailabilityRepository.findByTimesheetId` / `findByTimesheetIdAndStatusIn`.
+- Backend — `CraService.declareAbsence(craId, DeclareAbsenceRequest)` : le consultant (propriétaire
+  du CRA, brouillon/rejeté) déclare une absence (`type`, `startDate`, `endDate`, `comment`) ; une
+  `Unavailability` DRAFT est créée et rattachée au CRA ; les jours couverts deviennent des jours de
+  congé (`LEAVE`, ou `SICK_LEAVE` pour maladie) avec l'activité de congé correspondante (valid=false) ;
+  historisation (« Déclaration d'une absence (TYPE) »).
+- Backend — `CraService.integrateUnavailabilities` intègre désormais aussi les absences rattachées au
+  CRA en DRAFT/SUBMITTED/VALIDATED (validé seulement si l'indisponibilité est VALIDATED), en plus des
+  indisponibilités validées du consultant.
+- Backend — `CraService.submit` : les absences rattachées en brouillon sont soumises en même temps
+  (`UnavailabilityService.submit`), ce qui envoie au manager une notification « Indisponibilité
+  soumise… » puis la notification « CRA soumise… » (deux notifications).
+- Backend — `CraService.validate` : `requireLinkedAbsencesValidated` refuse la validation du CRA tant
+  qu'une absence rattachée n'est pas VALIDATED (message « Validez d'abord l'absence déclarée… »).
+- Backend — `UnavailabilityService.getAccessible` : le contrôle d'isolation passe par
+  `requireSocAccessIfAuthenticated` (appel interne sans contexte de sécurité autorisé ; isolation
+  maintenue dès qu'un utilisateur est authentifié).
+- Backend — `CraDtos` : `LinkedUnavailabilityDto` + champ `unavailabilities` sur `CraDto` (id, type,
+  dates, statut) ; `DeclareAbsenceRequest(type, startDate, endDate, comment)`.
+- Backend — `CraController` : `POST /api/cras/{id}/absence` (isolation via `requireSocAccess`).
+- Backend — Flyway `V94__i18n_cra_absence.sql` : 7 clés FR/EN/AR de l'IHM (`CraDetail.declarer…`,
+  `absences.declarees`, `absence.info`, `aucune.absence.declaree`, `valider/rejeter.l.absence`,
+  messages d'obligation de type/dates).
+- Frontend — `api/types.ts` (`LinkedUnavailabilityDto`, `unavailabilities` sur `CraDto`,
+  `DeclareAbsenceRequest`), `api/cras.ts` (`declareAbsence`).
+- Frontend — `pages/CraDetail.tsx` : bouton « Déclarer une absence » (consultant, CRA) dans la barre
+  d'édition ; modale `AbsenceModal` (type, dates, commentaire + bandeau d'information sur le
+  workflow) ; carte « Absences déclarées » listant les absences rattachées (type, dates, statut) avec
+  boutons Valider/Rejeter inline pour le manager (via `unavailabilityApi`).
+- Isolation multi-société : `requireSocAccess` sur l'endpoint ; un consultant ne déclare que sur son
+  propre CRA (`SecurityUtils.currentConsultantId`).
+
+**Vérification** : backend — 5 nouveaux tests `CraServiceTest`
+(`declareAbsence_createsLinkedUnavailabilityAndLeaveDays`,
+`declareAbsence_byAnotherConsultant_isForbidden`,
+`submit_submitsLinkedAbsenceAndNotifiesManagerTwice`,
+`validate_linkedAbsenceNotValidated_isRejected`, `validate_afterLinkedAbsenceValidated_succeeds`) ;
+`CraServiceTest` 61/61 ; suite complète 341 tests, seul échec pré-existant et order-dependent
+`SecurityIntegrationTest.adminCannotDeleteActiveUser` (vert en isolation). Frontend — nouveau test
+`CraDetail.test.tsx` « un consultant peut déclarer une absence directement depuis son CRA » ;
+`oxlint` 0 erreur (warnings pré-existants), 23 fichiers / 189 tests OK, `tsc -b` + `vite build` OK.
+
+======================================================================
+### 2026-09-29 11:48:52 — page CRA : déclarer une absence sur un jour déjà rempli remplace la mission (01_TODO_01)
+
+**Tâche** : page CRA — en tant que consultant, j'édite un CRA déjà rempli, je clique sur « Déclarer une
+absence », je sélectionne une date où il y a déjà une mission ; je constate que le jour contient le
+congé ajouté **et** la mission d'avant. Attendu : le jour ne doit contenir que le congé ajouté.
+
+**Implémentation**
+- Backend — `CraService.integrateUnavailabilities(cra, boolean override)` : nouveau paramètre ;
+  lorsque `override` est vrai, les activités déjà présentes sur chaque jour couvert sont remplacées
+  par l'activité de congé (`day.getActivities().clear()` puis ajout du congé). L'ancienne surcharge
+  `integrateUnavailabilities(cra)` délègue avec `override = false` (comportement inchangé pour la
+  création d'un CRA et l'intégration des indisponibilités validées existantes, qui préservent les
+  activités déjà saisies).
+- Backend — `CraService.declareAbsence` appelle désormais `integrateUnavailabilities(cra, true)` :
+  une absence déclarée depuis le CRA écrase les activités des jours couverts (mission supprimée,
+  jour passé en `LEAVE`/`SICK_LEAVE` avec l'activité de congé correspondante).
+- Aucun changement de schéma (Flyway inchangé), aucune nouvelle clé i18n, aucun changement frontend
+  (l'IHM affiche le CRA renvoyé par l'API, déjà corrigé).
+- Isolation multi-société : inchangée (le CRA est déjà borné par `requireSocAccess` ; la déclaration
+  reste réservée au consultant propriétaire, `SecurityUtils.currentConsultantId`).
+
+**Vérification** : backend — nouveau test `CraServiceTest.declareAbsence_replacesExistingActivityWithLeave`
+(CRA préalablement rempli d'une mission, absence déclarée sur ce jour → jour `LEAVE` avec une seule
+activité de congé) ; `CraServiceTest` 62/62 ; suite complète 342 tests, seul échec pré-existant et
+order-dependent `SecurityIntegrationTest.adminCannotDeleteActiveUser` (vert en isolation). Frontend
+non modifié (dernière suite connue : 23 fichiers / 189 tests OK).
+
+======================================================================
+### 2026-09-29 14:57:38 — page CRA : « Supprimer tous les événements » retire aussi la couleur des événements supprimés (01_TODO_01)
+
+**Tâche** : page CRA — cliquer sur le bouton « Supprimer tous les événements » doit supprimer tous les
+événements non validés **y compris leurs couleurs** (le jour ne doit plus rester coloré en congé).
+
+**Constat** : `CraDetail.removeAllEvents` retirait bien les événements non validés (les événements
+validés étant préservés pour un consultant). En revanche, il ne réinitialisait pas le type du jour :
+un jour passé en `LEAVE`/`SICK_LEAVE` par une absence déclarée (fond jaune) restait coloré après la
+suppression de l'événement de congé.
+
+**Implémentation** (frontend uniquement — aucun changement backend/Flyway/i18n)
+- Frontend — `pages/CraDetail.tsx` : `removeAllEvents()` recalcule pour chaque jour les activités
+  conservées puis, si plus aucune activité ne reste alors que le jour était coloré en congé
+  (`LEAVE`/`SICK_LEAVE`), rétablit sa couleur d'origine — `WEEKEND` pour un samedi/dimanche, sinon
+  `WORKED` (les jours fériés sont recolorés automatiquement par l'effet dédié). Les couleurs des
+  autres types (week-end, jour férié) sont conservées.
+
+**Vérification** : frontend — nouveau test `CraDetail.test.tsx` « supprime les événements non validés
+et leur couleur de jour de congé » (jour `LEAVE` coloré avec un événement non validé → après
+« Supprimer tous les événements », le libellé de congé/couleur du jour disparaît) ; `oxlint` 0 erreur
+(warnings pré-existants), 23 fichiers / 190 tests OK, `tsc -b` + `vite build` OK. Backend non modifié.
+
+======================================================================
+### 2026-09-29 15:02:36 — correction : les événements validés (congés) ne doivent jamais être supprimés
+
+**Incident** : des événements validés (congés) ont été supprimés — comportement anormal.
+
+**Causes** (deux chemins supprimaient des activités validées)
+- Frontend — `CraDetail.removeAllEvents()` : pour tout rôle autre que CONSULTANT (MANAGER /
+  RESPONSIBLE_SOC / ADMIN), le bouton « Supprimer tous les événements » vidait **toutes** les
+  activités (`activities: []`), y compris les événements validés.
+- Backend — `CraService.integrateUnavailabilities(cra, override)` (déclaration d'absence) :
+  l'intégration en mode `override` faisait `day.getActivities().clear()`, ce qui supprimait aussi les
+  événements validés du jour (contournant la protection `existingValidKeys` de `save`).
+
+**Correctif**
+- Frontend — `pages/CraDetail.tsx` : `removeAllEvents()` conserve désormais les événements validés
+  pour **tous** les rôles (`d.activities.filter(a => a.valid)`) et ne retire que les non validés ;
+  la réinitialisation de couleur ne s'applique qu'aux jours dont tous les événements ont été retirés.
+- Backend — `CraService.integrateUnavailabilities` (override) : remplace la suppression totale par
+  `day.getActivities().removeIf(a -> !a.isValid())` (les activités validées sont préservées) ; si un
+  événement validé subsiste sur le jour, aucun congé supplémentaire n'est ajouté.
+- Aucun changement de schéma (Flyway inchangé) ni de clé i18n.
+
+**Vérification** : backend — nouveau test `CraServiceTest.declareAbsence_preservesValidatedActivity`
+(activité validée sur le jour → déclaration d'absence : l'activité validée subsiste) ;
+`CraServiceTest` 63/63 ; suite complète 343 tests, seul échec pré-existant et order-dependent
+`SecurityIntegrationTest.adminCannotDeleteActiveUser` (vert en isolation). Frontend — nouveau test
+`CraDetail.test.tsx` « un manager ne supprime pas les événements validés (supprimer tous) » (validé
+conservé, non validé supprimé) ; `oxlint` 0 erreur, 23 fichiers / 191 tests OK, `tsc -b` + `vite build` OK.
+
+======================================================================
+### 2026-09-29 15:11:12 — bug page CRA : déclarer une absence sur une date effaçait toutes les missions (01_TODO_01)
+
+**Tâche** : page CRA — j'ai voulu déclarer une absence sur une date où il y avait une mission ;
+l'application a effacé **toutes** les activités des jours où il y avait mission.
+
+**Causes**
+- Backend — `CraService.declareAbsence` appelait `integrateUnavailabilities(cra, true)` : l'override
+  était appliqué à **toutes** les indisponibilités intégrées (absences déjà déclarées + indisponibilités
+  validées du consultant), et non seulement à l'absence qui venait d'être déclarée.
+- Frontend — la modale « Déclarer une absence » initialisait la plage par défaut du **1er à la fin du
+  mois** ; l'utilisateur qui ne modifiait qu'une borne pouvait donc déclarer une absence sur tout le
+  mois, effaçant les missions de tous les jours.
+
+**Correctif**
+- Backend — `CraService` : extraction de `applyAbsence(cra, unavailability, override)` (une seule
+  absence, seuls les jours de son intervalle). `integrateUnavailabilities(cra)` applique chaque
+  absence sans override ; `declareAbsence` applique l'override **uniquement** à l'absence nouvelle
+  (`applyAbsence(cra, unavailability, true)`), puis réintègre le reste normalement. Les missions des
+  autres jours ne sont donc jamais touchées.
+- Frontend — `pages/CraDetail.tsx` (modale d'absence) : la plage par défaut devient un **seul jour**
+  (1er du mois) au lieu du mois entier ; au changement de la date de début, la date de fin s'aligne
+  automatiquement si elle est vide ou antérieure ; bornes `min`/`max` limitées au mois du CRA.
+- Aucun changement de schéma (Flyway inchangé) ni de clé i18n.
+
+**Vérification** : backend — nouveau test
+`CraServiceTest.declareAbsence_singleDay_doesNotRemoveMissionsOnOtherDays` (CRA entièrement rempli,
+absence d'un jour → les autres jours travaillés conservent leur mission) ;
+`CraServiceTest` 64/64 ; suite complète 344 tests, seul échec pré-existant et order-dependent
+`SecurityIntegrationTest.adminCannotDeleteActiveUser` (vert en isolation). Frontend — `oxlint` 0 erreur,
+23 fichiers / 191 tests OK, `tsc -b` + `vite build` OK.
+
+======================================================================
+### 2026-09-29 15:20:15 — page CRA : suppression du panneau « Absences déclarées » (01_TODO_01)
+
+**Tâche** (contenu de 01_TODO_01) : bug — déclarer une absence sur une date avec mission ne doit
+effacer que les événements remplacés par ces absences ; et enlever le panneau d'infos
+« Absences déclarées » de la page CRA.
+
+**Implémentation**
+- Backend : comportement déjà conforme depuis la correction précédente — `declareAbsence` n'applique
+  l'override qu'à l'absence qui vient d'être déclarée (`applyAbsence(cra, unavailability, true)`), sur
+  les seuls jours de son intervalle ; les missions des autres jours ne sont jamais touchées (couvert
+  par `declareAbsence_singleDay_doesNotRemoveMissionsOnOtherDays`).
+- Frontend — `pages/CraDetail.tsx` : suppression du bloc « Absences déclarées » (carte listant les
+  absences rattachées) ainsi que du code associé devenu inutile : `handleAbsenceDecision`,
+  `absenceStatusClass`, imports `unavailabilityApi`, `UNAVAILABILITY_STATUS_LABELS`,
+  `UnavailabilityStatus`. La modale « Déclarer une absence » et son bouton restent en place.
+- Aucun changement de schéma (Flyway inchangé) ; les clés i18n `CraDetail.absences.declarees` /
+  `valider.l.absence` / `rejeter.l.absence` restent en base mais ne sont plus affichées.
+- Isolation multi-société : inchangée.
+
+**Vérification** : frontend — test `CraDetail.test.tsx` « un consultant peut déclarer une absence
+directement depuis son CRA » adapté (plus d'assertion sur le panneau ; vérifie que la déclaration
+porte par défaut sur **un seul jour** : `startDate == endDate == 2026-08-01`) ; `oxlint` 0 erreur,
+23 fichiers / 191 tests OK, `tsc -b` + `vite build` OK. Backend non modifié (dernière suite connue :
+344 tests, seul échec pré-existant `adminCannotDeleteActiveUser`).
+
+======================================================================
+### 2026-09-29 15:21:48 — page CRA : boutons du bas en icônes (largeur réduite), alignés à droite (01_TODO_02)
+
+**Tâche** : page CRA — les boutons du bas (Enregistrer, …) doivent avoir de petites largeurs
+(comme des icônes) et être placés à droite.
+
+**Implémentation** (frontend uniquement — `pages/CraDetail.tsx`)
+- Conteneur de la barre d'actions : `justify-center` → **`justify-end`** (alignement à droite).
+- Suppression des `flex-1` / `w-full` qui étiraient les boutons (Enregistrer, Soumettre, Valider
+  tout, Invalider tout, Envoyer) : ils reprennent la largeur compacte des icônes (`IconButton`,
+  variable `--btn-small-width`).
+- « Invalider tout » et « Envoyer » passent de `Button` texte à `IconButton` (icônes `reject` et
+  `send`) ; les libellés restent dans `aria-label`/`title` (noms accessibles conservés :
+  « Valider tout », « Invalider tout », « Envoyer »). Les info-bulles des boutons désactivés
+  restent portées par les `<span>` englobants.
+- Aucun changement backend / Flyway / i18n ; isolation multi-société inchangée.
+
+**Vérification** : frontend — `oxlint` 0 erreur, 23 fichiers / 191 tests OK (les tests par nom
+accessible continuent de passer), `tsc -b` + `vite build` OK. Backend non modifié.
+
+======================================================================
+### 2026-09-29 15:28:42 — page CRA : enregistrer le CRA avant de déclarer une absence (01_TODO_01)
+
+**Tâche** : page CRA — on doit faire un save du CRA avant d'ajouter une absence via
+« Déclarer une absence ».
+
+**Implémentation** (frontend uniquement — `pages/CraDetail.tsx`)
+- `handleDeclareAbsence` appelle désormais `doSave()` avant `crasApi.declareAbsence` : les
+  modifications en cours du CRA (jours, événements, commentaires) sont persistées sur le serveur
+  avant que l'absence ne soit appliquée. Si l'enregistrement échoue (ou qu'une activité n'est pas
+  autorisée ce jour-là), la déclaration est abandonnée et la modale reste ouverte.
+- L'absence est ensuite déclarée puis le CRA renvoyé par le serveur remplace l'état local.
+- Aucun changement backend / Flyway / i18n ; isolation multi-société inchangée.
+
+**Vérification** : frontend — test `CraDetail.test.tsx` « un consultant peut déclarer une absence
+directement depuis son CRA » renforcé (vérifie que `save` est appelé avec l'id du CRA **avant**
+`declareAbsence`) ; `oxlint` 0 erreur, 23 fichiers / 191 tests OK, `tsc -b` + `vite build` OK.
+Backend non modifié.
