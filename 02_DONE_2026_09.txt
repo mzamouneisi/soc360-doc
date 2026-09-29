@@ -2480,3 +2480,28 @@ localisée « juil. » du calendrier) ; `oxlint` 0 erreur, 23 fichiers / 188 tes
 **Vérification** : frontend — `CraList.test.tsx` et `Unavailability.test.tsx` mis à jour
 (sélection du mois via la cellule localisée) ; `oxlint` 0 erreur, 23 fichiers / 188 tests OK,
 `tsc -b` + `vite build` OK. Aucun changement backend ni migration.
+
+------------------
+### 2026-09-29 10:12:18 — soc-55 : chaînes en dur → clés i18n / traduction à la volée (01_TODO_01)
+
+**Tâche** : identifier les chaînes en dur restantes et les rattacher à des clés de la table
+`app_language` ; page « Mes activités » : traduire les titres du tableau et traduire à la volée les
+valeurs des colonnes *Statut* et *Week-end / Jours fériés* ; page CRA : traduire à la volée les
+valeurs de la colonne *Commentaire*.
+
+**Implémentation** (frontend uniquement — aucune nouvelle clé, réutilisation de clés existantes)
+- `pages/MyActivities.tsx` : en-têtes de tableau via `tr(...)` (réutilisation
+  `Activities.activite`, `common.type`, `Projects.projet`, `common.period`,
+  `Activities.week.end.jours.feries`, `common.status`) ; valeurs traduites à la volée via
+  `useDynamicTranslate` (`dt`) — statut `dt('Active'/'Inactive')`, colonnes *Week-end* / *Jours
+  fériés* `dt('Oui'/'Non')`.
+- `pages/CraList.tsx` : la colonne *Commentaire* rend `dt(cra.comment) || '—'` (traduction à la
+  volée des valeurs).
+- `components/CraHistoryModal.tsx` : la colonne *Commentaire* de l'historique rend
+  `dt(h.comment) || '—'` (les commentaires système « Création », « Soumission », … sont traduits à
+  la volée).
+- Aucune clé i18n ajoutée (les libellés existants étaient déjà dans la table) ; pas de migration
+  Flyway. Isolation multi-société : sans objet (IHM).
+
+**Vérification** : frontend — `oxlint` 0 erreur, 23 fichiers / 188 tests OK (en français, `dt`
+renvoie la chaîne d'origine → tests inchangés), `tsc -b` + `vite build` OK. Aucun changement backend.
