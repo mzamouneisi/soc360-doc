@@ -2812,3 +2812,38 @@ et order-dependent `SecurityIntegrationTest.adminCannotDeleteActiveUser` (vert e
 Frontend — 2 nouveaux tests `CraDetail.test.tsx` (« affiche “Déclarer une absence” pour un manager »,
 « masque “Déclarer une absence” pour un admin ») ; `oxlint` 0 erreur, 23 fichiers / 193 tests OK,
 `tsc -b` + `vite build` OK.
+
+======================================================================
+### 2026-09-29 16:44:03 — soc-70 : READMEs d'onboarding front et back (01_TODO_01)
+
+**Tâche** : préparer un fichier README (projets front et back) permettant l'onboarding d'un nouveau
+développeur ; le fichier contient la procédure pour faire tourner le projet sur sa machine.
+
+**Implémentation** (documentation uniquement — aucun code de production)
+- Backend — **nouveau `soc360-back-java/README.md`** : sommaire, stack (Java 17, Spring Boot 3.4.1,
+  Maven, JPA/Flyway, H2/PostgreSQL, JWT, Swagger, OpenPDF/OpenCSV, Lombok), prérequis + chemins
+  Windows (`c:/pgm/...`), démarrage rapide H2 (`source ./env.server.sh -db h2`, `./run_dev.sh` ou
+  `mvn spring-boot:run`), URLs (API/Swagger/actuator/H2-console), cibles de base (`h2`,
+  `psgsql_local`, `psgsql_azure`, `psgsql_azure_prod`) et variables d'environnement, comptes de
+  **démonstration** (`admin`/`soc360`/`manager1`/`dev1..3`), tests (`mvn test`, un test, profil test
+  H2 mémoire, échec pré-existant `adminCannotDeleteActiveUser`), règle **Flyway** (schéma géré
+  uniquement par migrations, `ddl-auto=validate`, dernière V94), architecture par package, sécurité
+  & **isolation multi-société** (`X-SOC-Id`, `currentSocId`/`effectiveSocId`/`requireSocAccess`),
+  scripts (`run_dev.sh`, `kill_backend.sh`, `az_init_db.sh`, `deploy_app_docker.sh`), déploiement
+  (renvoi `DOC_DEPLOY_TO_AZURE.md`) et note sur le bruit de mode git sous Windows.
+- Frontend — **réécriture de `soc360-front-react/README.md`** (l'ancien citait `X-ESN-Id` et
+  `src/esn/`, obsolètes) : stack (React 19, Vite 8, Tailwind 4, react-router 7, Vitest, Oxlint),
+  prérequis **Node 22.12+** (`.nvmrc`), démarrage rapide (`npm install`, `npm run dev`, proxy
+  `/api` → `localhost:8080`, backend à démarrer d'abord), table des scripts, environnement/build
+  (`.env.production` / `.env.production-prod`, `VITE_API_BASE_URL`/`VITE_BASE_PATH`, ne jamais éditer
+  `soc360-front-react-prod`), architecture (`api`, `auth`, `soc`, `layout`, `pages`, `components`,
+  `i18n`, `lib`), rôles, sécurité (`Authorization: Bearer` + `X-SOC-Id` injectés par `api/client.ts`),
+  tests/qualité et déploiement GitHub Pages (`deploy_front_to_gh_pages.sh dev|prod`).
+- Aucun changement de schéma (Flyway inchangé), aucune clé i18n, aucun test unitaire applicable
+  (tâche purement documentaire).
+
+**Vérification** : les deux fichiers sont présents (`soc360-back-java/README.md` nouveau,
+`soc360-front-react/README.md` mis à jour) et leur contenu reflète l'état courant du code (chemins
+des scripts, dernier numéro de migration V94, comptes de démo, rôle du header `X-SOC-Id`, version
+Node 22.12+). `git status` : seuls les READMEs sont ajoutés/modifiés dans les dépôts back et front ;
+aucun autre fichier de code touché.
