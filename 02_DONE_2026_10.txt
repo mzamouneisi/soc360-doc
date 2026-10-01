@@ -311,3 +311,91 @@ absence déclarée → soumise → validée par le manager → CRA **VALIDATED**
 CRA **REJECTED** à la relecture ; second scénario, CRA juin 2027 soumis → « Rejeter » l'absence →
 CRA **REJECTED**. Données de test laissées inertes : CRA 658 (rejeté, absence 367 `REJECTED`) et
 CRA 659 (juin 2027, rejeté, absence `REJECTED`).
+
+### 2026-10-01 15:15:41 — soc-72 : prise en compte de la date d'embauche dans le CRA et les indisponibilités (01_TODO_01)
+
+**Rappel de la demande**
+- Sans date d'embauche, le consultant ne peut ni renseigner un CRA / une indisponibilité, ni
+  consulter ses activités.
+- La saisie d'un CRA / d'une indisponibilité n'est possible qu'à partir de la date d'embauche.
+- Dans la navigation, la date de début correspond à la date d'embauche.
+- Si l'embauche n'est pas le 1er du mois, la période du mois précédant l'embauche est grisée avec
+  une info-bulle « date d'embauche … ».
+
+**Implémentation**
+- Backend `DayType` : nouvelle valeur `BEFORE_HIRE` (aucune migration de schéma, colonne `varchar` ;
+  les exports CSV/PDF stringifient `.name()` et les compteurs ignorent ce type).
+- Backend `CraService` :
+  - `createForMonth` marque `BEFORE_HIRE` (0 h) tout jour antérieur à `UserAccount.hireDate`.
+  - `markBeforeHireDays` re-force ces jours (et vide leurs activités) à chaque `getOrCreate` d'un CRA
+    brouillon → corrige aussi les données historiques.
+  - `save` force `BEFORE_HIRE` pour tout jour antérieur à l'embauche, quel que soit le payload client
+    (les activités de ces jours sont ignorées) ; les totaux/complétude ne comptent que `WORKED`.
+  - `declareAbsence` refuse une absence commençant avant la date d'embauche.
+  - `requireHireDateForSelf` : le consultant qui saisit lui-même son CRA doit avoir renseigné sa date
+    d'embauche (`getOrCreate`, `save`, `submit`).
+- Backend `UnavailabilityService.requireOnOrAfterHireDate` : refuse une indisponibilité antérieure à
+  la date d'embauche ; un consultant sans date d'embauche est bloqué (les managers saisissent pour un
+  collaborateur dont la fiche porte la date). Appelé dans `create` et `update`.
+- Backend DTO : `hireDate` ajouté à `UserDtos.UserDto` (`/auth/me`), à `CraDtos.CraDto` (info-bulle
+  côté manager consultant) et à `ConsultantSummary` (min du formulaire d'indispo).
+- Frontend `types.ts` / `format.ts` : `DayType 'BEFORE_HIRE'`, `hireDate` sur `UserDto`/`CraDto`/
+  `ConsultantSummary`, libellé `BEFORE_HIRE = 'Avant embauche'`.
+- Frontend `CraDetail.tsx` : jour `BEFORE_HIRE` grisé (`bg-gray-200`), info-bulle « Avant la date
+  d'embauche ({date}) » (calendrier et vue Ligne), type de jour non modifiable et bouton
+  « Ajouter un événement » masqué ; « Déclarer une absence » bornée à la date d'embauche.
+- Frontend `CraList.tsx` / `IndispoList.tsx` : création bloquée sans date d'embauche (message),
+  navigation de période démarrant à la date d'embauche (mois initial + bouton précédent désactivé
+  avant l'embauche).
+- Frontend `Unavailability.tsx` : bouton « Nouvelle indisponibilité » désactivé sans date d'embauche,
+  `min` des dates = date d'embauche (soi-même ou collaborateur choisi), validation avant envoi.
+- Frontend `MyActivities.tsx` : consultation des activités bloquée sans date d'embauche.
+- i18n : clés `CraDetail.avant.embauche`, `hireDate.required`, `hireDate.required.activities`,
+  `Unavailability.date.embauche` (FR/EN/AR) dans `messages.ts` + Flyway `V97__i18n_hire_date.sql`.
+- Isolation multi-société inchangée.
+
+**Tests ajoutés** (6 backend, 4 frontend)
+- Backend : `CraServiceTest.createForMonth_marksDaysBeforeHireAsBeforeHire`,
+  `getOrCreate_consultantWithoutHireDate_isRejected`, `declareAbsence_beforeHireDate_isRejected`,
+  `save_forcesBeforeHireDays` ; `UnavailabilityServiceTest.create_beforeHireDate_isRejected`,
+  `create_consultantWithoutHireDate_isRejected`.
+- Frontend : `CraDetail.test.tsx` « grise les jours antérieurs à la date d'embauche avec une
+  info-bulle » ; `MyActivities.test.tsx` « bloque la consultation des activités sans date
+  d'embauche » ; `Unavailability.test.tsx` « désactive la création d'indisponibilité sans date
+  d'embauche ». Fixtures consultants mises à jour avec une date d'embauche.
+
+**Vérification** : backend — suite complète **395 tests**, seul échec
+`SecurityIntegrationTest.adminCannotDeleteActiveUser` — pré-existant et order-dependent (vert en
+isolation) ; `CraServiceTest` 85/85, `UnavailabilityServiceTest` 37/37. Frontend — 24 fichiers /
+**213 tests**, oxlint 0 erreur, `npm run build` OK.
+Vérification live (backend redémarré, Flyway migré en **V97**) : consultant créé avec embauche au
+**15/05/2027** → CRA mai 2027 : 14/05 `BEFORE_HIRE`, 15/05 non `BEFORE_HIRE` ; indispo du 10/05 →
+**400** « ne peut pas commencer avant la date d'embauche », du 20/05 → **200** ; date d'embauche
+retirée → CRA (getOrCreate) **400** « Renseignez votre date d'embauche… » et indispo **400** ;
+`/api/cras/all` expose bien `hireDate` ; `/api/public/i18n?lang=fr` sert les nouvelles clés.
+Données de test laissées inertes : consultant `hired…` (sans date d'embauche à l'issue du test), une
+absence brouillon, CRA 690.
+
+### 2026-10-01 15:27:09 — soc-72 (suite) : interdire les périodes antérieures à l'embauche via les listes de mois / années (01_TODO_01)
+
+**Rappel de la demande**
+- Suite de soc-72 : le consultant ne doit pas pouvoir choisir une date antérieure à sa date
+  d'embauche **via la liste des mois et la liste des années** (pas seulement via les flèches).
+
+**Implémentation** (frontend uniquement — `CraList.tsx`, `IndispoList.tsx`)
+- `openPeriod(y, m)` borne désormais la navigation : toute période antérieure à l'embauche est
+  ramenée au mois d'embauche (couvre les `<Select>` mois/année, les flèches et tout autre appel).
+- La liste des **années** ne propose plus les années antérieures à l'année d'embauche
+  (`allowedYears = [now-1, now, now+1].filter(y >= hirePeriod.year)`).
+- La liste des **mois** ne propose plus, dans l'année d'embauche, les mois antérieurs
+  (`allowedMonths` filtré sur `hirePeriod.month`).
+- Aucun changement backend, de schéma ni d'i18n ; isolation multi-société inchangée.
+
+**Tests ajoutés** (1 frontend)
+- `CraList.test.tsx` « n'autorise pas de période antérieure à la date d'embauche (listes
+  mois/années) » : consultant embauché au 15/08 de l'année courante → « Août » présent mais
+  « Juillet »/« Janvier » absents, année précédente absente, année d'embauche présente.
+
+**Vérification** : frontend — 24 fichiers / **214 tests** OK, oxlint 0 erreur, `npm run build` OK.
+Backend inchangé (dernière suite connue : 395 tests, seul échec pré-existant
+`SecurityIntegrationTest.adminCannotDeleteActiveUser`).
