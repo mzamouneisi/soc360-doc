@@ -1,0 +1,313 @@
+### 2026-10-01 10:34:35 — Absence rejetée impossible à valider depuis le CRA (01_TODO_01)
+
+**Rappel de la demande**
+- Un utilisateur a soumis son CRA contenant une absence « non valide » à son manager.
+- Le manager clique sur le bouton « Valider l'absence » : le statut de l'absence reste « Rejetée ».
+- Le manager clique sur « Valider le cra », une boîte de dialogue s'ouvre, il clique sur
+  « Valider l'absence » : le statut reste encore « Rejetée ».
+
+**Cause racine**
+Une absence liée à un CRA rejetée par le manager restait définitivement `REJECTED` :
+- `CraService.submitLinkedAbsences` ne resoumettait au manager que les absences `DRAFT` ; une
+  absence `REJECTED` n'était donc jamais remise en attente quand le consultant resoumettait son
+  CRA (après rejet du CRA) — l'absence restait « Rejetée » alors que le CRA repartait `SUBMITTED`.
+- `UnavailabilityService.validate` n'acceptait que le statut `SUBMITTED` : le bouton
+  « Valider l'absence » renvoyait un 400 « Seule une indisponibilité soumise peut être validée »
+  et le statut ne changeait pas.
+- `CraService.requireLinkedAbsencesValidated` compte les absences `DRAFT`, `SUBMITTED` et
+  `REJECTED` comme « en attente » : le CRA ne pouvait donc plus jamais être validé → blocage
+  définitif (deadlock) que l'on retrouvait en cliquant « Valider le cra » puis « Valider l'absence ».
+
+**Correctifs**
+- `CraService.submitLinkedAbsences` : resoumet les absences liées `DRAFT` **et** `REJECTED`
+  (`UnavailabilityService.submit` autorisait déjà ces deux statuts). Une absence rejetée repart
+  donc en `SUBMITTED` et notifie de nouveau le manager quand le consultant resoumet son CRA.
+- `UnavailabilityService.validate` : accepte `SUBMITTED` **ou** `REJECTED` via le nouveau garde-fou
+  `requireValidatable` (message « Seule une indisponibilité soumise ou rejetée peut être validée »).
+  Le rejet étant une décision du manager, il peut le lever sans repasser par le consultant. Le
+  `rejectedReason` est effacé lors de la validation.
+- `UnavailabilityService.submit` : efface aussi le `rejectedReason` (le motif de rejet ne vaut plus
+  dès que l'absence repart en validation).
+- Frontend `CraDetail.tsx` : `pendingAbsences` calculé une fois ; la popup
+  `PendingAbsencesModal` se ferme automatiquement dès qu'il ne reste plus d'absence à valider,
+  ce qui laisse le manager enchaîner sur la validation du CRA.
+- Aucun changement de schéma (aucune nouvelle migration Flyway) ; isolation multi-société inchangée
+  (les appels restent filtrés par `SecurityUtils.requireSocAccess` dans `UnavailabilityService`).
+
+**Tests ajoutés** (4 backend, 2 frontend)
+- `CraServiceTest.submit_afterLinkedAbsenceRejected_resubmitsTheAbsence` — le consultant resoumet
+  le CRA après rejet de l'absence : l'absence repasse `SUBMITTED` (échouait avant le correctif :
+  `expected: <SUBMITTED> but was: <REJECTED>`).
+- `CraServiceTest.validate_afterAbsenceRejectedThenResubmitted_succeeds` — parcours complet :
+  rejet absence + rejet CRA → resoumission → validation de l'absence → validation du CRA
+  `VALIDATED`.
+- `UnavailabilityServiceTest.validate_rejectedUnavailabilityIsAcceptedAndClearsReason`.
+- `UnavailabilityServiceTest.validate_draftUnavailabilityIsRejected` (DRAFT toujours refusé).
+- `UnavailabilityServiceTest.validate_alreadyValidatedUnavailabilityIsRejected`.
+- `UnavailabilityServiceTest.submit_rejectedUnavailabilityClearsTheRejectionReason`.
+- `CraDetail.test.tsx` : le manager peut valider une absence liée « Rejetée » (le CRA est rechargé
+  et le badge passe à « Validée ») ; la popup des indispos se ferme une fois toutes validées et
+  « Valider tout » déclenche bien la validation du CRA.
+
+**Vérification** : backend — `CraServiceTest` 76/76, `UnavailabilityServiceTest` 32/32 ; **suite
+complète 381 tests**, seul échec `SecurityIntegrationTest.adminCannotDeleteActiveUser` — pré-existant
+et order-dependent (attendu 400, obtenu 403), **vert en isolation** (17/17). Frontend — 24 fichiers /
+207 tests OK, oxlint sans erreur, `npm run build` OK.
+Vérification live (backend redémarré sur H2, profil local, Flyway à jour) : login `dev1` /
+`manager1`, CRA mars 2027 → déclaration d'absence → soumission → rejet de l'absence par le manager
+→ rejet du CRA → resoumission par le consultant (absence `SUBMITTED`) → « Valider l'absence » **200
+VALIDATED** (avant : 400) → « Valider le cra » **200 VALIDATED**. Données de test laissées inertes :
+CRA id 562 et absence id 239 en `VALIDATED`, refusés à la suppression par les gardes de l'API.
+
+### 2026-10-01 10:54:39 — « Ajouter une absence » échouait (400 sur PUT /cras/{id}/days) (01_TODO_01)
+
+**Rappel de la demande**
+- En voulant ajouter une absence dans un CRA, le front remontait `PUT /api/cras/433/days 400
+  (Bad Request)` (pile : `cras.ts:27` → `CraDetail.tsx:492` (`doSave`) ← `CraDetail.tsx:570`
+  (`handleDeclareAbsence`) ← `CraDetail.tsx:1290` (`AbsenceModal.onSubmit`)).
+
+**Cause racine**
+`handleDeclareAbsence` enregistre d'abord le CRA (`doSave` → `PUT /cras/{id}/days`) avant de
+déclarer l'absence. Or `CraService.save` refuse, pour un consultant, tout jour couvert par une
+indisponibilité **validée** qui ne porte pas que des événements `valid=true`
+(« Ce jour est couvert par une indisponibilité validée et n'est pas modifiable »).
+Les jours de congé issus d'une absence liée étaient écrits `valid=false` par
+`applyAbsence` au moment de l'intégration (l'absence était alors `DRAFT`/`SUBMITTED`), et ce
+drapeau n'était jamais remis à jour lorsque le manager validait ensuite l'absence. Le DTO renvoyait
+donc `valid=false`, le client les réémettait tels quels, et la garde refusait le save — bloquant
+toute nouvelle déclaration d'absence sur un CRA contenant une absence déjà validée.
+
+**Correctifs**
+- Backend `CraService.toDto` : pour un jour `LEAVE`/`SICK_LEAVE` couvert par une indisponibilité
+  validée (`validatedUnavailabilityDates`), les événements sont exposés `valid=true`. Le DTO reflète
+  ainsi toujours l'état réel de l'indisponibilité (y compris pour les données historiques où le
+  drapeau stocké est resté `false`) et satisfait l'invariant exigé par la garde de `save`. Aucune
+  écriture, aucun changement de schéma.
+- Backend `UnavailabilityService.validate` : nouvelle `markLinkedTimesheetEventsValid` — lorsque
+  l'indisponibilité validée est rattachée à un CRA (`timesheet`), les événements des jours couverts
+  passent à `valid=true` (entités managées, flush à la transaction). La donnée stockée devient
+  cohérente avec l'indisponibilité, au lieu de dépendre du seul DTO.
+- Aucun changement de frontend : le comportement « enregistrer puis déclarer » est conservé ; c'est
+  la réponse 400 qui était fautive. Isolation multi-société inchangée (accès via
+  `SecurityUtils.requireSocAccess` / `effectiveSocId`).
+
+**Tests ajoutés** (1 backend)
+- `CraServiceTest.save_afterLinkedAbsenceValidated_isAllowed` : parcours fidèle au front —
+  `declareAbsence` → save en préservant les jours de congé → `submit` → validation de l'absence par
+  le manager (sans valider le CRA) → rejet du CRA → le consultant relit le DTO et rejoue exactement
+  le `PUT /days` du front. Vérifie au passage que les jours couverts sont `valid=true`.
+  Échouait avant le correctif (`les jours couverts par l'absence validée doivent être validés`),
+  et la garde levait le 400.
+- Helper de test `saveFilledPreservingLeave` (remplit les jours travaillés en conservant les jours
+  de congé, comme le front) et `createDevActivity` extrait de `saveFullyFilled`.
+
+**Vérification** : backend — `CraServiceTest` 77/77, `UnavailabilityServiceTest` 32/32 ; **suite
+complète 382 tests**, seul échec `SecurityIntegrationTest.adminCannotDeleteActiveUser` — pré-existant
+et order-dependent (attendu 400, obtenu 403), vert en isolation. Frontend — inchangé : 24 fichiers /
+207 tests OK, oxlint 0 erreur.
+Vérification live (backend redémarré sur H2, profil local, Flyway 95) : `dev1`/`manager1`, CRA
+avril 2027 → déclaration d'absence → save + `submit` → le manager valide l'absence (sans valider le
+CRA) puis rejette le CRA → le consultant rouvre le CRA (jour d'absence `LEAVE`, `unavailable=true`,
+événement `valid=true`) → **`PUT /cras/626/days` 200** (avant : 400) → nouvelle déclaration
+d'absence **200**. Contrôle complémentaire sur une donnée historique réelle (CRA 594, consultant 35) :
+les jours couverts (01-02/09 et 21-27/09) sont bien exposés `valid=true`. Données de test laissées
+inertes : CRA 626 (rejeté, absences liées 303 `VALIDATED` et 304 `DRAFT`), CRA 562 restant de la
+tâche précédente.
+
+### 2026-10-01 11:00:11 — « Supprimer tous les événements » ne doit pas supprimer les événements validés (01_TODO_02)
+
+**Rappel de la demande**
+- Page CRA, en tant que propriétaire du CRA : cliquer sur « Supprimer tous les événements » ne doit
+  pas supprimer les événements validés.
+
+**Constat**
+- Le comportement était déjà implémenté côté front : `CraDetail.removeAllEvents()` conserve les
+  événements `valid` (`activities.filter(a => a.valid)`) et ne retire que les non validés (tests
+  existants « un consultant ne peut pas supprimer les événements validés » / « un manager ne
+  supprime pas les événements validés »).
+- Le trou restant venait du même défaut de données que `01_TODO_01` : un congé issu d'une absence
+  validée pouvait être exposé `valid=false` (drapeau stocké antérieur à la validation de
+  l'indisponibilité). Il apparaissait alors comme non validé et était donc supprimé par
+  « Supprimer tous ». De plus, la garde backend (`existingValidKeys` de `CraService.save`)
+  s'appuyait uniquement sur le drapeau stocké : un client qui retirait un événement de congé couvert
+  par une indisponibilité validée n'était pas arrêté.
+
+**Correctifs**
+- Frontend : aucun changement de comportement ; ajout d'un test de non-régression sur le cas réel
+  (jour `LEAVE` couvert par une absence validée portant un congé `valid=true` + un autre événement
+  non validé → après « Supprimer tous », le congé reste, le non validé disparaît).
+- Backend `CraService.save` : pour un consultant, `existingValidKeys` compte désormais comme validés
+  les événements des jours couverts par une indisponibilité validée (`validatedUnavailabilityDates`
+  + jour `LEAVE`/`SICK_LEAVE`), même si le drapeau stocké est resté `false`. Retirer un tel
+  événement renvoie donc `400` « Impossible de modifier une activité validée », y compris sans passer
+  par l'IHM. La projection `toDto` de `01_TODO_01` garantit par ailleurs que le front reçoit
+  `valid=true` et ne propose pas ces événements à la suppression.
+
+**Tests ajoutés** (1 backend, 1 frontend)
+- `CraServiceTest.save_consultantCannotRemoveCoveredAbsenceEvent_evenWithStaleFlag` : donnée
+  historique (drapeau `false`) + requête qui retire le congé du jour couvert → `400`.
+- `CraDetail.test.tsx` « le propriétaire (consultant) conserve un congé validé sur un jour
+  d'absence (supprimer tous) » : le congé validé survit à « Supprimer tous », l'événement non
+  validé est retiré.
+
+**Vérification** : backend — `CraServiceTest` 78/78 ; **suite complète 383 tests**, seul échec
+`SecurityIntegrationTest.adminCannotDeleteActiveUser` — pré-existant et order-dependent (vert en
+isolation). Frontend — 24 fichiers / 208 tests OK, oxlint 0 erreur. Aucun changement de schéma.
+
+### 2026-10-01 11:00:11 — Erreurs front signalées : proxy Vite `ECONNREFUSED` et avertissement Node (01_TODO_03)
+
+**Rappel de la demande**
+- « corriger éventuellement erreurs front » : log Vite avec `http proxy error:
+  /api/notifications/unread-count`, `/api/public/i18n?lang=fr`, `/api/auth/me`
+  (`AggregateError [ECONNREFUSED]`) et avertissement « You are using Node.js 22.0.0. Vite requires
+  Node.js version 20.19+ or 22.12+ ».
+
+**Analyse**
+- Les `ECONNREFUSED` ne sont pas un bug applicatif : le proxy Vite (`vite.config.ts` →
+  `http://localhost:8080`) relevait simplement un backend **arrêté** (redémarrage en cours au
+  moment du log). Vérification après redémarrage : `/api/public/i18n?lang=fr` → **200**,
+  `/api/auth/me` → **401**, `/api/notifications/unread-count` → **401** (joignables ; 401 = non
+  authentifié, pas injoignable).
+- L'avertissement Node vient du shell de dev qui résolvait un Node 22.0.0 au lieu du Node documenté
+  `c:/pgm/nvm/v22.12.0` (AGENTS.md).
+
+**Correctif** (frontend uniquement)
+- `soc360-front-react/run_dev.sh` : préfixe le `PATH` avec `${SOC360_NODE_DIR:-/c/pgm/nvm/v22.12.0}`
+  lorsqu'il existe, pour que `npm.cmd run dev` utilise le Node 22.12.0 documenté et fasse disparaître
+  l'avertissement Vite. Syntaxe vérifiée (`bash -n`) et résolution confirmée (`node --version` →
+  `v22.12.0`).
+- Aucun changement de code applicatif, de schéma ou de configuration Vite : les erreurs de proxy
+  n'existaient que backend éteint.
+
+**Vérification** : backend laissé démarré (H2, profil local) — les 3 endpoints proxifiés répondent.
+Frontend — 24 fichiers / 208 tests OK, oxlint 0 erreur, `npm run build` OK.
+
+### 2026-10-01 11:08:49 — Pourquoi ces erreurs à la console du serveur front (proxy Vite `ECONNREFUSED` + Node) (01_TODO_01)
+
+**Rappel de la demande**
+- « pourquoi ces erreurs sur la console de démarrage du server front » : `[vite] http proxy error:
+  /api/notifications/unread-count` / `/api/public/i18n?lang=fr` / `/api/auth/me`
+  (`AggregateError [ECONNREFUSED]`) et « You are using Node.js 22.0.0. Vite requires Node.js version
+  20.19+ or 22.12+ ».
+
+**Réponse (analyse)**
+- `[vite] http proxy error ... ECONNREFUSED` n'est **pas un bug applicatif**. `vite.config.ts`
+  proxifie tout `/api` vers le backend Spring Boot `http://localhost:8080`. `ECONNREFUSED` est une
+  erreur TCP « connexion refusée » : personne n'écoutait sur le port 8080 à cet instant (backend
+  arrêté/redémarrage). Le front, dès son montage, appelle immédiatement `/api/public/i18n`,
+  `/api/auth/me` puis `/api/notifications/unread-count` (et réessaie), d'où la rafale de messages à
+  10:53:19-20 — le backend était down pendant sa relance — puis un dernier à 11:00:57.
+- L'avertissement Node venait du shell de dev résolvant un Node 22.0.0 au lieu du Node documenté
+  `c:/pgm/nvm/v22.12.0` (AGENTS.md).
+
+**Preuve / correction**
+- Backend démarré : `/api/public/i18n?lang=fr` en direct → **200**, et **à travers le proxy Vite**
+  (`http://localhost:5173/api/public/i18n?lang=fr`) → **200**, **aucun** `proxy error` dans la
+  console Vite. Les erreurs n'apparaissent donc que backend éteint.
+- `soc360-front-react/run_dev.sh` : au démarrage, teste la joignabilité du backend
+  (`curl --max-time 2 http://localhost:8080/api/public/i18n?lang=fr`) et, si injoignable, affiche
+  une note expliquant que les `http proxy error ... ECONNREFUSED` tant que `soc360-back-java/run_dev.sh`
+  n'est pas lancé (message clair au lieu de la pile `AggregateError`). Le fix Node du run_dev.sh
+  (tâche précédente) est conservé.
+- Aucun changement de code applicatif, de schéma ou de `vite.config.ts` : le proxy est correct.
+
+**Vérification** : `bash -n run_dev.sh` OK ; condition testée (backend joignable → pas de note ;
+`curl` sur un port fermé → code 28 donc note affichée) ; `node --version` via `run_dev.sh` →
+`v22.12.0` (plus d'avertissement Vite). Frontend — 24 fichiers / 208 tests OK, oxlint 0 erreur.
+
+### 2026-10-01 11:31:42 — Le manager peut invalider les indispos d'un consultant de son équipe (01_TODO_01)
+
+**Rappel de la demande**
+- « le manager d'un user, peut invalider les indispos de ce user ».
+
+**Constat**
+- Le manager pouvait valider (`SUBMITTED`/`REJECTED` → `VALIDATED`) ou rejeter (`SUBMITTED` →
+  `REJECTED`) une indisponibilité, mais **rien** ne permettait de revenir sur une indisponibilité
+  déjà **validée** : aucun bouton dans l'IHM (`canReview` ne s'appliquait qu'à `SUBMITTED`) et le
+  backend refusait (`reject` exige `SUBMITTED`). Une validation erronée était donc irréversible.
+
+**Implémentation**
+- Backend `UnavailabilityService.invalidate(id, comment)` : une indisponibilité `VALIDATED` repasse
+  en `REJECTED` (motif enregistré, `validatedAt` effacé), historisée (« Invalidation ») et notifiée
+  au consultant (« Indisponibilité invalidée » + email `UNAVAILABILITY_REJECTION`). Elle redevient
+  alors modifiable / soumettable par le consultant (`requireEditable` accepte `REJECTED`).
+  Garde-fou `requireValidatable` non concerné ; nouvelle `requireManager` mise à jour.
+- Backend `UnavailabilityController` : `POST /api/unavailabilities/{id}/invalidate`
+  (`ADMIN` / `RESPONSIBLE_SOC` / `MANAGER`), corps `DecisionRequest` optionnel.
+- Backend `markLinkedTimesheetEvents(..., valid)` : factorisation de
+  `markLinkedTimesheetEventsValid` ; l'invalidation appelle `markLinkedTimesheetEventsInvalid`
+  qui dé-valide les **congés** des jours couverts dans le CRA rattaché (une mission validée sur le
+  même jour est préservée). Le CRA redevient ainsi modifiable et `requireLinkedAbsencesValidated`
+  bloque de nouveau sa validation tant que l'absence n'est pas re-validée.
+- Frontend `api/unavailability.ts` : `invalidate(id, comment)`.
+- Frontend `pages/Unavailability.tsx` : `canInvalidate` (non-consultant + statut `VALIDATED`),
+  `handleInvalidate` (motif via `dialog.prompt`) et bouton « Invalider » dans la liste.
+- i18n : clés `Unavailability.invalider` et `Unavailability.motif.de.l.invalidation` (FR/EN/AR) dans
+  `messages.generated.ts` **et** Flyway `V96__i18n_unavailability_invalidate.sql` (table
+  `app_language`, servie par `/api/public/i18n`).
+- Isolation multi-société : inchangée (accès via `SecurityUtils.requireSocAccess` dans
+  `getAccessible` ; l'endpoint reste réservé aux rôles non-CONSULTANT).
+
+**Tests ajoutés** (3 backend, 2 frontend)
+- `UnavailabilityServiceTest.invalidate_validatedByManager_transitionsToRejectedAndClearsValidatedAt`.
+- `UnavailabilityServiceTest.invalidate_byConsultant_isForbidden`.
+- `UnavailabilityServiceTest.invalidate_nonValidated_isRejected` (`SUBMITTED` refusé).
+- `CraServiceTest.invalidateLinkedAbsence_marksCraEventsInvalidAgain` : après validation de
+  l'absence liée les congés du CRA sont validés, après invalidation ils redeviennent non validés et
+  l'indispo est `REJECTED`.
+- `Unavailability.test.tsx` : le manager invalide une indispo validée avec motif ; l'action
+  « Invalider » n'est **pas** exposée à un consultant.
+
+**Vérification** : backend — `CraServiceTest` 79/79, `UnavailabilityServiceTest` 35/35 ; **suite
+complète 387 tests**, seul échec `SecurityIntegrationTest.adminCannotDeleteActiveUser` — pré-existant
+et order-dependent (vert en isolation). Frontend — 24 fichiers / 210 tests OK, oxlint 0 erreur,
+`npm run build` OK.
+Vérification live (backend redémarré, Flyway migré en **V96**) : `dev1`/`manager1` —
+`POST /api/unavailabilities/303/invalidate` par le consultant → **403** ; par le manager →
+**200 `REJECTED`**, `validatedAt=null`, `rejectedReason="Erreur de saisie"` ; le jour de congé du CRA
+626 rattaché repasse `valid=false` / `unavailable=false` ; `/api/public/i18n?lang=fr` sert bien
+`Unavailability.invalider="Invalider"` et `Unavailability.motif.de.l.invalidation`. Données de test :
+absence 303 désormais `REJECTED` (inertes, CRA 626 toujours en l'état).
+
+### 2026-10-01 11:41:50 — Rejeter une indispo d'un CRA rejette le CRA, même s'il était validé (01_TODO_01)
+
+**Rappel de la demande**
+- « si le manager d'un cra rejette une indispo contenue dans un cra, alors le cra devient rejeté
+  même s'il était déjà validé ».
+
+**Constat**
+- Rejeter/invalider une indisponibilité rattachée à un CRA (`reject` ou `invalidate`) ne touchait pas
+  le CRA : un CRA déjà `VALIDATED` restait `VALIDATED`. Pire, `CraService.syncStatusFromEvents`
+  (appelé par `getById`) recalcule le statut à partir des événements, qui restaient valides, et
+  aurait **re-promu** le CRA en `VALIDATED` même après un rejet.
+
+**Implémentation**
+- Backend `UnavailabilityService.rejectLinkedTimesheet(unavailability, label, note)` : si l'indispo
+  est rattachée à un CRA (`timesheet`), le CRA repasse en `REJECTED` (`validatedAt` effacé, commentaire
+  « Indisponibilité rejetée/invalidée », entrée `timesheet_history`). Appelée depuis `reject` et
+  `invalidate`. Nouvelle dépendance `CraHistoryRepository` (pas de cycle : c'est un repository).
+- Backend `CraService.recomputeStatusFromEvents` : lorsqu'aucun événement n'est invalide et qu'une
+  **absence liée est en attente** (`DRAFT`/`SUBMITTED`/`REJECTED`), le CRA n'est plus promu
+  `VALIDATED`. En écriture (`enforceLinkedAbsences=true`) le comportement existant est conservé
+  (`requireLinkedAbsencesValidated` lève 400) ; en **lecture** (`syncStatusFromEvents`) le CRA
+  repasse `REJECTED` au lieu de retomber `VALIDATED`. Refactor `hasPendingLinkedAbsences(cra)`
+  partagé avec `requireLinkedAbsencesValidated`.
+- Aucun changement de schéma (Flyway inchangé) ni de frontend ; isolation multi-société inchangée
+  (`getAccessible` → `requireSocAccess`, endpoint réservé aux rôles non-CONSULTANT).
+
+**Tests ajoutés** (2 backend)
+- `CraServiceTest.invalidateLinkedAbsence_rejectsTheContainingCraEvenWhenValidated` : CRA validé +
+  indispo validée → `invalidate` → statut du CRA en base immédiatement `REJECTED`, et toujours
+  `REJECTED` après relecture (`getById` ne le re-promeut pas).
+- `CraServiceTest.rejectLinkedAbsence_rejectsTheContainingCra` : CRA soumis + indispo soumise →
+  `reject` → CRA `REJECTED`.
+  Les deux échouent sans le correctif (vérifié en retirant les appels `rejectLinkedTimesheet`).
+
+**Vérification** : backend — `CraServiceTest` 81/81, `UnavailabilityServiceTest` 35/35 ; **suite
+complète 389 tests**, seul échec `SecurityIntegrationTest.adminCannotDeleteActiveUser` — pré-existant
+et order-dependent (vert en isolation). Frontend — inchangé : 24 fichiers / 210 tests OK.
+Vérification live (backend redémarré sur H2, profil local) : `dev1`/`manager1`, CRA mai 2027 —
+absence déclarée → soumise → validée par le manager → CRA **VALIDATED** → « Invalider » l'absence →
+CRA **REJECTED** à la relecture ; second scénario, CRA juin 2027 soumis → « Rejeter » l'absence →
+CRA **REJECTED**. Données de test laissées inertes : CRA 658 (rejeté, absence 367 `REJECTED`) et
+CRA 659 (juin 2027, rejeté, absence `REJECTED`).

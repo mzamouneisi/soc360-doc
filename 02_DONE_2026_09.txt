@@ -2847,3 +2847,230 @@ développeur ; le fichier contient la procédure pour faire tourner le projet su
 des scripts, dernier numéro de migration V94, comptes de démo, rôle du header `X-SOC-Id`, version
 Node 22.12+). `git status` : seuls les READMEs sont ajoutés/modifiés dans les dépôts back et front ;
 aucun autre fichier de code touché.
+
+======================================================================
+### 2026-09-30 11:24:19 — bug notifications : le manager ne recevait pas les soumissions CRA / indispo (01_TODO_01)
+
+**Tâche** : lorsque le consultant soumet son CRA ou une indispo, son manager doit recevoir une
+notification — ce n'était pas le cas.
+
+**Diagnostic** (vérifié sur le backend en cours d'exécution, via l'API)
+- Le **backend fonctionne** : `POST /api/cras/{id}/submit` et `POST /api/unavailabilities/{id}/submit`
+  créent bien une notification non lue pour le manager (`CRA soumise — …` /
+  `Indisponibilité soumise — …`), et `GET /api/notifications/unread-count` la remonte.
+- La **régression** est côté frontend : le commit `fd56298` a rendu le rafraîchissement automatique du
+  compteur **opt-in** (case à cocher initialisée à `false`), alors qu'il polait auparavant toutes les
+  30 s (`9622b1a`). Le manager ne voyait donc les nouvelles notifications qu'après rechargement
+  manuel de la page.
+
+**Correctif** (frontend — `src/layout/NotificationBell.tsx`)
+- `pollEnabled` passe à **`true` par défaut** : le compteur de notifications non lues est rafraîchi
+  automatiquement toutes les 30 s (intervalle ajustable, case toujours décochable).
+- Ajout d'un rafraîchissement **immédiat au retour de focus** de la fenêtre (`window` `focus`) : le
+  manager voit la notification dès qu'il revient sur l'onglet.
+- Aucun changement backend (le comportement de création de notification est déjà correct) ;
+  aucun changement de schéma (Flyway inchangé) ni de clé i18n.
+
+**Vérification** : frontend — nouveau `src/layout/NotificationBell.test.tsx` (2 tests : « active le
+rafraîchissement automatique par défaut » et « rafraîchit le compteur au retour de focus ») ;
+`oxlint` 0 erreur, 24 fichiers / 195 tests OK, `tsc -b` + `vite build` OK. Backend non modifié.
+
+======================================================================
+### 2026-09-30 11:42:41 — notifications manager (CRA/indispo) + affichage du commentaire de rejet (01_TODO_01)
+
+**Tâche** (contenu de 01_TODO_01) :
+1. lorsqu'un user soumet son CRA ou son indispo, son manager (rôle **MANAGER ou RESPONSIBLE_SOC**) doit
+   recevoir une notification ;
+2. lorsqu'un CRA ou une indispo est **rejeté**, le commentaire doit être visible quand on ouvre l'objet.
+
+**Diagnostic** (vérifié sur le backend local via l'API et la base H2)
+- La notification manager existe bien côté backend : tests live `POST /cras/{id}/submit` et
+  `POST /unavailabilities/{id}/submit` avec un manager `MANAGER` (notifié), un consultant sans manager
+  (repli `RESPONSIBLE_SOC`), **et un `MANAGER` soumettant son propre CRA** (son manager
+  `RESPONSIBLE_SOC` est notifié). La base contenait déjà des notifications de ce type.
+- Le commentaire de rejet est stocké et renvoyé (`timesheet.comment` / `unavailability.rejected_reason`),
+  et le `CraDetail` l'affiche pour un CRA/Indispo `REJECTED`. Le manque était le **détail de
+  l'indisponibilité** (calendrier) qui n'affichait pas le statut/motif à l'ouverture via la
+  notification (`?open=id`), seul le tableau le montrait.
+
+**Implémentation**
+- Backend — `CraService` : la notification **in-app** est désormais **toujours** créée pour les
+  destinataires (soumission et notifications au consultant) ; l'email n'est envoyé que si l'adresse
+  existe (découplage, défense en profondeur).
+- Frontend — `layout/NotificationBell.tsx` : rafraîchissement automatique toujours actif par défaut
+  (30 s) + rafraîchissement **au retour de focus** et **à chaque changement de route**
+  (`location.pathname`) pour que le manager voie les notifications sans action manuelle.
+- Frontend — `pages/UnavailabilityCalendar.tsx` : à l'ouverture d'une indisponibilité, affichage du
+  **statut** (badge) + du commentaire, et **encadré « Motif du rejet »** quand le statut est `REJECTED`.
+  Le `CraDetail` affichait déjà le commentaire de rejet (CRA et Indispo `CONGE`).
+- Aucun changement de schéma (Flyway inchangé) ; isolation multi-société inchangée.
+
+**Vérification** : backend — nouveau test
+`CraServiceTest.submit_byManagerNotifiesHisResponsibleSocManager` (un MANAGER qui soumet son CRA notifie
+son manager RESPONSIBLE_SOC) ; `CraServiceTest` 65/65 ; suite complète 345 tests, seul échec pré-existant
+et order-dependent `SecurityIntegrationTest.adminCannotDeleteActiveUser` (vert en isolation).
+Frontend — nouveaux tests `CraDetail.test.tsx` « affiche le commentaire de rejet lorsqu'on ouvre un CRA
+rejeté » et `Unavailability.test.tsx` « affiche le motif de rejet lorsqu'on ouvre une indisponibilité
+rejetée » ; `oxlint` 0 erreur, 24 fichiers / 197 tests OK, `tsc -b` + `vite build` OK.
+
+======================================================================
+### 2026-09-30 14:51:03 — bug notification : le manager n'était pas prévenu à la soumission d'une indispo (01_TODO_01)
+
+**Tâche** (contenu de 01_TODO_01) :
+```
+bug notification :
+
+lorsqu'un user soumet son cra ou indispo, alors son manager (qui peut avoir le role MANAGER ou
+RESPONSABLE_SOC) doit recevoir une notification
+ce qui n'est le cas actuellement
+a corriger
+```
+
+**Cause réelle reproduite en local (bug.live, pas une hypothèse)**
+La résolution des destinataires « qui doit être prévenu » était dupliquée en **4 endroits** et
+l'un d'eux était incomplet. `UnavailabilityService.notificationRecipients` (ligne 393) ne
+consultait que `findBySocIdAndRoleInAndActiveTrue` (société **par défaut** du compte), alors que
+`CraService` (1591), `NoteFraisService` (146), `ConsultantService` (493) et `DocumentController`
+(70) consultaient **aussi** `findBySocIdInSocs` (table de jointure multi-sociétés `user_company`).
+
+Conséquence : un `RESPONSIBLE_SOC` rattaché à la société **uniquement** par `user_company` n'était
+**jamais** prévenu d'une soumission d'**indisponibilité**, alors qu'il l'était parfaitement d'une
+soumission de **CRA**. Reproduction sur le backend local (soc 35, `mzamouneisi` rattaché via la
+jointure) : `POST /unavailabilities/{id}/submit` → **200 / SUBMITTED**, et **aucune** notification
+créée pour le responsable. Après correction : notification « Indisponibilité soumise » créée.
+
+**Implémentation**
+- **Nouveau** `com.soc360.message.NotificationRecipientResolver` (`@Component`) : source de vérité
+  unique pour la résolution des destinataires. Règle = le manager du compte s'il en a un (rôle
+  `MANAGER` **ou** `RESPONSIBLE_SOC` indifféremment), sinon les `RESPONSIBLE_SOC` **actifs** de sa
+  société, résolus via la société par défaut **et** la jointure `user_company` (dédupliqués).
+  En plus : société déduite de `user_company` si le compte n'a pas de société par défaut ; manager
+  inactif ignoré (repli sur le responsable) ; **l'auteur n'est jamais destinataire** (un
+  `RESPONSIBLE_SOC` sans manager ne se notifie plus lui-même) ; liste vide → `log.warn` au lieu
+  d'un échec silencieux.
+- `CraService`, `UnavailabilityService`, `NoteFraisService` : les 3 copies de
+  `notificationRecipients` sont remplacées par un appel au résolveur (comportement du CRA
+  inchangé, celui de l'indispo corrigé).
+- **Notification in-app découplée de l'email** (correction du même symptôme, second chemin) : dans
+  `CraService.submit`, `CraService.cancel` et `NoteFraisService.submit`, le
+  `if (recipient.getEmail() == null) continue;` faisait **saute** la notification in-app. Un
+  manager ou un consultant **sans adresse email** ne recevait donc rien du tout. L'email n'est
+  plus qu'un complément ; la notification in-app est toujours créée. Idem pour
+  `CraService.notifyConsultant`, qui cherchait le consultant par son email
+  (`findByEmail`) et perdait donc la notification s'il n'en avait pas.
+- Aucun changement de schéma (Flyway inchangé) ; isolation multi-société inchangée ; conventions
+  de lignes du dépôt (LF) respectées.
+
+**Tests ajoutés** (15 nouveaux, tous verts)
+- `NotificationRecipientResolverTest` (9) : manager de rôle MANAGER ou RESPONSIBLE_SOC ; repli sur
+  le responsable de la société par défaut ; **repli sur un responsable attaché uniquement par
+  `user_company`** (le bug) ; déduplication des deux modes de rattachement ; pas de doublon quand
+  un manager existe déjà (et la société n'est pas interrogée) ; l'auteur jamais destinataire ;
+  manager/responsable inactif ignoré ; société déduite de la jointure ; liste vide.
+- `UnavailabilityServiceTest` (+4) : responsable attaché via `user_company` ; manager de rôle
+  `MANAGER` ; manager sans email (in-app toujours créée, aucun email) ; le soumet
+  `RESPONSIBLE_SOC` sans manager ne se notifie pas. Le résolveur réel est injecté
+  (`ReflectionTestUtils`) pour que ce soit bien la résolution qui soit testée.
+- `NoteFraisServiceTest` (+2) : responsable via `user_company` ; manager sans email.
+
+**Vérification** : backend — `NotificationRecipientResolverTest` 9/9, `UnavailabilityServiceTest`
+22/22, `NoteFraisServiceTest` 16/16, `CraServiceTest` 65/65 ; **suite complète 360 tests**, seul
+échec `SecurityIntegrationTest.adminCannotDeleteActiveUser` — pré-existant et order-dependent
+(attendu 400, obtenu 403), **vert en isolation** (17/17). Frontend — inchangé sur cette tâche :
+24 fichiers / 197 tests OK. Vérification live sur le backend redémarré, 2 cas :
+consultant avec manager `MANAGER` → notification reçue ; consultant sans manager avec
+`RESPONSIBLE_SOC` rattaché par jointure → notification reçue.
+
+### 2026-09-30 15:37:30 — CRA avec absences : 2 notifications + validation du CRA bloquée tant que l'indispo n'est pas validée (01_TODO_01)
+
+**Rappel de la demande**
+- Un consultant qui soumet un CRA contenant des absences voit une indisponibilité être générée
+  pour ces absences, et l'indispo comme le CRA partent ensemble vers son manager.
+- Le manager reçoit donc **2 notifications** (une indispo, un CRA), les deux éléments en statut
+  `SUBMITTED`.
+- Le manager **ne peut pas valider le CRA** tant qu'il n'a pas validé l'indispo.
+
+**Constat : le comportement était déjà correct, sauf deux trous**
+- La génération de l'indispo, la soumission groupée et les deux notifications sont **intentionnelles**
+  et déjà couvertes par `CraServiceTest.submit_submitsLinkedAbsenceAndNotifiesManagerTwice`
+  (migration V93). Rien à corriger de ce côté : ce sont deux notifications, pas une.
+- `CraService.validate` appelait bien `requireLinkedAbsencesValidated`, **mais** le statut du CRA
+  pouvait être promu en `VALIDATED` par un autre chemin, qui ne vérifiait **rien** :
+  `recomputeStatusFromEvents` est aussi appelé depuis `save`, `setActivityValid` et
+  `setRangeValid`. Concrètement `POST /cras/{id}/validate-range` (bouton « Valider tout » de
+  l'interface) suffisait à contourner complètement la règle.
+- Deuxième manque : **l'interface n'affichait pas du tout les absences liées**. Le champ
+  `CraDto.unavailabilities` était envoyé par le backend, `LinkedUnavailabilityDto` existait dans
+  les types, et les libellés i18n étaient déjà traduits dans les 3 langues — mais aucun
+  composant ne les rendait. Le manager ne pouvait donc pas valider l'indispo depuis le CRA et
+  n'avait aucun moyen de comprendre pourquoi sa validation était refusée.
+
+**Correctifs**
+- `CraService` : `recomputeStatusFromEvents` surchargé avec un drapeau `enforceLinkedAbsences`.
+  Tout chemin d'**écriture** (`save`, `setActivityValid`, `setRangeValid`) passe à `true` et
+  applique `requireLinkedAbsencesValidated` dès lors que le statut cible serait `VALIDATED`.
+  `syncStatusFromEvents` (chemin de **lecture**, appelé par `getById`) passe à `false` : il
+  réaligne un statut obsolète sans jamais lever d'exception sur des données historiques
+  incohérentes. La transition intermédiaire `VALREJ` (une partie des événements validée) reste
+  autorisée — seule la promotion effective en `VALIDATED` est bloquée. `invalidate-range` n'est
+  pas concerné (il ne promeut pas).
+- `CraDetail.tsx` : nouveau panneau « Absences déclarées » (libellés et clés i18n déjà
+  existants, aucune traduction à ajouter) listant type, plage de dates et statut de chaque
+  absence liée. Les boutons « Valider l'absence » / « Rejeter l'absence » (avec saisie du motif
+  via `dialog.prompt`, comme sur la page `Unavailability`) n'apparaissent que pour le manager
+  compétent et sur une absence non validée. Après l'action, le CRA est rechargé.
+- Aucun changement de schéma (Flyway inchangé) ; isolation multi-société inchangée (le panneau
+  ne lit que le `CraDto` déjà filtré par `requireSocAccess`).
+
+**Tests ajoutés** (4 backend, 4 frontend)
+- `CraServiceTest.setRangeValid_linkedAbsenceNotValidated_isRejected` — le contournement principal.
+- `CraServiceTest.setActivityValid_linkedAbsenceNotValidated_isRejected` — idem activité par
+  activité (le test valide toutes les activités sauf la dernière : les transitions
+  intermédiaires passent légitimement par `VALREJ`, seule la dernière devait être refusée).
+- `CraServiceTest.setRangeValid_afterLinkedAbsenceValidated_succeeds` — le garde-fou ne bloque pas
+  le cas nominal.
+- `CraServiceTest.invalidateRange_linkedAbsenceNotValidated_isAllowed` — l'invalidation reste
+  possible (elle ne promeut pas en `VALIDATED`).
+- `CraDetail.test.tsx` — panneau vide (« Aucune absence déclarée ») ; validation d'une absence
+  liée par le manager (avec rechargement du CRA) ; rejet avec motif ; actions **absentes** pour
+  un consultant.
+
+**Vérification** : backend — `CraServiceTest` 69/69 ; **suite complète 364 tests**, seul échec
+`SecurityIntegrationTest.adminCannotDeleteActiveUser` — pré-existant et order-dependent (attendu
+400, obtenu 403), **vert en isolation** (17/17). Frontend — `CraDetail.test.tsx` 18/18, **24
+fichiers / 201 tests OK**, oxlint sans erreur (seuls des warnings pré-existants), `npm run build`
+OK. Vérification live sur le backend redémarré, de bout en bout (consultant `dev1` / manager
+`manager1`, juillet 2026) : soumission → CRA **et** absence 143 en `SUBMITTED`, **exactement 2
+notifications** (« Indisponibilité soumise — Congé payé » puis « CRA soumise — JULY 2026 ») ;
+`validate-range` → **400 « Validez d'abord l'absence déclarée dans ce CRA avant de valider le
+CRA »** ; `validate` → **400** ; validation de l'absence → 200 puis validation du CRA → 200
+`VALIDATED`. Notifications de test supprimées ; il reste un CRA `CANCELLED` (id 498) et une
+indispo `VALIDATED` (id 143) que les gardes de l'API refusent de supprimer (données inertes,
+hors statut actif).
+
+2026-09-30 23:22:28
+Todo: 01_TODO_01 — Indisponibilités contiguës, rattachement CRA et validation
+
+Description (résumé) :
+- Fusionner les brouillons d'indisponibilités contigus (même consultant, même type, même rattachement au CRA ou aucun) avant sauvegarde (création/mise à jour) en étendant l'intervalle jusqu'à saturation (boucle) ; n'absorber que les DRAFT contigus (adjacents ou chevauchants).
+- Depuis le CRA, déclarer une absence rattache automatiquement l'indispo au CRA (timesheet) ; les déclarations successives sur le même CRA fusionnent les intervalles contigus en une seule indispo, sans fusionner entre CRA différents. Chaque intervalle contigu d'absences correspond à une seule indisponibilité.
+- Conserver le flux « une notification CRA + une notification par indispo liée, toutes soumises » (submitLinkedAbsences + V93 conservés).
+- Empêcher la validation du CRA avant la validation de toutes les indisponibilités liées (garde-fou dans recomputeStatusFromEvents). Ajouter une popup de validation listant les indispos en attente (début/fin, type, statut, lien vers Indisponibilités) et empêchant la validation directe si des indispos sont en attente.
+- Trier les listes : CRA par année puis mois décroissants (tie-breaker id desc), Indisponibilités par date de début décroissante (tie-breaker id desc). Libellés FR/EN/AR ajoutés pour la popup.
+- Nettoyage Flyway : V95 fusionne les intervalles contigus existants, réaffecte l'historique des brouillons absorbés au survivant (conservation intégrale de l'audit), supprime les doublons, ajoute index (consultant_id, start_date, end_date).
+- Exposer dans le DTO CRA les indispos liées pour l'affichage dans le panneau et la popup.
+
+Détails techniques :
+- Backend : UnavailabilityService.mergeContiguousDrafts étend en boucle (while changed) avec contrôle par timesheetId (null vs CRA). declareLinkedAbsence fusionne via cet appel et rattache timesheet. deleteAbsorbed réassigne UnavailabilityHistory au survivant avant suppression. Overlap ignore REJECTED, interdit chevauchement DRAFT/SUBMITTED/VALIDATED. Requêtes triées (findByTimesheetIdAndStatusIn/affichage par startDate desc). CraService.recomputeStatusFromEvents bloque promotion vers VALIDATED si une absence liée non validée.
+- Frontend : CraDetail ouvre PendingAbsencesModal si linkedAbsences contient au moins une SUBMITTED/DRAFT (ou état attente) avant validate() ; popup affiche dates début/fin, type, statut + lien /indisponibilites?open={id}. CraList tri desc (year,month,id), Unavailability tri desc (startDate,id). Clés i18n ajoutées.
+- Migrations : V93 liaison CRA/indispos + notifications, V95 nettoyage de données (SQL testé H2).
+
+Tests validés :
+- Backend : CraServiceTest 74/74 OK, UnavailabilityServiceTest 28/28 OK (dont test de réaffectation de l'historique). Suite complète 374 tests : 373 OK + 1 échec pré-existant et order-dependent (SecurityIntegrationTest.adminCannotDeleteActiveUser : 400 attendu vs 403 obtenu) — confirmé hors périmètre.
+- Frontend : 24 fichiers, 205 tests OK (Vitest). Lint oxlint OK, build production OK.
+
+Vérifications live (après redémarrage avec V95) :
+- Application démarrée sur port 8080 (Flyway version 95 à jour). E2E de fusion (3 déclarations contiguës + séparées) produit 2 indispos liées disjointes, tri startDate desc respecté. Soumission CRA entraîne soumission simultanée des indispos liées + notifications manager (>=2). Blocage de validation CRA tant que les indispos liées ne sont pas validées (HTTP 400), validation indispos puis CRA réussie. Nettoiement des données de test effectué, 0 chevauchement résiduel sur les indispos.
+
+Notes :
+- L'ancien garde-fou de syncStatusFromEvents reste non contraignant (recomputeStatusFromEvents assure le blocage). deleteAbsorbed conserve désormais l'historique. Syntaxe V95 compatible H2 ; PostgreSQL à vérifier en environnement cible si besoin.
