@@ -399,3 +399,62 @@ absence brouillon, CRA 690.
 **Vérification** : frontend — 24 fichiers / **214 tests** OK, oxlint 0 erreur, `npm run build` OK.
 Backend inchangé (dernière suite connue : 395 tests, seul échec pré-existant
 `SecurityIntegrationTest.adminCannotDeleteActiveUser`).
+
+### 2026-10-01 15:38:17 — page CRA : internationaliser le titre « CRA de {consultant} » (01_TODO_01)
+
+**Rappel de la demande**
+- Page CRA : internationaliser la phrase du style « CRA de mourad zamoun ».
+
+**Constat**
+- Le titre de `CraDetail` était codé en dur en français :
+  `{cra.type === 'CONGE' ? 'Indispo de ' : 'CRA de '}{cra.consultantName}`.
+
+**Implémentation**
+- Frontend `CraDetail.tsx` : le titre passe par `tr(...)` avec interpolation du nom
+  (`CraDetail.titre.cra` → « CRA de {name} », `CraDetail.titre.indispo` → « Indispo de {name} »).
+- i18n : clés ajoutées FR/EN/AR dans `messages.ts` **et** Flyway
+  `V98__i18n_cra_detail_title.sql` (table `app_language`, servie par `/api/public/i18n`).
+- Aucun changement de schéma métier, ni d'isolation multi-société.
+
+**Tests ajoutés** (1 frontend)
+- `CraDetail.test.tsx` « internationalise le titre de la page CRA (« CRA de … ») » : le titre rendu
+  est « CRA de Alice Martin ».
+
+**Vérification** : frontend — 24 fichiers / **215 tests** OK, oxlint 0 erreur, `npm run build` OK.
+Backend — migration V98 validée (`CraServiceTest` 85/85 + `Soc360ApplicationTests`, contexte Spring
++ Flyway OK). Live (backend redémarré, Flyway **V98**) : `/api/public/i18n?lang=fr` sert
+« CRA de {name} » / « Indispo de {name} » ; `?lang=en` sert « Timesheet of {name} » /
+« Unavailability of {name} ».
+
+### 2026-10-01 15:42:58 — page CRA : internationaliser la valeur du statut des absences (01_TODO_02)
+
+**Rappel de la demande**
+- Page CRA : internationaliser la valeur du statut des absences (« Brouillon », « Soumise »,
+  « Validée », « Rejetée »).
+
+**Constat**
+- Le panneau « Absences déclarées » de `CraDetail` affichait le statut via
+  `tr(UNAVAILABILITY_STATUS_LABELS[absence.status])` : `UNAVAILABILITY_STATUS_LABELS` renvoie des
+  **libellés français**, passés comme **clé** à `tr`, laquelle n'existe pas → la valeur affichée
+  restait toujours le libellé français, quelle que soit la langue.
+
+**Implémentation**
+- Frontend `lib/format.ts` : nouvelle table `UNAVAILABILITY_STATUS_KEYS` (statut → clé i18n) en plus
+  de `UNAVAILABILITY_STATUS_LABELS` (qui reste utilisée pour la recherche/filtre).
+- Frontend `CraDetail.tsx` : les deux affichages du statut d'absence (panneau et popup
+  « Indisponibilités à valider ») utilisent `tr(UNAVAILABILITY_STATUS_KEYS[status])`.
+- i18n : clés `Unavailability.status.DRAFT|SUBMITTED|VALIDATED|REJECTED` (FR/EN/AR) dans
+  `messages.ts` + Flyway `V99__i18n_unavailability_status_labels.sql` (`app_language`).
+- Aucun changement de schéma métier, ni d'isolation multi-société. Les libellés FR restent
+  identiques (« Brouillon », « Soumise », « Validée », « Rejetée »).
+
+**Tests ajoutés** (1 frontend)
+- `i18n.test.tsx` « traduit les statuts d'indisponibilité dans les 3 langues » : les 4 clés existent
+  et sont traduites en FR/EN/AR (`en VALIDATED = Approved`, `fr REJECTED = Rejetée`), et ne
+  contiennent pas la clé brute. Les tests existants de `CraDetail` (badges « Soumise »,
+  « Validée »…) restent verts.
+
+**Vérification** : frontend — 24 fichiers / **216 tests** OK, oxlint 0 erreur, `npm run build` OK.
+Backend — migration V99 validée (`Soc360ApplicationTests`, contexte Spring + Flyway). Live (backend
+redémarré, Flyway **V99**) : `/api/public/i18n?lang=fr` sert Brouillon/Soumise/Validée/Rejetée ;
+`?lang=en` sert Draft/Submitted/Approved/Rejected.
