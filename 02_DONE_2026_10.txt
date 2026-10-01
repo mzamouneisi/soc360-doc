@@ -458,3 +458,109 @@ Backend — migration V98 validée (`CraServiceTest` 85/85 + `Soc360ApplicationT
 Backend — migration V99 validée (`Soc360ApplicationTests`, contexte Spring + Flyway). Live (backend
 redémarré, Flyway **V99**) : `/api/public/i18n?lang=fr` sert Brouillon/Soumise/Validée/Rejetée ;
 `?lang=en` sert Draft/Submitted/Approved/Rejected.
+
+### 2026-10-01 15:58:13 — soc-75 : indisponibilité interdite sur un mois dont le CRA est déjà soumis/validé (01_TODO_01)
+
+**Rappel de la demande**
+- Un consultant ne peut pas ajouter une indisponibilité sur un mois X si, pour ce mois X, son CRA est
+  déjà soumis ou validé.
+
+**Constat**
+- `UnavailabilityService.create` / `update` n'effectuaient aucun contrôle du statut du CRA du
+  consultant sur les mois couverts : une absence pouvait être ajoutée alors que le CRA du mois était
+  déjà `SUBMITTED` ou `VALIDATED` (donc potentiellement en cours de validation ou validé).
+
+**Implémentation** (backend uniquement)
+- `UnavailabilityService` : injection de `CraRepository` et nouvelle garde
+  `assertNoSubmittedOrValidatedCra(consultantId, start, end)` — pour chaque mois recouvert par
+  l'intervalle, si `findByConsultantIdAndMonthAndYearAndType(..., "CRA")` renvoie un CRA
+  `SUBMITTED`/`VALIDATED`, la demande est refusée (`400` « … le CRA de <MOIS AAAA> est déjà soumis
+  ou validé »). Appelée dans `create` (sur l'intervalle fusionné) et `update`.
+- Un CRA `DRAFT`/`REJECTED` reste ouvert (l'absence peut y être intégrée) ; `declareLinkedAbsence`
+  (déclaration depuis le remplissage du CRA) n'est concerné que pour les CRA `DRAFT`/`REJECTED`.
+- Aucun changement de schéma (Flyway inchangé) ni de frontend : l'erreur est affichée par
+  `Unavailability.tsx` (`formError`). Isolation multi-société inchangée.
+
+**Tests ajoutés** (2 backend)
+- `UnavailabilityServiceTest.create_whenCraSubmittedForTheMonth_isRejected` : CRA `SUBMITTED` sur le
+  mois → `400` « soumis ou validé », aucun enregistrement.
+- `UnavailabilityServiceTest.create_whenCraIsDraft_isAllowed` : CRA `DRAFT` → création `200`.
+- Ajout du mock `CraRepository` au test unitaire.
+
+**Vérification** : backend — `UnavailabilityServiceTest` 39/39, `CraServiceTest` 85/85 ; **suite
+complète 397 tests**, seul échec `SecurityIntegrationTest.adminCannotDeleteActiveUser` — pré-existant
+et order-dependent (vert en isolation). Frontend inchangé (dernière suite : 216 tests).
+Vérification live (backend redémarré) : consultant embauché 2020 → CRA 2027-08 rempli et **soumis**
+→ indispo 10-12/08 → **400** « le CRA de AUGUST 2027 est déjà soumis ou validé » ; indispo sur un
+mois **sans CRA** (09/2027) → **200** ; indispo sur un mois à CRA **brouillon** (07/2027) → **200**.
+Données de test laissées inertes : consultant `soc75_…`, CRA 07/2027 `DRAFT`, CRA 08/2027
+`SUBMITTED`, absences brouillon 07 et 09/2027.
+
+### 2026-10-01 16:24:07 — soc-75 (correctif) : une absence d'octobre ne doit pas être bloquée par le CRA de septembre (01_TODO_01)
+
+**Rappel de la demande**
+- Le 01/10/2026, un consultant ayant un CRA **validé** en 09/2026 et **aucun** CRA soumis/validé en
+  10/2026 voit sa demande d'indispo 01/10/2026 → 08/10/2026 refusée avec « le CRA de SEPTEMBER 2026
+  est déjà soumis ou validé ». Ce n'est pas normal.
+
+**Cause racine**
+- `assertNoSubmittedOrValidatedCra` était appliqué à l'intervalle **fusionné** (`interval.start()` /
+  `interval.end()`). Or `mergeContiguousDrafts` absorbe les brouillons contigus : le consultant avait
+  un brouillon au **30/09/2026**, contigu au 01/10 demandé. L'intervalle fusionné devenait
+  30/09 → 08/10, donc couvrait septembre → refus. Le consultant n'ajoutait pourtant rien en septembre.
+
+**Correctif** (backend uniquement — `UnavailabilityService`)
+- Le contrôle porte désormais sur l'intervalle **demandé** (`request.startDate()` /
+  `request.endDate()`), dans `create` comme dans `update`. La fusion de brouillons contigus reste
+  inchangée (un brouillon du 30/09 peut être absorbé dans une indispo d'octobre, sans bloquer).
+- La règle soc-75 reste effective quand la période **demandée** couvre un mois verrouillé.
+- Aucun changement de schéma ni de frontend ; isolation multi-société inchangée.
+
+**Tests ajoutés** (1 backend)
+- `UnavailabilityServiceTest.create_requestedMonthAllowed_evenIfContiguousDraftIsInLockedMonth` :
+  brouillon 30/09 + CRA 09 `VALIDATED`, demande 01/10→08/10 → création **200**. Échoue sans le
+  correctif (vérifié en revenant à l'intervalle fusionné).
+
+**Vérification** : backend — `UnavailabilityServiceTest` 40/40 ; **suite complète 398 tests**, seul
+échec `SecurityIntegrationTest.adminCannotDeleteActiveUser` — pré-existant et order-dependent (vert en
+isolation). Frontend inchangé (dernière suite : 216 tests).
+Vérification live (backend redémarré) : consultant fraîchement créé — brouillon 30/09/2027 + CRA
+09/2027 rempli et **validé** par le manager ; indispo **01→08/10/2027** → **200** (intervalle fusionné
+30/09→08/10) alors qu'elle renvoyait 400 avant ; indispo **15→16/09/2027** (mois verrouillé) → **400**
+« le CRA de SEPTEMBER 2027 est déjà soumis ou validé ». Données de test laissées inertes :
+consultant `soc75b_…`, CRA 09/2027 `VALIDATED`, indispo fusionnée 30/09→08/10.
+
+### 2026-10-01 17:39:14 — Page Indisponibilités : commentaire obligatoire + afficher le motif de refus (01_TODO_01)
+
+**Rappel de la demande**
+- Page Indisponibilités, à l'ajout d'une nouvelle indispo : le commentaire est obligatoire.
+- Si l'ajout est impossible, afficher le message expliquant pourquoi.
+
+**Implémentation**
+- Backend `UnavailabilityService` : nouvelle garde `requireComment` (commentaire non vide après
+  `trim`) appliquée dans `create` et `update` → `400` « Le commentaire est obligatoire ». Non
+  appliquée à `declareLinkedAbsence` (absence déclarée depuis le CRA), inchangée.
+- Frontend `Unavailability.tsx` :
+  - `handleSave` refuse un commentaire vide (`Unavailability.commentaire.obligatoire`) avant l'appel ;
+  - libellé du champ commentaire marqué obligatoire (`*`) ;
+  - le bouton « Nouvelle indisponibilité » n'est **plus désactivé** sans date d'embauche : le clic
+    reste possible et `openCreate` affiche le motif (`hireDate.required`) via une boîte de dialogue
+    — l'utilisateur voit donc pourquoi il ne peut pas ajouter (au lieu d'un bouton grisé muet).
+- i18n : clé `Unavailability.commentaire.obligatoire` (FR/EN/AR) dans `messages.ts` + Flyway
+  `V100__i18n_unavailability_comment_required.sql`.
+- Aucun changement de schéma métier, ni d'isolation multi-société.
+
+**Tests ajoutés** (1 backend, 2 frontend)
+- Backend `UnavailabilityServiceTest.create_withoutComment_isRejected` (commentaire blanc → `400`,
+  aucun enregistrement) ; helper `request` doté d'un commentaire pour les autres tests.
+- Frontend `Unavailability.test.tsx` : « exige un commentaire pour créer une indisponibilité »
+  (message affiché, aucun appel API) ; « affiche le motif quand la création est impossible sans date
+  d'embauche » (remplace le test de bouton désactivé). Tests de création/modification ajustés pour
+  saisir un commentaire.
+
+**Vérification** : backend — `UnavailabilityServiceTest` 41/41 ; **suite complète 399 tests**, seul
+échec `SecurityIntegrationTest.adminCannotDeleteActiveUser` — pré-existant et order-dependent (vert en
+isolation). Frontend — 24 fichiers / **217 tests** OK, oxlint 0 erreur, `npm run build` OK.
+Live (backend redémarré, Flyway **V100**) : indispo sans commentaire → **400** « Le commentaire est
+obligatoire » ; avec commentaire → **200 `DRAFT`** ; `/api/public/i18n?lang=fr` sert « Le commentaire
+est obligatoire. », `?lang=en` « The comment is required. ».
