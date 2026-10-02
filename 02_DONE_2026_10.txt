@@ -660,3 +660,40 @@ seul échec `SecurityIntegrationTest.adminCannotDeleteActiveUser` (attendu 400, 
 **pré-existant et order-dependent** (déjà documenté, non lié à ce lot) ; les tests d'intégration
 (dont `SocDeleteIntegrationTest`) valident les migrations Flyway V101/V102 et la suppression en
 cascade. Frontend — 25 fichiers / **225 tests** OK, oxlint 0 erreur, `npm run build` OK.
+
+### 2026-10-02 16:58:24 — Page Indisponibilités : colonne TYPE issue des « Types d'indisponibilités » (01_TODO_01)
+
+**Rappel de la demande**
+- Page Indisponibilités : la colonne TYPE doit venir de la colonne « Type indispo » de la table
+  « Types d'indisponibilités ».
+
+**Implémentation**
+- Backend :
+  - `unavailability.type` n'est plus une énumération figée : migration Flyway
+    `V103__unavailability_type_from_config.sql` élargit la colonne à `VARCHAR(200)` et convertit les
+    anciennes valeurs enum vers les libellés par défaut de la société (« Congés payés », « RTT »,
+    « Sans solde », « Maladie non professionnelle », « Maternité »).
+  - `Unavailability.type` devient `String` ; les DTO `UnavailabilityDto`/`UnavailabilityRequest` et
+    `CraDtos.LinkedUnavailabilityDto`/`DeclareAbsenceRequest` passent en `String`.
+  - `UnavailabilityService` : `requireType` accepte tout libellé non vide ; `typeLabel` renvoie le
+    libellé (plus de `switch` sur l'énumération).
+  - `CraService` : la distinction jour de maladie (`SICK_LEAVE`) et l'activité de congé sont dérivées
+    du libellé (`isSickLeave` : « maladie » hors enfant, « accident », codes historiques) ; le
+    commentaire de l'événement CRA conserve le libellé du type.
+- Frontend :
+  - `UnavailabilityType` devient `string` ; helper `unavailabilityTypeLabel()` (mappe les anciens
+    codes enum, sinon affiche le libellé brut).
+  - Page Indisponibilités : chargement des types de la société via `unavailabilityTypesApi.list(socId)` ;
+    la liste déroulante du formulaire et la colonne TYPE (ainsi que le filtre, la confirmation de
+    suppression et l'en-tête d'historique) utilisent ces libellés. Les anciens codes restent affichés
+    correctement (rétro-compatibilité).
+
+**Tests ajoutés/adaptés**
+- Backend : `CraServiceTest` et `UnavailabilityServiceTest` adaptés aux libellés (126 tests OK) ;
+  migration V103 validée par les tests d'intégration Flyway.
+- Frontend : `Unavailability.test.tsx` : « affiche le type issu des paramètres de la société et le
+  propose au formulaire » (colonne + options de la liste déroulante).
+
+**Vérification** : Backend — **suite complète 404 tests**, seul échec pré-existant
+`SecurityIntegrationTest.adminCannotDeleteActiveUser`. Frontend — 25 fichiers / **226 tests** OK,
+oxlint 0 erreur, `npm run build` OK.
