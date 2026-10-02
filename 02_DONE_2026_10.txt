@@ -564,3 +564,29 @@ isolation). Frontend — 24 fichiers / **217 tests** OK, oxlint 0 erreur, `npm r
 Live (backend redémarré, Flyway **V100**) : indispo sans commentaire → **400** « Le commentaire est
 obligatoire » ; avec commentaire → **200 `DRAFT`** ; `/api/public/i18n?lang=fr` sert « Le commentaire
 est obligatoire. », `?lang=en` « The comment is required. ».
+
+### 2026-10-02 10:54:11 — Page CRA : colonne commentaire sans traduction dynamique (01_TODO_01)
+
+**Rappel de la demande**
+- Page CRA : ne plus traduire dynamiquement la colonne commentaire.
+- Mettre dans cette colonne les commentaires saisis lors de la validation, du rejet, etc. des CRA.
+
+**Implémentation**
+- Frontend uniquement (backend inchangé) : les commentaires de validation/rejet sont déjà persistés
+  dans `timesheet.comment` par `CraService.validate` (commentaire généré « CRA validé par … le … »)
+  et `CraService.reject` (motif saisi), et exposés par `CraDto.comment` dans toutes les listes.
+- `CraList.tsx:426` : `dt(cra.comment)` → `cra.comment` (affichage brut, sans traduction à la volée).
+- `CraHistoryModal.tsx:79` : `dt(h.comment)` → `h.comment` (idem pour la colonne commentaire de
+  l'historique ouvert depuis la page CRA).
+- Les libellés de statut continuent d'utiliser `dt()` (`CRA_STATUS_LABELS`) ; seuls les commentaires
+  métier (texte libre) ne sont plus traduits.
+- Aucun changement de schéma (pas de migration Flyway), isolation multi-société inchangée.
+
+**Tests ajoutés** (2 frontend)
+- `CraList.test.tsx` : « affiche le commentaire du CRA sans traduction dynamique » et « affiche le
+  commentaire d'historique sans traduction dynamique » — langue forcée à `en`, traduction mockée, le
+  commentaire doit rester brut et ne jamais être remplacé par la traduction (échouent avant le
+  correctif, vérifié).
+
+**Vérification** : Frontend — 24 fichiers / **219 tests** OK, oxlint 0 erreur, `npm run build` OK.
+Backend inchangé (aucun test à relancer côté Java).
