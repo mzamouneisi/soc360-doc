@@ -611,3 +611,52 @@ Backend inchangé (aucun test à relancer côté Java).
 
 **Vérification** : Frontend — 24 fichiers / **220 tests** OK, oxlint 0 erreur, `npm run build` OK.
 Backend inchangé.
+
+### 2026-10-02 16:41:15 — soc-52 Gestion des types d'indisponibilité par société (01_TODO_01)
+
+**Rappel de la demande**
+- En tant que responsable de société, gérer les types d'indisponibilité comme paramètres de ma
+  société (préparation du calcul des soldes de congés et de RTT).
+- Tableau par défaut à 9 colonnes (Type indispo, Durée/règle, Type Décompte, Conditions principales,
+  Rémunération, Acquisition des jours de CP, Prévu par la loi, Prévu par Syntec, Nécessite un
+  document) ; ajout/suppression de lignes et cellules modifiables.
+
+**Implémentation**
+- Backend :
+  - Migration Flyway `V101__unavailability_type.sql` : table `unavailability_type` (`company_id`,
+    `sort_order`, 9 colonnes texte + audit), FK `company(id) ON DELETE CASCADE`, index
+    `(company_id, sort_order)`. Aucun seed SQL : le tableau par défaut est créé à la demande.
+  - Entité `UnavailabilityTypeConfig` + `UnavailabilityTypeConfigRepository`
+    (`findBySocIdOrderBySortOrderAscIdAsc`, `deleteBySocId`).
+  - `UnavailabilityTypeConfigService` : `list(socId)` crée le tableau par défaut (26 lignes) à la
+    première consultation ; `replaceAll(socId, rows)` valide le libellé de type (non vide) puis
+    remplace toutes les lignes en conservant l'ordre (`sort_order` 0..n).
+  - `UnavailabilityTypeConfigController` `/api/unavailability-types` : GET et PUT. Le `socId` est
+    résolu par `SecurityUtils.effectiveSocId` (isolation : un non-admin ne peut agir que sur sa
+    société) et `SecurityUtils.requireSocAccess` est appelé sur le PUT ; les écritures sont
+    réservées à `ADMIN`/`RESPONSIBLE_SOC` via `@PreAuthorize`.
+  - i18n : migration `V102__i18n_unavailability_types.sql` (19 clés FR/EN/AR).
+  - Feature préparatoire : aucun flux d'indisponibilité existant n'est modifié.
+- Frontend :
+  - `UnavailabilityTypes.tsx` : tableau éditable (9 colonnes, Inputs inline), boutons « Ajouter une
+    ligne », « Supprimer la ligne », « Enregistrer » ; chargement via
+    `unavailabilityTypesApi.list(socId)` et sauvegarde en bloc `save(socId, rows)`. Garde de rôle :
+    ADMIN/RESPONSIBLE_SOC (redirection sinon).
+  - API `src/api/unavailabilityTypes.ts` + types `UnavailabilityTypeConfigDto/Row` (le client injecte
+    `Authorization` + `X-SOC-Id`).
+  - Route `/types-indisponibilites` (App.tsx) + entrée de menu « Types d'indisponibilités » visible
+    ADMIN/RESPONSIBLE_SOC.
+  - Clés i18n ajoutées dans `messages.ts` (FR/EN/AR).
+
+**Tests ajoutés** (5 backend, 5 frontend)
+- Backend `UnavailabilityTypeConfigServiceTest` : seed par défaut (26 lignes), lecture des lignes
+  existantes sans re-seed, remplacement en bloc avec ordre, refus d'un type vide (400), société
+  introuvable (404).
+- Frontend `UnavailabilityTypes.test.tsx` : affichage + enregistrement des cellules modifiées, ajout
+  de ligne, suppression de ligne, refus d'enregistrer un type vide, redirection d'un rôle non autorisé.
+
+**Vérification** : Backend — `UnavailabilityTypeConfigServiceTest` 5/5 ; **suite complète 404 tests**,
+seul échec `SecurityIntegrationTest.adminCannotDeleteActiveUser` (attendu 400, obtenu 403) —
+**pré-existant et order-dependent** (déjà documenté, non lié à ce lot) ; les tests d'intégration
+(dont `SocDeleteIntegrationTest`) valident les migrations Flyway V101/V102 et la suppression en
+cascade. Frontend — 25 fichiers / **225 tests** OK, oxlint 0 erreur, `npm run build` OK.
