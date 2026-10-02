@@ -590,3 +590,24 @@ est obligatoire. », `?lang=en` « The comment is required. ».
 
 **Vérification** : Frontend — 24 fichiers / **219 tests** OK, oxlint 0 erreur, `npm run build` OK.
 Backend inchangé (aucun test à relancer côté Java).
+
+### 2026-10-02 10:59:46 — Page CRA : comptage des jours des événements traduit (01_TODO_02)
+
+**Rappel de la demande**
+- Page CRA : dans chaque jour, le comptage du nombre de jours des événements (ex. « 0 j », « 1 j »)
+  doit être traduit dans la langue sélectionnée.
+
+**Implémentation**
+- Frontend uniquement. `CraDetail.tsx` : le helper `formatDays` (utilisé pour le total de chaque jour,
+  le total de chaque événement et les listes déroulantes de valeurs) concaténait le « j » en dur ;
+  il utilise désormais `tr('CraDetail.j')` (clé i18n déjà présente : « j » en fr/en, « ي » en ar).
+- Comme les libellés de statut, le composant se ré-affiche au changement de langue et le suffixe
+  suit donc la langue sélectionnée. Aucun changement de schéma ni d'isolation multi-société.
+
+**Tests ajoutés** (1 frontend)
+- `CraDetail.test.tsx` : « traduit le comptage des jours des événements dans la langue
+  sélectionnée » — langue forcée à `ar`, on vérifie que les comptages s'affichent en « 1 ي » et plus
+  en « 1 j » (échoue avant le correctif, vérifié).
+
+**Vérification** : Frontend — 24 fichiers / **220 tests** OK, oxlint 0 erreur, `npm run build` OK.
+Backend inchangé.
