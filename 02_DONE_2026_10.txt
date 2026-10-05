@@ -697,3 +697,307 @@ cascade. Frontend — 25 fichiers / **225 tests** OK, oxlint 0 erreur, `npm run 
 **Vérification** : Backend — **suite complète 404 tests**, seul échec pré-existant
 `SecurityIntegrationTest.adminCannotDeleteActiveUser`. Frontend — 25 fichiers / **226 tests** OK,
 oxlint 0 erreur, `npm run build` OK.
+
+### 2026-10-05 14:55:43 — soc-69 Table Types d'indisponibilités : typage des colonnes (01_TODO_01)
+
+**Rappel de la demande**
+- Table « Types d'indisponibilités » : changer le type des colonnes.
+  - « Type indispo » : texte.
+  - « Durée / Règle » renommée « Durée » : type Integer.
+  - « Type Décompte » : texte.
+  - « Conditions principales » : texte.
+  - « Rémunération » : booléen.
+  - « Acquisition des jours de CP durant le congé » et « Prévu par la loi » : booléens.
+  - « Prévu par Syntec » renommée « Prévu par la convention collective » : texte.
+  - « Nécessite un document » : booléen.
+
+**Implémentation**
+- Backend :
+  - Migration Flyway `V104__unavailability_type_column_types.sql` : ajout des colonnes typées
+    (`duration INT`, `remuneration/cp_acquisition/legal_provision/document_required BOOLEAN`,
+    `collective_agreement_provision VARCHAR(400)`), conversion heuristique des anciennes valeurs
+    texte (booléen vrai sauf marqueur négatif « ❌ » ; durée déduite du libellé des types par
+    défaut), puis suppression des anciennes colonnes et renommage. `duration_rule` devient
+    `duration` ; `syntec_provision` devient `collective_agreement_provision`.
+  - Entité `UnavailabilityTypeConfig` : `duration` (`Integer`), `remuneration`, `cpAcquisition`,
+    `legalProvision`, `documentRequired` (`Boolean`), `collectiveAgreementProvision` (`String`).
+  - DTO `UnavailabilityTypeConfigDtos` (`UnavailabilityTypeDto`/`UnavailabilityTypeRow`) typés en
+    conséquence ; `UnavailabilityTypeConfigService.apply`/`toDto` mis à jour et tableau par défaut
+    (26 lignes) réécrit avec durées entières et booléens.
+  - Isolation multi-société inchangée (`SecurityUtils.effectiveSocId`/`requireSocAccess`).
+  - i18n : migration `V105__i18n_unavailability_type_labels.sql` (`col.duration` → « Durée »,
+    `col.syntec` → « Prévu par la convention collective »).
+- Frontend :
+  - `UnavailabilityTypeConfigDto/Row` (`api/types.ts`) : `duration: number | null`, champs booléens,
+    `collectiveAgreementProvision`.
+  - `UnavailabilityTypes.tsx` : colonnes typées — `duration` en `input[type=number]`, les 4 colonnes
+    booléennes en cases à cocher, les colonnes texte en `Input` ; conversion durée texte→entier à
+    l'enregistrement.
+  - `messages.ts` (FR/EN/AR) : libellés « Durée » et « Prévu par la convention collective ».
+
+**Tests ajoutés/adaptés**
+- Backend `UnavailabilityTypeConfigServiceTest` : assertions sur les valeurs typées du seed
+  (`duration=25`, booléens, libellé conventionnel) + nouveau test `replaceAll_keepsTypedValues`
+  (6 tests OK).
+- Frontend `UnavailabilityTypes.test.tsx` : factory typée, comptage des champs texte (4/ligne) et
+  bascule d'une case à cocher persistée dans la requête d'enregistrement ; `Unavailability.test.tsx`
+  mocks alignés sur le nouveau DTO.
+
+**Vérification** : Backend — `UnavailabilityTypeConfigServiceTest` 6/6, `SocDeleteIntegrationTest`
+6/6 (migrations V104/V105 appliquées par Flyway), **suite complète 405 tests**, seul échec
+pré-existant et order-dependent `SecurityIntegrationTest.adminCannotDeleteActiveUser` (attendu 400,
+obtenu 403, non lié). Frontend — 25 fichiers / **226 tests** OK, oxlint 0 erreur, `npm run build` OK.
+
+### 2026-10-05 14:58:50 — Page CRA : manager obligatoire pour établir son CRA (01_TODO_02)
+
+**Rappel de la demande**
+- Page CRA : un utilisateur de rôle CONSULTANT, MANAGER ou RESPONSIBLE_SOC ne peut établir un CRA
+  que si sa propriété `manager` n'est pas nulle.
+
+**Implémentation**
+- Backend `CraService` :
+  - nouvelle garde `requireManagerForSelf(consultantId)` : si le principal authentifié a le rôle
+    CONSULTANT, MANAGER ou RESPONSIBLE_SOC et qu'il est lui-même le consultant du CRA
+    (`principal.getId() == consultantId`), alors son compte doit avoir un `manager` non nul, sinon
+    `ApiException.badRequest("Renseignez votre manager avant de saisir un CRA")`.
+  - Garde appelée dans `getOrCreate(...)` (création/chargement de son CRA) et `save(...)`
+    (saisie), après la garde existante sur la date d'embauche. L'ADMIN est exempt ; un
+    manager/responsable qui saisit le CRA d'un collaborateur n'est pas concerné (l'id diffère).
+- Frontend `CraList.tsx` :
+  - distinction entre `canOwnCra` (consultation de ses CRA) et `canCreateCra` (établir un CRA) ;
+    `canCreateCra` exige `user.manager != null` pour les rôles CONSULTANT/MANAGER/RESPONSIBLE_SOC,
+    et conditionne l'affichage du bouton « Nouveau CRA ».
+
+**Tests ajoutés/adaptés**
+- Backend `CraServiceTest` : `getOrCreate_selfWithoutManager_isRejected` (400, message « manager ») et
+  `getOrCreate_selfWithManager_isAllowed` (87 tests OK).
+- Frontend `CraList.test.tsx` : le consultant de test possède désormais un manager ; nouveau test
+  « n'autorise pas un consultant sans manager à établir un CRA » (bouton absent).
+
+**Vérification** : Backend — `CraServiceTest` 87/87. Frontend — 25 fichiers / **227 tests** OK,
+oxlint 0 erreur, `npm run build` OK.
+
+### 2026-10-05 15:02:50 — Page Types d'indisponibilités : présentation comme les autres tables (01_TODO_03)
+
+**Rappel de la demande**
+- Page « Types d'indisponibilités » présentée comme les autres tables :
+  - partie haute : table de liste des éléments, chaque ligne avec boutons Éditer et Supprimer (avec
+    confirmation) ;
+  - clic sur Éditer : affiche un formulaire en bas avec boutons Save et Close (avec confirmation
+    d'enregistrement si des propriétés ont changé) ;
+  - la colonne « Durée » reprend les valeurs de jours qui étaient dans le texte auparavant, idem
+    pour les autres colonnes.
+
+**Implémentation**
+- Frontend `UnavailabilityTypes.tsx` entièrement revu :
+  - liste en lecture seule via le composant `Table` (colonnes Type indispo, Durée, Type Décompte,
+    Conditions principales, Rémunération, Acquisition CP, Prévu par la loi, Prévu par la convention
+    collective, Nécessite un document) ; booléens affichés Oui/Non, durée « N j » ;
+  - par ligne : `IconButton` Modifier + Supprimer (confirmation) ; la suppression enregistre la
+    liste restante via l'API de remplacement en bloc ;
+  - bouton « Nouveau type » dans l'en-tête ;
+  - formulaire en bas (Card) ouvert par Éditer/Nouveau, avec boutons Fermer et Enregistrer ; la
+    fermeture avec des champs modifiés propose d'enregistrer (`dialog.confirm`) ;
+  - la colonne Durée utilise les valeurs entières issues des anciens textes (migration V104 et
+    défauts du service).
+- i18n : nouvelles clés `UnavailabilityTypes.new/form.new/form.edit/confirmDelete/confirmSave`
+  (FR/EN/AR) dans `messages.ts` + migration Flyway `V106__i18n_unavailability_types_actions.sql`.
+
+**Tests ajoutés/adaptés**
+- Frontend `UnavailabilityTypes.test.tsx` réécrit : affichage de la liste et des actions par ligne,
+  édition + enregistrement, ajout d'une ligne, suppression avec confirmation, refus d'un type vide,
+  proposition d'enregistrer à la fermeture si modifications, redirection d'un rôle non autorisé.
+
+**Vérification** : Frontend — 25 fichiers / **229 tests** OK, oxlint 0 erreur, `npm run build` OK.
+Backend — migration V106 validée (`LanguageIntegrationTest` 14/14).
+
+### 2026-10-05 15:03:53 — Types d'indisponibilités : libellés de colonnes (01_TODO_01)
+
+**Rappel de la demande**
+- Renommer la colonne « Durée / règle » en « Durée ».
+- Renommer la colonne « Prévu par Syntec » en « Prévu par la convention collective ».
+
+**Implémentation**
+- Déjà couvert par le lot soc-69 précédent : migration `V105__i18n_unavailability_type_labels.sql`
+  (app_language) et `messages.ts` (FR/EN/AR) — `col.duration` → « Durée », `col.syntec` →
+  « Prévu par la convention collective ». Aucun autre changement nécessaire.
+
+**Vérification** : test frontend `affiche les libellés de colonnes renommés` — 231 tests OK.
+
+### 2026-10-05 15:03:54 — Types d'indisponibilités : pagination de la liste (01_TODO_02)
+
+**Rappel de la demande**
+- Le nombre de lignes visibles doit respecter le paramètre « lignes par page » de l'utilisateur, avec
+  des boutons Précédent / Suivant de pagination.
+
+**Implémentation**
+- Frontend `UnavailabilityTypes.tsx` : la table de liste utilise l'option `paginate` du composant
+  `Table`, qui applique `user.pageSize` et affiche la pagination Précédent / Suivant.
+
+**Vérification** : test `pagine la liste selon le paramètre de lignes par page` — 231 tests OK,
+oxlint 0 erreur, `npm run build` OK.
+
+### 2026-10-05 15:07:43 — Types d'indisponibilités : traduction dynamique de « Type Décompte » (01_TODO_01)
+
+**Rappel de la demande**
+- Traduction dynamique des valeurs de la colonne « Type Décompte ».
+
+**Implémentation**
+- Frontend `UnavailabilityTypes.tsx` : la colonne « Type Décompte » de la liste passe par
+  `useDynamicTranslate()` (`dt`), qui traduit les valeurs libres (« Ouvrés », « Calendaires », …)
+  via le service de traduction dynamique selon la langue de l'utilisateur. Le formulaire conserve la
+  valeur brute pour l'édition.
+
+**Tests ajoutés**
+- `traduit dynamiquement les valeurs de la colonne Type Décompte` (mock de `useDynamicTranslate`).
+
+**Vérification** : Frontend — 25 fichiers / **232 tests** OK, oxlint 0 erreur, `npm run build` OK.
+
+### 2026-10-05 16:05:58 — Indisponibilités : liste des collaborateurs (manager inclus) et libellés (01_TODO_01)
+
+**Rappel de la demande**
+- Page Indisponibilités : lors de l'édition d'une indispo d'un utilisateur de rôle MANAGER, son nom
+  n'apparaît pas dans la liste « Consultant ».
+- Cette liste contient tous les collaborateurs du compte connecté.
+- Cette liste doit s'appeler « Collaborateur » partout.
+
+**Implémentation**
+- Backend `ConsultantService.filterList()` : la liste (filtres des pages CRA / Indisponibilités) ne
+  se limite plus au rôle CONSULTANT. Elle renvoie désormais tous les collaborateurs non-ADMIN
+  visibles par l'utilisateur connecté (MANAGER → ses consultants + lui-même ; RESPONSIBLE_SOC →
+  tous les collaborateurs de la société ; ADMIN → tous les collaborateurs) — le nom d'un manager
+  apparaît donc bien à l'édition de son indispo.
+- i18n : migration Flyway `V107__i18n_collaborator_filter_labels.sql` (app_language) et
+  `messages.generated.ts` (FR/EN/AR) — libellés « Consultant(s) » → « Collaborateur(s) » / « Tous
+  les collaborateurs » / placeholders de recherche, pour les pages Indisponibilités, CRA et
+  IndispoList.
+
+**Tests ajoutés/adaptés**
+- Backend `ConsultantServiceTest` : `filterList_responsableSocReturnsAllCollaborators` (le manager
+  est inclus) et `filterList_adminReturnsAllCollaborators`.
+- Frontend `Unavailability.test.tsx` / `CraList.test.tsx` : libellés de filtre mis à jour
+  (`Collaborateur`, `Collaborateurs`, placeholder).
+
+**Vérification** : Backend — `ConsultantServiceTest` 33/33, migration V107 validée
+(`LanguageIntegrationTest` 14/14). Frontend — 25 fichiers / **231 tests** OK, oxlint 0 erreur,
+`npm run build` OK.
+
+### 2026-10-05 16:16:44 — Indisponibilités : indispo validée non modifiable mais annulable (01_TODO_01)
+
+**Rappel de la demande**
+- Page Indisponibilités : lorsqu'un utilisateur (quel que soit son rôle) a soumis un CRA ou une
+  indispo et que celle-ci a été validée par son manager, il ne peut plus la modifier, mais il peut
+  l'annuler.
+
+**Implémentation**
+- Backend :
+  - `UnavailabilityStatus` : ajout de `CANCELLED` (statut stocké en chaîne, aucune migration de
+    schéma nécessaire).
+  - `UnavailabilityService.requireUpdatable` : la restriction n'est plus basée sur le rôle mais sur
+    la propriété — le collaborateur concerné (quel que soit son rôle) ne peut modifier qu'un
+    brouillon ou une indispo rejetée ; un manager/admin/responsable peut toujours corriger l'indispo
+    d'un autre collaborateur de son périmètre. Ajout du helper `isOwner`.
+  - `UnavailabilityService.cancel` : réservé au collaborateur concerné (`isOwner`). Une indispo
+    soumise revient au brouillon (existant) ; une indispo déjà validée passe en `CANCELLED`, les
+    jours de congé matérialisés dans le CRA rattaché sont dé-validés et le manager est notifié.
+  - i18n : migration `V108__i18n_unavailability_who_validation.sql` (nouveau statut et libellés
+    d'annulation).
+- Frontend :
+  - `UnavailabilityStatus` + `UNAVAILABILITY_STATUS_LABELS`/`KEYS` : ajout de `CANCELLED`
+    (« Annulée »).
+  - `Unavailability.tsx` : `isOwner()` (via `user.consultantId ?? user.id`) ; `canEdit` autorise le
+    propriétaire uniquement en brouillon/rejeté (plus d'édition d'une indispo validée même pour un
+    manager propriétaire) ; `canCancel` couvre désormais une indispo soumise ou validée du
+    propriétaire, avec libellé/confirmation dédiés pour une validée.
+
+**Tests ajoutés/adaptés**
+- Backend `UnavailabilityServiceTest` : `update_validatedOwnedByManagerIsRejected`,
+  `cancel_validatedByOwnerTransitionsToCancelled`, `cancel_validatedByNonOwnerIsRejected`
+  (44 tests OK).
+- Frontend `Unavailability.test.tsx` : annulation d'une indispo validée par son collaborateur et
+  absence du bouton Éditer sur une indispo validée possédée.
+
+**Vérification** : Backend — `UnavailabilityServiceTest` 44/44, migration V108 appliquée (suite
+complète **410 tests**, seul échec pré-existant `SecurityIntegrationTest.adminCannotDeleteActiveUser`).
+Frontend — 25 fichiers / **233 tests** OK, oxlint 0 erreur, `npm run build` OK.
+
+### 2026-10-05 16:25:32 — CRA : validé non modifiable mais annulable par son propriétaire
+
+**Rappel de la demande**
+- Appliquer au CRA la même règle que pour les indisponibilités : une fois soumis et validé par le
+  manager, le collaborateur (quel que soit son rôle) ne peut plus le modifier, mais peut l'annuler.
+
+**Implémentation**
+- Backend `CraService` :
+  - `isOwner(cra)` : propriétaire = collaborateur concerné (via `principal.getConsultantId()` puis
+    `principal.getId()`).
+  - `save` : `managerEdits` exige désormais `!isOwner` et l'exception `(conge && VALIDATED)` est
+    supprimée — un CRA/Indispo validé n'est plus modifiable par son propriétaire, même
+    ADMIN/RESPONSIBLE_SOC (un manager/admin garde la main sur le CRA d'un autre collaborateur).
+  - `cancel` : généralisé au type CRA (plus seulement CONGE) et réservé au propriétaire ; soumis /
+    en attente d'envoi → brouillon, validé → CANCELLED ; la notification manager est conservée
+    (email uniquement pour les Indispos, le libellé s'adapte CRA/Indispo).
+- Frontend `CraDetail.tsx` : `isOwner` ; `managerEditsValidated` exige `!isOwner` ; suppression de
+  `consultantAddsToValidated` (plus de saisie d'événements sur une Indispo validée) ; `canCancel`
+  = propriétaire sur un CRA/Indispo soumis, en attente d'envoi ou validé.
+
+**Tests ajoutés/adaptés**
+- Backend `CraServiceTest` : `save_validatedCra_ownedByResponsible_isRejected`,
+  `cancel_validatedCra_ownedByResponsible_transitionsToCancelled` ; `cancel_requiresComment`
+  authentifié ; adaptation de `save_validatedIndispo_consultantIsRejected` (ex-
+  « preservesValidatedActivities ») et `save_consultantRemovingValidatedActivity_isForbidden`.
+- Frontend `CraDetail.test.tsx` : « un CRA validé reste annulable par son propriétaire ».
+
+**Vérification** : Backend — `CraServiceTest` 89/89, suite complète **412 tests** (seul échec
+pré-existant `SecurityIntegrationTest.adminCannotDeleteActiveUser`). Frontend — 25 fichiers /
+**234 tests** OK, oxlint 0 erreur, `npm run build` OK.
+
+### 2026-10-05 16:30:22 — CRA/Indispo : non modifiables par leur propriétaire si soumis ou validés
+
+**Rappel de la demande**
+- Page Indisponibilités : un utilisateur (quel que soit son rôle) ne peut pas modifier son CRA ou son
+  indispo si celui-ci est **soumis ou validé**, mais il peut l'annuler.
+
+**Implémentation**
+- Aucun changement de comportement nécessaire : la règle était déjà assurée par les deux lots
+  précédents, qui restreignent la modification par le propriétaire (`isOwner`) à l'état
+  brouillon/rejeté et autorisent l'annulation d'un élément soumis (→ brouillon) ou validé
+  (→ CANCELLED), côté indisponibilité (`UnavailabilityService`) comme côté CRA (`CraService.save`
+  via `managerEdits && !isOwner`, `cancel` réservé au propriétaire).
+- Ce lot verrouille explicitement le cas « soumis » par des tests (le cas « validé » l'était déjà).
+
+**Tests ajoutés**
+- Backend `UnavailabilityServiceTest.update_submittedByOwnerIsRejected` (un manager propriétaire ne
+  peut pas modifier son indispo soumise) ;
+- Backend `CraServiceTest.save_submittedCra_ownedByResponsible_isRejected` (un RESPONSIBLE_SOC
+  propriétaire ne peut pas modifier son CRA soumis).
+
+**Vérification** : Backend — `CraServiceTest` 90/90, `UnavailabilityServiceTest` 45/45.
+
+### 2026-10-05 16:39:03 — CRA/Indispo : le propriétaire ne peut pas invalider son propre élément
+
+**Rappel de la demande**
+- Un utilisateur (quel que soit son rôle) ne peut pas modifier **ou invalider** son propre CRA ou
+  indispo s'il est soumis ou validé, mais il peut l'annuler.
+
+**Implémentation**
+- Backend :
+  - `UnavailabilityService.invalidate` : refuse (403) si l'utilisateur est le collaborateur concerné
+    (`isOwner`) — la modification était déjà bloquée.
+  - `CraService.setActivityValid` / `setRangeValid` : refus (403) d'une invalidation (`valid=false`)
+    par le propriétaire via `requireNotOwnerForInvalidation(cra)`.
+- Frontend :
+  - `Unavailability.tsx` : `canInvalidate` exclut désormais le propriétaire.
+  - `CraDetail.tsx` : `canInvalidate = managerCanAct && !isOwner` ; bouton « Invalider tout » masqué
+    pour le propriétaire ; la case de validité d'une activité n'est plus décochable par le
+    propriétaire ; le propriétaire peut toujours annuler.
+
+**Tests ajoutés**
+- Backend : `UnavailabilityServiceTest.invalidate_ownedByOwnerManager_isForbidden`,
+  `CraServiceTest.setRangeValid_ownerCannotInvalidate`.
+- Frontend : `Unavailability.test.tsx` « n'expose pas l'action Invalider au collaborateur
+  propriétaire » ; `CraDetail.test.tsx` « un propriétaire ne peut pas invalider son propre CRA ».
+
+**Vérification** : Backend — `CraServiceTest` 91/91, `UnavailabilityServiceTest` 46/46, suite
+complète **416 tests** (seul échec pré-existant `SecurityIntegrationTest.adminCannotDeleteActiveUser`).
+Frontend — 25 fichiers / **236 tests** OK, oxlint 0 erreur, `npm run build` OK.
