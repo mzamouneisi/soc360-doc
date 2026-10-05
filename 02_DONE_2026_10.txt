@@ -1001,3 +1001,32 @@ pré-existant `SecurityIntegrationTest.adminCannotDeleteActiveUser`). Frontend �
 **Vérification** : Backend — `CraServiceTest` 91/91, `UnavailabilityServiceTest` 46/46, suite
 complète **416 tests** (seul échec pré-existant `SecurityIntegrationTest.adminCannotDeleteActiveUser`).
 Frontend — 25 fichiers / **236 tests** OK, oxlint 0 erreur, `npm run build` OK.
+
+### 2026-10-05 17:28:40 — Tests backend isolés du serveur/BDD en cours d'utilisation
+
+**Rappel de la demande**
+- Lors des tests backend, ne pas déranger le serveur backend déjà démarré ni, éventuellement, la
+  base de données. Est-ce possible ?
+
+**Réponse / constat**
+- Oui : la configuration de test (`src/test/resources/application-test.yml`) utilise déjà une base
+  H2 **en mémoire** (`jdbc:h2:mem:soc360test`) et aucun test ne démarre de serveur web (mode MOCK,
+  pas de bind du port 8080). La base fichier `./data/soc360` et le serveur en cours ne sont pas
+  touchés.
+- Risque résiduel corrigé : les répertoires partagés (`./data/backups`, `./data/uploads`,
+  `./data/exports`) étaient utilisés par défaut par les tests ; en particulier le `DbBackupService`
+  planifié (`@Scheduled`, délai initial 1 min) pouvait écrire une sauvegarde — et **purgenter les
+  anciennes** (`app.backup.max-files`) — dans `./data/backups` de l'instance en cours (une
+  sauvegarde de test à 16:32 en témoignait).
+
+**Implémentation**
+- `application-test.yml` : redirection des répertoires de test vers `./target/test-data/...`
+  (`uploads`, `exports`, `backups`), `app.backup.max-files: 0` (aucune purge) et
+  `app.backup.interval-hours: 24`. Les tests n'écrivent plus dans les répertoires de l'instance en
+  cours.
+
+**Vérification**
+- `mvn test` : suite complète **416 tests**, seul échec pré-existant
+  `SecurityIntegrationTest.adminCannotDeleteActiveUser`.
+- Après le run, `data/backups`, `data/uploads` et `data/exports` sont inchangés ; les artefacts de
+  test sont écrits dans `target/test-data/`.
