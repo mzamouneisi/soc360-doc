@@ -1030,3 +1030,22 @@ Frontend — 25 fichiers / **236 tests** OK, oxlint 0 erreur, `npm run build` OK
   `SecurityIntegrationTest.adminCannotDeleteActiveUser`.
 - Après le run, `data/backups`, `data/uploads` et `data/exports` sont inchangés ; les artefacts de
   test sont écrits dans `target/test-data/`.
+
+### 2026-10-05 17:38:57 — soc-72 : traduction des libellés de type de jour du CRA
+
+**Rappel de la demande**
+- Traduire la phrase de style « Avant embauche - 0 j » (date d'embauche du consultant dans le CRA).
+
+**Implémentation**
+- Frontend `lib/format.ts` : nouveau helper `dayTypeLabel(dayType)` qui traduit via
+  `tr('DayType.<TYPE>')` (le `DAY_TYPE_LABELS` français reste disponible comme référence).
+- `CraDetail.tsx` : les libellés de type de jour (dont « Avant embauche ») passent par
+  `dayTypeLabel(...)` — carte calendaire, sélecteur de type et table détaillée.
+- i18n `messages.ts` (FR/EN/AR) : 7 clés `DayType.*`. Backend : migration Flyway
+  `V109__i18n_day_types.sql`.
+
+**Tests ajoutés**
+- Frontend `format.test.ts` : `dayTypeLabel` traduit « Avant embauche » (EN) et « Travail ».
+
+**Vérification** : Frontend — 25 fichiers / **237 tests** OK, oxlint 0 erreur, `npm run build` OK.
+Backend — migration V109 validée (`LanguageIntegrationTest` 14/14).
