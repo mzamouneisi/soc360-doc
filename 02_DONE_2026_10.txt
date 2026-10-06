@@ -1049,3 +1049,59 @@ Frontend — 25 fichiers / **236 tests** OK, oxlint 0 erreur, `npm run build` OK
 
 **Vérification** : Frontend — 25 fichiers / **237 tests** OK, oxlint 0 erreur, `npm run build` OK.
 Backend — migration V109 validée (`LanguageIntegrationTest` 14/14).
+
+### 2026-10-05 17:55:41 — soc-71 : état des lieux de la couverture des tests backend
+
+**Rappel de la demande**
+- Vérifier la couverture par les tests unitaires (backend uniquement) et produire un état des lieux :
+  fonctionnalités couvertes et cas exactement couverts, fonctionnalités non couvertes et cas à
+  tester, couverture totale en % en haut du tableau.
+- Fichier à la racine : `couverture_tests_<date_heure>.xlsx` (colonnes fonctionnalité ; couverte ? ;
+  service ; …).
+
+**Implémentation**
+- Mesure de couverture JaCoCo sans modifier le `pom.xml` (invocation directe du plugin) :
+  `mvn org.jacoco:jacoco-maven-plugin:0.8.12:prepare-agent test -Dmaven.test.failure.ignore=true org.jacoco:jacoco-maven-plugin:0.8.12:report`
+  → `target/site/jacoco/jacoco.csv` + rapport HTML.
+- Génération du classeur par un script Python (`openpyxl`) agrégeant :
+  - `jacoco.csv` (lignes couvertes/manquées par classe et par package) ;
+  - les classes de test et leurs méthodes `@Test` (parcours de `src/test/java`) ;
+  - les services/contrôleurs de `src/main/java` (packages = fonctionnalités).
+- Fichier produit : **`couverture_tests_20261005_175537.xlsx`** (racine du workspace `soc360/`).
+  - Feuille « Couverture tests backend » : en-tête = **couverture totale 68,5 %** (4 018 / 5 865
+    lignes) ; colonnes Fonctionnalité, Couverte ?, Service, Couverture lignes %, Lignes couvertes,
+    Cas couverts (tests), Classe de test, Cas à tester (65 services/contrôleurs).
+  - Feuille « Par fonctionnalité » : couverture agrégée par package.
+- Couverture mesurée sur l'ensemble des tests backend (unitaires + intégration). Les cas couverts
+  listent les méthodes de test de la classe de test dédiée ; les cas à tester listent les méthodes
+  publiques des services sans test dédié ou à couverture partielle.
+
+**Vérification** : suite backend relancée avec le rapport JaCoCo, 416 tests (1 échec pré-existant
+`SecurityIntegrationTest.adminCannotDeleteActiveUser`, ignoré pour le rapport) ; classeur relu avec
+`openpyxl` (feuilles et lignes présentes).
+
+### 2026-10-06 08:49:10 — soc-71 (suite) : état des lieux de la couverture des tests front
+
+**Rappel de la demande**
+- Même travail que pour le backend, pour le front : fichier
+  `couverture_tests_front_<date_heure>.xlsx`.
+
+**Implémentation**
+- Ajout de la couverture Vitest : devDependency `@vitest/coverage-v8@4.1.10` (provider v8).
+- Mesure : `npm test -- --coverage --coverage.reporter=json-summary --coverage.reporter=text-summary
+  "--coverage.include=src/**/*.{ts,tsx}" "--coverage.exclude=**/*.test.{ts,tsx}"
+  "--coverage.exclude=src/test/**" "--coverage.exclude=**/*.d.ts"` → `coverage/coverage-summary.json`.
+- Génération du classeur par un script Python (`openpyxl`) agrégeant :
+  - `coverage-summary.json` (lignes couvertes/manquées par fichier source) ;
+  - les fichiers de test et leurs titres `it()/test()` (rapprochement par nom de base) ;
+  - l'arborescence `src/` (fonctionnalité = dossier : pages, components, api, lib, …).
+- Fichier produit : **`soc360-front-react/couverture_tests_front_20261006_084900.xlsx`** (racine du
+  dépôt front).
+  - Feuille « Couverture tests front » : en-tête = **couverture totale 37,6 %** (2 023 / 5 377
+    lignes) ; colonnes Fonctionnalité, Couverte ?, Service (fichier), Couverture lignes %, Lignes
+    couvertes, Cas couverts (tests), Fichier de test, Cas à tester (101 fichiers source).
+  - Feuille « Par fonctionnalité » : couverture agrégée par dossier.
+
+**Vérification** : `vitest run --coverage` — 25 fichiers / **237 tests** OK ; classeur relu avec
+`openpyxl`. Dossiers les plus/moins couverts : `lib` 96 %, `i18n` 89,5 %, `auth` 49,4 %,
+`components` 41,2 %, `pages` 33,5 %, `api` 26,4 %, `soc` 0 %.
