@@ -1105,3 +1105,80 @@ Backend — migration V109 validée (`LanguageIntegrationTest` 14/14).
 **Vérification** : `vitest run --coverage` — 25 fichiers / **237 tests** OK ; classeur relu avec
 `openpyxl`. Dossiers les plus/moins couverts : `lib` 96 %, `i18n` 89,5 %, `auth` 49,4 %,
 `components` 41,2 %, `pages` 33,5 %, `api` 26,4 %, `soc` 0 %.
+
+### 2026-10-06 10:27:28 — soc-71 (suite) : couverture **par méthode/fonction** (backend + front)
+
+**Rappel de la demande**
+- Pour chaque service, lister ses méthodes et, pour chacune : couverte ou pas, combien de tests,
+  cas restant à tester. Fichiers à la racine de chaque projet :
+  `couverture_tests_backend_<date_heure>.xlsx` et `couverture_tests_front_<date_heure>.xlsx`.
+
+**Implémentation**
+- Backend :
+  - `mvn org.jacoco:jacoco-maven-plugin:0.8.12:prepare-agent test -Dmaven.test.failure.ignore=true`
+    puis rapport **XML** via la CLI JaCoCo (`org.jacoco.cli-0.8.12-nodeps.jar`) →
+    `target/jacoco.xml` (compteurs par méthode).
+  - Script Python (`openpyxl`) : parsing du XML + des méthodes `@Test` de `src/test/java`.
+  - Fichier : **`soc360-back-java/couverture_tests_backend_20261006_102556.xlsx`**
+    (3 feuilles) — « Synthèse services » (65 services/contrôleurs, couverture lignes + méthodes,
+    cas couverts), « **Méthodes** » (660 méthodes : couverte ?, lignes, **nb de tests** rattachés par
+    préfixe, cas à tester), « Par fonctionnalité ». Couverture totale **68,5 %** (4 018 / 5 865).
+- Front :
+  - `npm test -- --coverage --coverage.reporter=json-summary --coverage.reporter=json
+    "--coverage.include=src/**/*.{ts,tsx}" …` → `coverage/coverage-summary.json` et
+    `coverage/coverage-final.json` (détail par fonction).
+  - Script Python (`openpyxl`) : agrégation par fichier et par fonction.
+  - Fichier : **`soc360-front-react/couverture_tests_front_20261006_102717.xlsx`** (3 feuilles) —
+    « Synthèse fichiers » (101 fichiers), « **Fonctions** » (1 909 fonctions : couverte ?, appels,
+    nb de tests, cas à tester), « Par fonctionnalité ». Couverture totale **37,6 %**
+    (2 023 / 5 377). (Les fonctions anonymes sont nommées `(anonymous_N)` par v8 ; le fichier et la
+    ligne les identifient.)
+
+**Vérification** : backend `target/jacoco.xml` relu (660 méthodes) ; front `coverage-final.json`
+(1 909 fonctions) ; classeurs relus avec `openpyxl`.
+
+### 2026-10-06 10:52:20 — soc-71 (suite) : services uniquement (*Service) + colonne Commentaire
+
+**Rappel de la demande**
+- Ne pas compter les contrôleurs : ne compter que les classes de service `*Service`.
+- Ajouter une colonne Commentaire pour expliquer pourquoi certaines méthodes ne sont pas couvertes.
+
+**Implémentation**
+- Backend : rapport régénéré à partir de `target/jacoco.xml` (sans ré-exécuter les tests) en ne
+  conservant que les classes `*Service` :
+  - **`soc360-back-java/couverture_tests_backend_20261006_105142.xlsx`** — couverture des services
+    **74,0 %** (3 434/4 638 lignes) sur **34 services** et **456 méthodes** ; la couverture globale
+    projet (contrôleurs inclus) 68,5 % est rappelée en note d'en-tête.
+  - Feuilles « Synthèse services » et « Méthodes » avec, pour chaque méthode : Couverte ?, Lignes,
+    Nb de tests, **Commentaire** (accesseur trivial, effet de bord email/notification, IO/fichier,
+    tâche planifiée, chemin de validation/erreur, couverture indirecte, etc.).
+- Front : colonne **Commentaire** ajoutée aux deux feuilles →
+  **`soc360-front-react/couverture_tests_front_20261006_105202.xlsx`** (101 fichiers, 1 909
+  fonctions, 37,6 %).
+
+**Vérification** : classeurs relus avec `openpyxl` ; aucun contrôleur dans les tableaux
+(34 services) ; colonne Commentaire présente sur les deux projets.
+
+### 2026-10-06 11:38:38 — soc-71 (suite) : commentaire nommant les méthodes + « Cas couvert concret »
+
+**Rappel de la demande**
+- Quand le commentaire indique « Couverture partielle — 1 méthode(s) non couverte(s) », il doit citer
+  le nom de la/des méthode(s) non couverte(s).
+- Ajouter, à droite de « Cas couverts (tests) », une colonne « Cas couvert concret » contenant des
+  phrases en français décrivant le cas couvert (ex. « ajouter une indisponibilité »).
+
+**Implémentation**
+- Backend `soc360-back-java/couverture_tests_backend_20261006_113750.xlsx` :
+  - Commentaire de synthèse : « Couverture partielle — méthode(s) non couverte(s) : findById, … »
+    (et « Aucun test dédié — … » le cas échéant).
+  - Colonne « Cas couvert concret » (feuilles Synthèse services et Méthodes) : traduction en français
+    des noms de tests via `translate_tests.py` (ex. `getOrCreate_consultantWithoutHireDate_isRejected`
+    → « Charger ou créer : consultant sans date d'embauche ; est rejeté »).
+- Front `soc360-front-react/couverture_tests_front_20261006_113819.xlsx` :
+  - Commentaire de synthèse listant les fonctions non couvertes (nom, ou « ligne N » pour les
+    anonymes), ex. « Couverture partielle — 20 fonction(s) non couverte(s) : … ».
+  - Colonne « Cas couvert concret » = titres `it()` (déjà en français) ; « Cas couverts (tests) » =
+    fichier de test + nombre de tests.
+
+**Vérification** : classeurs relus avec `openpyxl` ; colonnes « Cas couvert concret » présentes sur
+les deux projets ; commentaires nommant les méthodes/fonctions non couvertes.
