@@ -1381,3 +1381,49 @@ ce n'est pas normal !
   `declareAbsence_paidLeaveLabel_addsPaidLeaveActivity` (libellé `Congés payés` → congé payé).
   `mvn test -Dtest=CraServiceTest` : 96/96 OK.
 - Frontend non modifié (la modale envoie déjà le code du type choisi).
+
+======================================================================
+### 2026-10-19 16:21:06 — page CRA : impossible de déclarer une absence sur un jour « Maladie 0 j » (01_TODO_02)
+
+**Tâche**
+```
+page CRA
+
+click sur "Déclarer une abscence"
+
+j'ai choisi "Congé RTT" sur un jour où c'est marqué "Maladie 0j"
+
+donc normalement je peux ajouter.
+
+or il me dit NON !!!
+
+a corriger svp
+```
+
+**Cause**
+- Un jour peut rester coloré `SICK_LEAVE` avec **0 jour** (affiché « Maladie · 0 j ») alors que
+  son événement de congé a été retiré, mais l'**absence liée au CRA** (brouillon ou soumise) existe
+  toujours et couvre la date.
+- `UnavailabilityService.assertNoOverlap` refuse alors toute nouvelle absence sur ce jour
+  (« Chevauchement : une indisponibilité … est déjà en brouillon/soumise »), alors que le jour est
+  vide (0 jour) et devrait pouvoir recevoir le RTT.
+
+**Implémentation** (backend uniquement, aucun changement Flyway/i18n)
+- `UnavailabilityService.purgeEmptyLinkedDrafts(Cra)` : avant toute nouvelle déclaration liée au
+  CRA, supprime les absences rattachées à ce CRA (`DRAFT` ou `SUBMITTED`) qui ne matérialisent plus
+  **aucun** jour : aucune activité sur un jour `LEAVE`/`SICK_LEAVE` dans leur intervalle.
+- Suppression en masse (`deleteAllByIdInBatch`) : l'historique (`unavailability_history`) est
+  supprimé par la FK `ON DELETE CASCADE` sans flush d'entités devenues transitoires.
+- Appel dans `declareLinkedAbsence` avant la fusion des brouillons contigus et le contrôle de
+  chevauchement : un jour « 0 j » est bien considéré comme vide, la nouvelle absence (RTT) est
+  acceptée et matérialisée sur le jour.
+- Les absences liées encore réellement matérialisées (au moins un événement de congé) ne sont pas
+  touchées : un vrai chevauchement reste refusé. Isolation multi-société inchangée.
+
+**Vérification**
+- Backend — 2 nouveaux tests `CraServiceTest` :
+  `declareAbsence_onStaleSickDayWithoutActivity_allowsNewAbsence` (absence maladie liée en
+  brouillon, événement retiré → jour SICK_LEAVE 0 j → RTT accepté) et
+  `declareAbsence_onStaleSubmittedSickDayWithoutActivity_allowsNewAbsence` (même cas après
+  soumission/rejet du CRA, absence liée SUBMITTED). `mvn test -Dtest=CraServiceTest` : 98/98 OK.
+- Frontend non modifié.
