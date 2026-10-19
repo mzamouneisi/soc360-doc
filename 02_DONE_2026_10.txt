@@ -1427,3 +1427,36 @@ a corriger svp
   `declareAbsence_onStaleSubmittedSickDayWithoutActivity_allowsNewAbsence` (même cas après
   soumission/rejet du CRA, absence liée SUBMITTED). `mvn test -Dtest=CraServiceTest` : 98/98 OK.
 - Frontend non modifié.
+
+======================================================================
+### 2026-10-19 16:27:53 — page CRA : supprimer manuellement un congé laissait le jour « Congé 0 j » (01_TODO_01)
+
+**Tâche**
+```
+page CRA
+
+lorsque je supprime manuellement un congé, il reste toujours marqué comme Congé 0j.
+
+Or je veux qu'il soit vide.
+```
+
+**Cause**
+- `CraDetail.removeActivity` retirait bien l'activité du tableau `days`, mais ne réinitialisait pas le
+  **type du jour** : un jour passé en `LEAVE`/`SICK_LEAVE` restait coloré « Congé · 0 j » après la
+  suppression du dernier événement.
+- Seul le bouton global « Supprimer tous les événements » faisait cette réinitialisation.
+
+**Implémentation** (frontend uniquement — aucun changement backend/Flyway/i18n)
+- `pages/CraDetail.tsx` — `removeActivity` : après retrait de l'activité, si le jour n'a plus aucun
+  événement et que son type est `LEAVE` ou `SICK_LEAVE`, le type est remis à `WEEKEND` (samedi /
+  dimanche) ou `WORKED` (jour ouvré), comme dans `removeAllEvents`. Les jours fériés restent
+  recolorés automatiquement par l'effet existant. Le changement est persisté par l'enregistrement
+  du CRA (`dayType` inclus dans `buildSaveRequest`).
+- Aucun changement du backend, du schéma ou de l'isolation multi-société.
+
+**Vérification**
+- Frontend — nouveau test `CraDetail.test.tsx` « supprime manuellement un congé et remet le jour à
+  vide » (jour `LEAVE` avec un congé non validé → suppression via la modale d'événement → plus de
+  libellé « Congé · »).
+- `npm test` : 25 fichiers / 239 tests OK ; `npm run lint` 0 erreur (warnings pré-existants sur
+  `docs/`) ; `npm run build` (tsc -b + vite) OK.
