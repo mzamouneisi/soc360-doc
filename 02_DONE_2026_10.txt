@@ -1251,3 +1251,47 @@ l'application ajouter cette abscence dans le jour (ou demi journee) vide.
 - Frontend — nouveau test `CraDetail.test.tsx` « un manager peut déclarer une absence dans son
   propre CRA » ; `npm test` 25 fichiers / 238 tests OK ; `npm run lint` 0 erreur (warnings
   pré-existants sur le build `docs/`).
+
+======================================================================
+### 2026-10-19 15:22:37 — soc-69 : l'absence ne s'ajoute que dans un jour (ou demi-journée) vide (01_TODO_01)
+
+**Tâche**
+```
+soc-69 Un manager étant lui même un collaborateur : il dois pouvoir renseigner ces absence directement dans le CRA.
+
+en tant que manager
+page CRA
+je click sur "Déclarer une abscence"
+
+l'application peut ajouter cette abscence dans le jour (ou demi journee) que s'il est vide.
+```
+
+**Règle appliquée** (remplace le comportement précédent qui écrasait la mission du jour)
+- Une absence déclarée depuis le CRA ne s'ajoute que dans la partie **vide** du jour :
+  - jour sans activité → congé de 1 jour ;
+  - jour partiellement rempli (ex. 0,5 jour de mission) → congé de **0,5 jour** dans la
+    demi-journée libre, la mission est conservée (total du jour = 1) ;
+  - jour entièrement rempli (total ≥ 1) → **aucune modification** : type de jour et activités
+    restent intacts (l'absence liée est tout de même créée pour validation par le manager).
+- Aucune activité existante (validée ou non) n'est plus supprimée par la déclaration d'absence.
+- L'intégration des indisponibilités existantes (`override=false`) conserve son comportement :
+  elle ne touche pas les jours déjà remplis.
+
+**Implémentation**
+- Backend — `CraService.applyAbsence` : calcul de la part déjà occupée
+  (`sum(CraDayActivity.days)`), `remaining = 1 - used` ; le congé est ajouté avec
+  `days = remaining` (1 ou 0,5) uniquement si `remaining > 0`. En mode `override` (déclaration
+  depuis le CRA), un jour plein est ignoré au lieu de voir ses activités non validées remplacées.
+- Backend — tests `CraServiceTest` adaptés/ajoutés :
+  `declareAbsence_onFilledDay_keepsExistingActivity` (jour plein → mission conservée, aucune
+  activité de congé, absence liée créée), `declareAbsence_onHalfFilledDay_addsHalfDayLeave`
+  (0,5 mission → 0,5 congé, total 1), `declareAbsence_preservesValidatedActivity` (jour plein
+  validé laissé intact). Suppression de l'ancien test de remplacement.
+- Frontend — aucun changement (le bouton, la modale et l'affichage du CRA renvoyé par l'API
+  reflètent directement le nouveau comportement). Aucun changement Flyway, aucune clé i18n.
+- Isolation multi-société inchangée (`requireSocAccess`, `requireConsultantOwner`,
+  `requireManagerOwnership` sauf propriétaire).
+
+**Vérification**
+- Backend — `mvn test -Dtest=CraServiceTest` : 93/93 tests OK.
+- Frontend non modifié (dernière suite : 25 fichiers / 238 tests OK, lint 0 erreur).
