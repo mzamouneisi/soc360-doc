@@ -1295,3 +1295,45 @@ l'application peut ajouter cette abscence dans le jour (ou demi journee) que s'i
 **Vérification**
 - Backend — `mvn test -Dtest=CraServiceTest` : 93/93 tests OK.
 - Frontend non modifié (dernière suite : 25 fichiers / 238 tests OK, lint 0 erreur).
+
+======================================================================
+### 2026-10-19 15:39:04 — ERROR.txt : `soc360_start_back` affichait BUILD FAILURE (process terminé exit code 1)
+
+**Erreur** (ERROR.txt)
+```
+soc360_start_back
+Killing backend process on port 8080...
+Found PID 7852 on port 8080, killing...
+Backend stopped.
+[ERROR] Failed to execute goal org.springframework.boot:spring-boot-maven-plugin:3.4.1:run
+        ... Process terminated with exit code: 1
+```
+Le backend démarrait bien ensuite (`run.log` : `Started Soc360Application`, Tomcat sur 8080) :
+le BUILD FAILURE venait du **redémarrage** du `run_dev.sh` précédent.
+
+**Cause racine**
+- `run_dev.sh` lançait le premier backend via `restart_backend | tee run.log` : à cause du pipeline,
+  la fonction s'exécutait dans un **sous-shell** et `BACKEND_PID` n'était pas conservé par le watcher.
+  Le backend n'était donc pas arrêté correctement (orphelin qui garde le port 8080).
+- Sur Windows/MINGW, `kill` du wrapper Maven ne tue pas le JVM forké par `spring-boot:run` : au
+  redémarrage suivant, le port 8080 restait occupé → le nouveau Maven échouait avec
+  « Process terminated with exit code: 1 » / BUILD FAILURE.
+
+**Implémentation** (`soc360-back-java/run_dev.sh` uniquement — aucun changement applicatif)
+- Suppression du pipeline autour du démarrage : `mvn spring-boot:run > >(tee run.log) 2>&1 &`
+  (le `tee` conserve le log sans exécuter la fonction dans un sous-shell) → `BACKEND_PID` est bien
+  suivi par le watcher, y compris au premier démarrage.
+- `kill_tree` : traduction du PID MSYS/Cygwin en PID Windows via `/proc/<pid>/winpid` puis
+  `taskkill //F //T //PID <winpid>` → l'arbre Maven + JVM forké est réellement arrêté (plus
+  d'orphelin sur 8080, plus de BUILD FAILURE au redémarrage).
+- `stop_backend` : arrêt de l'arbre, puis `kill_backend.sh` en filet de sécurité, puis attente de
+  libération du port (`wait_port_free`, 10 s max) avant de relancer.
+- Aucun changement de schéma Flyway, aucune clé i18n, isolation multi-société inchangée.
+
+**Vérification**
+- `bash -n run_dev.sh` OK.
+- Test réel sur port isolé 18080 avec H2 mémoire : premier démarrage OK, modification d'une source
+  → `Source change detected` + redémarrage OK, **0 BUILD FAILURE**, port libéré en 8 s après arrêt
+  du watcher. Le backend utilisateur sur 8080 n'a pas été interrompu.
+
+`ERROR.txt` vidé.
