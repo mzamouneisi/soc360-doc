@@ -1460,3 +1460,49 @@ Or je veux qu'il soit vide.
   libellé « Congé · »).
 - `npm test` : 25 fichiers / 239 tests OK ; `npm run lint` 0 erreur (warnings pré-existants sur
   `docs/`) ; `npm run build` (tsc -b + vite) OK.
+
+======================================================================
+### 2026-10-19 18:11:01 — page CRA : suppression d'un congé validé / mise à jour de l'indispo liée (01_TODO_01)
+
+**Tâche**
+```
+page CRA
+
+si je suis consultant ou manager : je ne peux pas supprimer un congé ou indispo validé par mon manager. mais mon manager peut supprimer le mien.
+
+si je supprime un congé dans un cra en brouillon qui fait parti d'une indispo :
+si indispo est soumise ou validée, alors interdit de supprimer ce congé avec msg erreur.
+si indispo est brouillon : alors supprimer ce congé et mettre à jour l'indispo :
+. si le jour supprimé est l'une des extrémites de l'indispo, alors maj de l'interval de l'indispo
+. si le jour supprimé est à l'interieur de l'interval de l'indispo : alors on aura 2 indispos brouillon.
+```
+
+**Implémentation**
+- Backend — `CraService.save` : la garde d'immuabilité des activités validées s'applique désormais
+  à tout **propriétaire** du CRA (`isOwner`), consultant comme manager (son manager, non
+  propriétaire, conserve le droit de les modifier/supprimer). Message inchangé :
+  « Impossible de modifier une activité validée ».
+- Backend — `CraService.collectLinkedAbsenceRemovals` : pour un CRA `DRAFT`/`REJECTED`, compare les
+  activités de congé des jours couverts par chaque indisponibilité liée (`timesheet_id`) avec la
+  requête de save. Un congé retiré sur une indispo **SUBMITTED/VALIDATED** est refusé avec
+  « Impossible de supprimer un congé lié à une indisponibilité soumise ou validée ».
+- Backend — `CraService.applyLinkedAbsenceRemovals` pour les indispos **DRAFT** :
+  - jour retiré à une extrémité → intervalle réduit (`start+1` ou `end-1`) ;
+  - jour retiré à l'intérieur → scission en **2 indispos brouillon** (`[start, jour-1]` et
+    `[jour+1, end]`, même type/commentaire/consultant/société/CRA) ;
+  - plus aucun jour → indisponibilité supprimée (suppression en masse, historique via
+    `ON DELETE CASCADE`).
+- Frontend — `CraDetail.tsx` : `canModifyActivity` et la modale d'événement utilisent désormais
+  `isOwner` (et non le seul rôle CONSULTANT) : un manager propriétaire ne peut plus modifier /
+  supprimer une activité validée de son propre CRA ; le manager d'un collaborateur, non
+  propriétaire, le peut toujours.
+- Aucun changement Flyway, aucune clé i18n, isolation multi-société inchangée.
+
+**Vérification**
+- Backend — 7 nouveaux tests `CraServiceTest` : réduction d'intervalle, scission en 2 brouillons,
+  suppression de l'indispo quand plus aucun jour, refus si indispo soumise, refus si validée,
+  manager propriétaire bloqué sur une activité validée, manager du collaborateur autorisé.
+  `mvn test -Dtest=CraServiceTest` : **105/105 OK**.
+- Frontend — nouveau test `CraDetail.test.tsx` « un manager propriétaire ne peut pas supprimer un
+  congé validé » ; `npm test` : 25 fichiers / **240 tests OK** ; `npm run lint` 0 erreur ;
+  `npm run build` (tsc -b + vite) OK.
