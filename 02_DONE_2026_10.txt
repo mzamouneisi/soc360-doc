@@ -1337,3 +1337,47 @@ le BUILD FAILURE venait du **redémarrage** du `run_dev.sh` précédent.
   du watcher. Le backend utilisateur sur 8080 n'a pas été interrompu.
 
 `ERROR.txt` vidé.
+
+======================================================================
+### 2026-10-19 16:15:47 — page CRA : « Congé RTT » ajoutait un « Congé payé » (01_TODO_01)
+
+**Tâche**
+```
+page CRA
+
+click sur "Déclarer une abscence"
+
+j'ai choisi "Congé RTT", mais il a ajouté "Congé payé"
+
+ce n'est pas normal !
+```
+
+**Cause**
+- `CraService.resolveLeaveActivity` ne distinguait que « maladie » et le reste :
+  `String code = isSickLeave(type) ? "CONGE_MALADIE" : "CONGE_PAYE";`. Tout type non malade
+  (RTT, sans solde, maternité…) était donc matérialisé dans le CRA par l'activité **Congé payé**.
+- Le type d'indisponibilité peut être soit un code historique (`CONGE_RTT`, envoyé par la modale
+  CRA), soit un libellé configuré par la société (`RTT`, `Congés payés`, `Maladie non
+  professionnelle`…, cf. « Types d'indisponibilités ») : les deux formes doivent être reconnues.
+
+**Implémentation** (backend uniquement, aucun changement Flyway/i18n)
+- `CraService.resolveLeaveActivityType(socId, type)` : recherche le type d'activité de congé
+  correspondant au type d'indisponibilité :
+  1. correspondance exacte normalisée (minuscules, sans accents, `_` → espace) sur le **code**,
+     le **libellé FR** ou le **libellé EN** des `activity_type` ;
+  2. repli par mots-clés : `rtt` → `CONGE_RTT`, `matern` → `CONGE_MATERNITE`,
+     `sans solde`/`non pay` → `CONGE_NON_PAYE`, maladie/accident → `CONGE_MALADIE`,
+     `formation` → `FORMATION`, sinon `CONGE_PAYE` ;
+  3. à défaut, congé payé.
+- `resolveLeaveActivity` utilise ce type pour retrouver l'activité du consultant ; le libellé porté
+  par le CRA est donc bien « Congé RTT » quand l'utilisateur choisit RTT.
+- `isSickLeave` (jour `SICK_LEAVE`) est inchangé ; l'isolation multi-société est inchangée
+  (`activity_type` borné par la société du consultant).
+
+**Vérification**
+- Backend — 3 nouveaux tests `CraServiceTest` :
+  `declareAbsence_rttCode_addsRttLeaveActivity` (code `CONGE_RTT` → activité « Congé RTT »,
+  pas « payé »), `declareAbsence_rttLabel_addsRttLeaveActivity` (libellé `RTT`),
+  `declareAbsence_paidLeaveLabel_addsPaidLeaveActivity` (libellé `Congés payés` → congé payé).
+  `mvn test -Dtest=CraServiceTest` : 96/96 OK.
+- Frontend non modifié (la modale envoie déjà le code du type choisi).
