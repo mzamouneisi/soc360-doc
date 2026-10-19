@@ -1182,3 +1182,72 @@ Backend — migration V109 validée (`LanguageIntegrationTest` 14/14).
 
 **Vérification** : classeurs relus avec `openpyxl` ; colonnes « Cas couvert concret » présentes sur
 les deux projets ; commentaires nommant les méthodes/fonctions non couvertes.
+
+### 2026-10-06 17:42:25 — Diff_Perf_Esn360_Soc360.md : pourquoi Soc360 est plus rapide qu'Esn360
+
+**Rappel de la demande**
+- « peux tu me dire pourquoi Soc360 est plus rapide que Esn360 dans un fichier Diff_Perf_Esn360_Soc360.md »
+
+**Implémentation**
+- Analyse comparative des deux applications :
+  - Esn360 : backend `../eisiesn360srvjava_mza` (Spring Boot 2.7.18, Hibernate 5.6.15,
+    Java 17) + front `../eisiesn360frtangular_mza` (Angular 12.2.17, webpack legacy).
+  - Soc360 : `soc360-back-java` (Spring Boot 3.4.1, Hibernate 6.6.4) +
+    `soc360-front-react` (React 19.2 / Vite 8).
+- Fichier créé : **`soc360-doc/Diff_Perf_Esn360_Soc360.md`** (6 sections).
+  - §2 Mesures front réelles : Esn360 `main.70fc8ba…js` = 2 398 726 o (~608 Ko gzip) +
+    polyfills/runtime ; Soc360 `index-Cy8VHSLo.js` = 1 179 874 o (~313 Ko gzip) ;
+    CSS 428 804 o vs 66 238 o → Soc360 ~2,1× moins de JS et ~6,5× moins de CSS.
+  - §3 Backend : `open-in-view=false` vs `true` (OSIV), pas d'`enable_lazy_load_no_trans`,
+    Flyway + `validate` + **28 index** vs `ddl-auto=update` + **0 index**, pagination
+    (5 repos vs 0), pas de mapping par réflexion O(P²), 14,8 k vs 33,8 k LOC Java,
+    logs INFO vs TRACE/DEBUG ; EAGER (`CraDay.craDayActivities`) + N+1 chez Esn360 vs
+    associations LAZY + DTO records chez Soc360.
+  - §4 Frontend : React 19/Vite 8 vs Angular 12/webpack, zone.js Default (2/97 OnPush)
+    + 303 `.subscribe(` pour 5 `ngOnDestroy` vs réconciliateur React + `useAsync` annulable.
+  - §5 Limites restantes de Soc360 (code-splitting, cache, `JOIN FETCH`, pagination
+    généralisée, batching JDBC, réglages Hikari/JVM, scheduler mono-thread).
+- Vérification : tailles de fichiers relues via `ls`, versions Spring Boot/Angular relues
+  dans les `pom.xml`/`package.json`, `open-in-view`/`enable_lazy_load_no_trans`/
+  `flyway.enabled` relus dans les `application*.yml`/`properties`.
+
+======================================================================
+### 2026-10-19 15:14:35 — soc-69 : un manager (aussi collaborateur) déclare ses absences dans son propre CRA (01_TODO_01)
+
+**Tâche**
+```
+soc-69 Un manager étant lui même un collaborateur : il dois pouvoir renseigner ces absence directement dans le CRA.
+
+en tant que manager
+page CRA
+je click sur "Déclarer une abscence" 
+l'application ajouter cette abscence dans le jour (ou demi journee) vide.
+```
+
+**Cause**
+- `CraService.declareAbsence` appelait systématiquement `requireManagerOwnership(cra)` : un
+  MANAGER n'était autorisé que sur les CRA de ses consultants. Sur son **propre** CRA,
+  `cra.getConsultant().getManager()` est son manager (le validateur), pas lui-même → 403, alors
+  que le bouton « Déclarer une absence » était déjà visible (tout rôle sauf ADMIN) et que
+  l'absence doit simplement remplir le jour vide du CRA.
+
+**Implémentation**
+- Backend — `CraService.declareAbsence` : `requireManagerOwnership` n'est appliqué que si
+  l'utilisateur courant **n'est pas** le collaborateur concerné (`!isOwner(cra)`). Un manager
+  peut donc déclarer une absence sur son propre CRA (brouillon/rejeté) ; pour les CRA d'autres
+  collaborateurs il reste borné à son équipe (RESPONSIBLE_SOC : toute la société ; ADMIN : tous).
+  L'absence est bien ajoutée dans le jour vide du CRA (jour passé en `LEAVE`/`SICK_LEAVE` avec
+  l'activité de congé), les événements validés étant toujours préservés.
+- Frontend — aucun changement de code : le bouton et la modale fonctionnaient déjà pour un
+  manager ; ajout d'un test couvrant son propre CRA (`consultantId` = id du manager).
+- Isolation multi-société inchangée : `requireSocAccess` sur l'endpoint, contrôle d'accès
+  toujours via `CraService.get` / `requireConsultantOwner`. Aucun changement de schéma Flyway,
+  aucune clé i18n.
+
+**Vérification**
+- Backend — nouveau test `CraServiceTest.declareAbsence_managerOnOwnCra_addsLeaveDay` (manager
+  rattaché à un autre manager, CRA propre, absence déclarée → indispo liée + jour `LEAVE` avec
+  événement non validé) ; `CraServiceTest` 92/92.
+- Frontend — nouveau test `CraDetail.test.tsx` « un manager peut déclarer une absence dans son
+  propre CRA » ; `npm test` 25 fichiers / 238 tests OK ; `npm run lint` 0 erreur (warnings
+  pré-existants sur le build `docs/`).
