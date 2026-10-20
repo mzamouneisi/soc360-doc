@@ -1945,3 +1945,40 @@ donc selon le pays de la société.
   suite complète `npm test` : 26 fichiers / **274 tests OK** (un premier passage a subi le
   timeout pré-existant et intermittent de `Register.test.tsx`, repassé OK au second) ;
   `npm run lint` 0 erreur ; `npm run build` (tsc -b + vite) OK.
+
+======================================================================
+### 2026-10-20 17:05:59 — page CRA : week-ends jaune très clair + suppression colonne Type
+
+**Tâche**
+```
+page CRA
+
+onglet Calendrier :
+les colonnes weekend (sam, dim pour france) doivent etre coloriés en jaune tres clair.
+
+onglet Ligne :
+les lignes weekend (sam, dim pour france) doivent etre coloriés en jaune tres clair.
+supprimer la colonne TYPE qui ne sert à rien à mon avis. elle fait confusion.
+```
+
+**Implémentation**
+- Frontend — `pages/CraDetail.tsx` :
+  - helper `isWeekendDay(day)` basé sur le flag `weekend` fourni par le backend (donc
+    pays de la société : sam/dim en France, ven/sam en Algérie), avec repli sur
+    `dayType === 'WEEKEND'`.
+  - onglet **Calendrier** : en-têtes de colonnes de week-end, cases vides de ces colonnes et
+    jours de week-end passent en `bg-yellow-50` (jaune très clair). Les états plus forts
+    (congé jaune, jour férié orange, avant embauche gris) restent prioritaires.
+  - onglet **Ligne** : chaque ligne de week-end reçoit `bg-yellow-50`.
+  - colonne **Type** supprimée (en-tête + cellule avec le sélecteur de type de jour).
+    La constante `DAY_TYPES` devenue inutilisée est retirée.
+- Aucun changement backend, Flyway ou isolation multi-société. La règle backend qui interdit
+  de modifier le type d'un jour de week-end reste en place.
+
+**Vérification**
+- Frontend — test obsolète du sélecteur de type remplacé par deux tests : absence de la
+  colonne « Type » + lignes de week-end en `bg-yellow-50` (onglet Ligne), et présence des
+  colonnes de week-end en `bg-yellow-50` (onglet Calendrier).
+  `npm test -- --run src/pages/CraDetail.test.tsx` : **37/37 OK** ;
+  suite complète `npm test` : 26 fichiers / **274 tests OK** ; `npm run lint` 0 erreur ;
+  `npm run build` (tsc -b + vite) OK.
