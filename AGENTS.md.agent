@@ -1,0 +1,89 @@
+# SOC360 — workspace
+
+La racine `soc360/` n'est PAS un dépôt git. Elle contient 4 dépôts git indépendants
+(vérifier `git -C <repo> remote -v`, pusher dans chaque dépôt séparément) :
+
+- `soc360-doc` : docs, workflow, todos (source de vérité pour la procédure, voir dessous)
+- `soc360-back-java` : backend Spring Boot 3.4.1 / Java 17
+- `soc360-front-react` : frontend React 19 / Vite 8 (source)
+- `soc360-front-react-prod` : NE PAS éditer — dépôt cible du déploiement GitHub Pages prod (build généré)
+
+## Workflow obligatoire (tasks)
+
+Lire `soc360-doc/AGENTS.md` (règles originelles), les fichiers `soc360-doc/01_TODO_*` (tâches),
+`soc360-doc/02_DONE_<annee>_<MM>.txt` (archives par mois). Points clés :
+
+- chaque tâche dans un fichier `01_TODO_*` peut se terminer par `go` ;
+- quand l'utilisateur dit « todo », lire un par un les fichiers `01_TODO_*` et, pour chacun :
+  exécuter les tâches du fichier, tester ; si ok → committer ; si erreurs → corriger puis
+  committer ; archiver le contenu dans `02_DONE_<annee>_<MM>.txt` avec la date complète
+  `yyyy-mm-dd HH:MM:SS`, puis supprimer le fichier `01_TODO_*` traité.
+- `00-debut` dans soc360-doc = point de départ de session (lire avant d'agir).
+
+## Règles de tests (obligatoires)
+
+- À chaque fois que vous ajoutez un nouveau service ou une nouvelle règle (backend ou frontend),
+  vous devez ajouter ses tests unitaires **et les exécuter**.
+- À chaque fois que vous modifiez un service ou une règle, vous devez mettre à jour ses tests
+  unitaires **et les exécuter**.
+- Ne jamais archiver une tâche sans avoir exécuté les tests concernés (et corrigé les échecs).
+
+## Outillage Windows (git-bash/MobaXterm)
+
+Chemins natifs (les alias cygwin de `java`/`mvn` peuvent échouer, utiliser les chemins Windows) :
+
+- java : `c:/pgm/java/jdk-17.0.11/bin/java`
+- maven : `c:/pgm/apache-maven-3.9.9/bin/mvn`
+- node/npm : `c:/pgm/nvm/v22.12.0` (npm → `npm.cmd`) — Vite 8 requiert Node 20.19+ / 22.12+
+
+## Backend (`soc360-back-java`)
+
+- Packages : un package par feature sous `com.soc360.*` (activity, consultant, cra, notefrais,
+  soc, user, security, permission, …). Controllers dans `src/main/java/com/soc360/<feature>/`.
+- Dev : `./run_dev.sh` (watche `src/main` + `pom.xml`, redémarre via `mvn spring-boot:run`) ;
+  stoppé par `./kill_backend.sh`. Port par défaut 8080.
+- Env : `source ./env.server.sh -db h2|psgsql_local|psgsql_azure|psgsql_azure_prod`
+  (défaut h2, base fichier `./data/soc360`). `SEED_DEMO_DATA` : profil `local` (application-local.yml)
+  défaut `true`, MAIS `env.server.sh -db h2`/`psgsql_local` la force à `false`, `psgsql_azure` à `true`,
+  `psgsql_azure_prod` à `false`. Un `mvn spring-boot:run` direct (sans env.server.sh) seed donc la démo.
+- Schéma géré UNIQUEMENT par Flyway → ajouter une migration `V<n>__xxx.sql` dans
+  `src/main/resources/db/migration/` (dernières : V14/V15 soc). `ddl-auto=validate`.
+- Tests : profil test = H2 en mémoire + Flyway auto. Commandes :
+  - tout : `c:/pgm/apache-maven-3.9.9/bin/mvn test` (166 tests)
+  - un test : `c:/pgm/apache-maven-3.9.9/bin/mvn -q test -Dtest=ConsultantServiceTest`
+  - ÉCHEC PRÉ-EXISTANT CONNU à NE PAS corriger sauf demande : 
+    `AuthServiceTest.registerSoc_createsSocSubscriptionAdminAndSendsVerificationEmail`
+    (vérifie `seedDefaultsFor` appelé par `registerSoc` alors que seul `addSoc` l'appelle).
+- Auth : JWT Bearer ; autorités = `<FEATURE>_<ACTION>` (table `permission`,
+  format `CustomUserDetailsService.permissionName`) + `ROLE_<ROLE>`.
+  Rôles : ADMIN, RESPONSIBLE_SOC, MANAGER, CONSULTANT (un rôle par compte).
+- Isolation multi-société OBLIGATOIRE (toute feature qui touche des objets par soc) :
+  header `X-SOC-Id` → `SecurityUtils.currentSocId()` ; filtrage → `effectiveSocId(req)`
+  ; vérification d'accès → `requireSocAccess(socId)`. Un non-admin ne doit JAMAIS voir
+  les objets d'une autre société : si une nouvelle requête/feature est ajoutée, elle doit
+  passer par ces helpers. L'accès aux socs via `user_soc` (jointure) + `user_account.id_soc` (défaut).
+
+## Frontend (`soc360-front-react`)
+
+- Dev : `npm.cmd run dev` (Vite, proxy `/api` → `http://localhost:8080`).
+- Commandes : `npm.cmd run lint` (oxlint) · `npm.cmd test` (vitest, `vitest run`) ·
+  `npm.cmd run build` (tsc -b && vite build) · `npm.cmd run build:pages` (GH Pages dev → `docs/`) ·
+  `npm.cmd run build:pages:prod` (→ `dist-prod/`).
+- Lint = oxlint (`.oxlintrc.json`), PAS eslint. Tests : Vitest + Testing Library
+  (happy-dom, setup dans `src/test/setup.ts`).
+- Client API : `src/api/client.ts` injecte `Authorization: Bearer` + `X-SOC-Id` ;
+  URLs backend via `VITE_API_BASE_URL` (base `''` en dev = proxy Vite).
+- Env de build : `.env.production` (dev : base `/soc360-front-react/`, backend Azure dev) ·
+  `.env.production-prod` (prod : base `/soc360-front-react-prod/`, backend Azure prod).
+- Déploiement : `./deploy_front_to_gh_pages.sh dev|prod` — exige branche `main`,
+  compile lint+tests+build et pousse `docs/` (dev dans ce dépôt, prod vers `soc360-front-react-prod`).
+  Voir `DOC_DEPLOY_FRONT_TO_GH_PAGES.md`.
+
+## Git / pièges
+
+- Sur Windows, des dizaines de fichiers du backend apparaissent comme modifiés par le
+  MODE seul (`old mode 100755` → `100644`) : bruit sans impact. Pour vérifier un vrai
+  changement : `git diff --stat` / `git diff` sur le fichier. Ne pas s'étonner d'un
+  `git status` très plein.
+- Commits récents références : backend `932afe8` (isolation multi-société),
+  doc `f283ff3` (archives). Push séparément par dépôt.
