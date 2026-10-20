@@ -1833,3 +1833,66 @@ a chaque fois que vous modifier un service ou regle, il maj ses tests unitaires 
 - Changement documentaire uniquement : aucun service, aucune règle métier, aucun schéma
   Flyway ni code backend/frontend modifié. Aucun test applicatif à ajouter/exécuter pour
   cette tâche.
+
+======================================================================
+### 2026-10-20 14:39:32 — audit tests services back/front + contradictions (01_TODO_01)
+
+**Tâche**
+```
+verifier si tous les services ont des tests unitaires. back et front. surtout backend.
+
+verifier s'il n y a pas de contradictions entre services.
+
+lancer les tests et corriger les eventuelles erreurs.
+```
+
+**Inspection**
+- Backend : 34 classes `@Service` recensées. 12 n'avaient aucun test unitaire dédié
+  (`ConsultantImportService`, `CraExportService`, `CraConfigurationService`, `FichePaieService`,
+  `FichePaiePdfService`, `ProjectService`, `JwtService`, `SocLookupService`, `SupportService`,
+  `NotificationService`, `TableService`, `CustomUserDetailsService`). `LanguageService` reste
+  couvert par `LanguageIntegrationTest`.
+- Frontend : pas de couche « service » à proprement parler (modules `src/api/*.ts`) ; seul
+  `client.ts` était testé, aucun module API métier ne l'était.
+
+**Contradictions / défauts détectés et corrigés**
+- Isolation multi-société incomplète :
+  - `ProjectService` : `create`/`update`/`delete` ne vérifiaient pas la société (un
+    RESPONSIBLE_SOC pouvait créer/modifier/supprimer un projet d'une autre société). Ajout de
+    `SecurityUtils.requireSocAccess(...)` sur la société demandée et la société existante.
+  - `FichePaieService.delete` supprimait sans contrôle ; ajout de `requireFicheSocAccess(id)`.
+    `findBySoc` faisait un `findAll()` + N+1 et pouvait lever une NPE si `soc` était nul :
+    remplacé par `findByConsultantSocIdOrderByPeriodDesc(socId)`.
+  - `CraConfigurationService.update` : ajout du contrôle d'accès à la société de la configuration.
+- Accès inter-utilisateurs :
+  - `NotificationService.markRead/delete` : n'importe qui pouvait lire/supprimer la notification
+    d'un autre. Ajout d'un contrôle de propriétaire (`SecurityUtils.currentUserId`).
+  - `NotificationController.create` : ouvert à tout authentifié (spam vers n'importe quel
+    utilisateur) ; restreint à `hasRole('ADMIN')` (les services internes appellent toujours
+    `NotificationService.create` directement).
+  - `SupportService.getById/addExchange/updateStatus/exchanges` : un non-admin pouvait accéder
+    aux tickets d'un autre alors que la liste était déjà filtrée sur « mes tickets ». Ajout de
+    `getAccessibleEntity` (propriétaire ou ADMIN) et `findAll` force `mine` pour un non-admin.
+- Robustesse JWT : `JwtService.isTokenValid` laissait remonter `ExpiredJwtException` (500 au
+  lieu de « token invalide ») ; capture des `JwtException` et retour `false`.
+- Génération PDF fiche de paie : `PdfWriter.setEncryption` lève `NoClassDefFoundError`
+  (`org.bouncycastle.asn1.ASN1Encodable`) car OpenPDF a BouncyCastle en dépendance optionnelle.
+  Ajout de `org.bouncycastle:bcprov-jdk18on:1.78.1` au `pom.xml`.
+
+**Tests ajoutés**
+- Backend (12 fichiers, 82 tests, tous verts) :
+  `ConsultantImportServiceTest` (4), `CraExportServiceTest` (4), `CraConfigurationServiceTest` (5),
+  `FichePaieServiceTest` (10), `FichePaiePdfServiceTest` (4), `JwtServiceTest` (4),
+  `ProjectServiceTest` (11), `SocLookupServiceTest` (6), `SupportServiceTest` (12),
+  `NotificationServiceTest` (10), `TableServiceTest` (6), `CustomUserDetailsServiceTest` (6).
+- Frontend : `src/api/services.test.ts` (24 tests) couvre les 22 modules API métier
+  (activités, clients, consultants, CRA, dashboard, documents, templates email, fiches de paie,
+  jours fériés, logs, messages, notes de frais, notifications, projets, jours fériés société,
+  sociétés, fournisseurs, support, tables, indispos, types d'indispo, utilisateurs).
+
+**Vérification**
+- Backend : `mvn test` → **517 tests, 0 échec, 0 erreur** (contre 435 avant, avec 1 échec
+  intermittent `SecurityIntegrationTest.adminCannotDeleteActiveUser` non reproduit ensuite).
+- Frontend : `npm test` → 26 fichiers / **273 tests OK** ; `npm run lint` 0 erreur ;
+  `npm run build` (tsc -b + vite) OK.
+- Aucune migration Flyway ajoutée (pas de changement de schéma).
