@@ -1684,3 +1684,35 @@ et il faut que ca se voir visuellement dans le calendrier : le matin en haut, l'
   `npm test -- --run src/pages/CraDetail.test.tsx` : **36/36 OK** ;
   suite complète `npm test` : 25 fichiers / **247 tests OK** ; `npm run lint` 0 erreur ;
   `npm run build` (tsc -b + vite) OK.
+
+======================================================================
+### 2026-10-20 11:56:18 — page Indispo : réorganisation du formulaire (01_TODO_01)
+
+**Tâche**
+```
+page Indispo
+
+reorganiser la mise en page :
+une ligne : Collaborateur , Type
+une ligne : Du , Au
+une ligne : Jours en demi-journée. puis un btn (+) pour ajouter les demi-journées, ligne/ligne 
+une ligne Commentaire 
+et le reste calendrier pour visualiser ...
+```
+
+**Implémentation**
+- Frontend — `pages/Unavailability.tsx`, formulaire de création/édition réorganisé en lignes :
+  - ligne 1 : **Collaborateur** + **Type** (deux colonnes ; le type seul pour un consultant) ;
+  - ligne 2 : **Du** + **Au** ;
+  - ligne 3 : libellé **Jours en demi-journée** + bouton **(+)** `Ajouter une demi-journée`
+    (l'ancien texte long est conservé en `title`), puis une ligne par demi-journée
+    (date + radios Matin/Après-midi + suppression) ;
+  - ligne 4 : **Commentaire** en pleine largeur ;
+  - l'aperçu calendrier reste sous le formulaire.
+- Aucun changement backend, Flyway, i18n ou isolation multi-société.
+
+**Vérification**
+- Frontend — test `Unavailability.test.tsx` adapté au nouveau bouton `Ajouter une demi-journée`.
+  `npm test -- --run src/pages/Unavailability.test.tsx` : **27/27 OK** ;
+  suite complète `npm test` : 25 fichiers / **247 tests OK** ; `npm run lint` 0 erreur ;
+  `npm run build` (tsc -b + vite) OK.
