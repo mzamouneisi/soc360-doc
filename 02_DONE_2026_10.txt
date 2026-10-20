@@ -1896,3 +1896,52 @@ lancer les tests et corriger les eventuelles erreurs.
 - Frontend : `npm test` → 26 fichiers / **273 tests OK** ; `npm run lint` 0 erreur ;
   `npm run build` (tsc -b + vite) OK.
 - Aucune migration Flyway ajoutée (pas de changement de schéma).
+
+======================================================================
+### 2026-10-20 15:16:22 — soc-79 CRA : type des jours de week-end non modifiable selon le pays
+
+**Tâche**
+```
+soc-79 Interdire le changement de type de jour dans le cra :
+
+page CRA
+mode ligne
+
+on ne peut pas changer le type des jours défini comme weekend.
+
+en france, samedi et dimanche sont des jours de weekend comme vous le savez.
+en algérie, c'est vendredi et samedi.
+
+donc selon le pays de la société.
+```
+
+**Implémentation**
+- Backend — nouveau `cra/WeekendCalendar.java` : `isWeekend(date, countryCode)` avec
+  FR / défaut = samedi + dimanche, DZ (et « Algérie ») = vendredi + samedi.
+- `CraService.createForMonth` : le jour `WEEKEND` est déterminé par ce calendrier (pays de la
+  société) au lieu de samedi/dimanche codés en dur.
+- `CraService.toDto` : ajout de `weekend` (booléen) dans `CraDayDto`, calculé selon le pays,
+  pour que le front sache quels jours sont des week-ends. L'export PDF colore aussi les
+  week-ends selon le pays.
+- `CraService.save` : si un jour était stocké en `WEEKEND`, toute demande de changement de
+  `dayType` est rejetée (`ApiException.badRequest`, message contenant « week-end »).
+- Frontend — `pages/CraDetail.tsx` : en mode ligne, le sélecteur de type de jour est
+  désactivé pour un jour `WEEKEND` avec l'info-bulle
+  `CraDetail.jour.weekend.non.modifiable` ; le retour à l'état d'origine après suppression
+  d'un congé utilise le flag `weekend` du backend (donc correct pour l'Algérie).
+  `api/types.ts` : `weekend?: boolean` ajouté à `CraDayDto`.
+- i18n : nouvelle clé `CraDetail.jour.weekend.non.modifiable` en FR/EN/AR.
+- Aucune migration Flyway (pas de changement de schéma), aucun changement d'isolation
+  multi-société.
+
+**Vérification**
+- Backend — 3 tests ajoutés dans `CraServiceTest` : week-end FR (sam/dim), week-end DZ
+  (ven/sam), et rejet du changement de type d'un jour `WEEKEND`.
+  `mvn -q test -Dtest=CraServiceTest` : **111/111 OK** ;
+  suite complète `mvn test` : **520 tests, 0 échec, 0 erreur**.
+- Frontend — nouveau test `CraDetail.test.tsx` : en mode ligne, tous les sélecteurs de type
+  des jours de week-end sont désactivés avec l'info-bulle attendue.
+  `npm test -- --run src/pages/CraDetail.test.tsx` : **37/37 OK** ;
+  suite complète `npm test` : 26 fichiers / **274 tests OK** (un premier passage a subi le
+  timeout pré-existant et intermittent de `Register.test.tsx`, repassé OK au second) ;
+  `npm run lint` 0 erreur ; `npm run build` (tsc -b + vite) OK.
