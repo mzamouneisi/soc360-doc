@@ -1651,3 +1651,36 @@ donc ce calendrier montre les autres et selectionne bien l'indispo courante.
 - Frontend — nouveaux tests `Unavailability.test.tsx` (ajout/envoi d'une demi-journée, édition
   avec demi-journées et affichage calendrier). `npm test` : 25 fichiers / **247 tests OK** ;
   `npm run lint` 0 erreur ; `npm run build` (tsc -b + vite) OK.
+
+======================================================================
+### 2026-10-20 11:21:03 — page CRA : échange automatique des deux demi-journées (01_TODO_01)
+
+**Tâche**
+```
+page CRA
+
+si je rajoute 2 events dans le meme jour
+si le 1er est dans le matin
+alors le second doit etre dans l'apres midi.
+et inversement.
+si je change le 1er en apres-midi, alors le second devient matin. et inversement.
+
+et il faut que ca se voir visuellement dans le calendrier : le matin en haut, l'apres-mi en bas. dans la cellule jour.
+```
+
+**Implémentation**
+- Frontend — `pages/CraDetail.tsx` : `updateActivity` échange désormais les demi-journées des deux
+  événements de 0,5 j au lieu de refuser le changement. Si le premier passe l'après-midi alors que
+  le second l'occupe, le second prend automatiquement le matin (et inversement) ; les deux radios
+  restent sélectionnables. Aucun autre changement de comportement (ordre matin en haut / après-midi
+  en bas déjà en place).
+- Backend inchangé : la validation « deux demi-journées identiques interdites » reste la garde
+  serveur ; l'échange est effectué côté formulaire avant enregistrement.
+- Aucun changement Flyway, i18n ou isolation multi-société.
+
+**Vérification**
+- Frontend — test `CraDetail.test.tsx` complété : après création de la seconde demi-journée en
+  `PM`, clic sur `Matin` du second événement → second `AM` et premier `PM`.
+  `npm test -- --run src/pages/CraDetail.test.tsx` : **36/36 OK** ;
+  suite complète `npm test` : 25 fichiers / **247 tests OK** ; `npm run lint` 0 erreur ;
+  `npm run build` (tsc -b + vite) OK.
