@@ -1779,3 +1779,36 @@ generaliser cette regle si indispo contient plusieurs jours.
   `npm test -- --run src/pages/Unavailability.test.tsx` : **28/28 OK** ;
   suite complète `npm test` : 25 fichiers / **248 tests OK** ; `npm run lint` 0 erreur ;
   `npm run build` (tsc -b + vite) OK.
+
+======================================================================
+### 2026-10-20 12:17:10 — page Indispo : correction de l'ajout d'une 2e demi-journée (01_TODO_01)
+
+**Tâche**
+```
+page Indispo
+
+si date_deb != date_fin
+
+il ya un bug lorsque je veux ajouter une 2eme demi-journée !!
+
+a corriger svp
+```
+
+**Cause**
+- `nextDate` construisait la date suivante avec `new Date('yyyy-mm-ddT00:00:00')` (heure locale)
+  puis `toISOString()` (UTC). En fuseau positif (Europe/Paris), minuit local devient la veille en
+  UTC : `nextDate(date)` pouvait renvoyer la même date, ce qui bloquait/infinite-bouclait la
+  recherche du prochain jour libre pour la 2e demi-journée.
+
+**Implémentation**
+- Frontend — `pages/Unavailability.tsx` : calcul de la date suivante en **UTC**
+  (`Date.UTC(year, month - 1, day + 1)`), donc `+1 jour` fiable quel que soit le fuseau.
+- Aucun changement backend, Flyway, i18n ou isolation multi-société.
+
+**Vérification**
+- Frontend — nouveau test `Unavailability.test.tsx` : deux clics sur (+) sur un intervalle de
+  plusieurs jours ajoutent deux lignes et envoient deux dates distinctes.
+  `npm test -- --run src/pages/Unavailability.test.tsx` : **29/29 OK** ;
+  suite complète `npm test` : 25 fichiers / **249 tests OK** (un premier passage a subi le
+  timeout pré-existant et intermittent de `Register.test.tsx`, repassé OK au second) ;
+  `npm run lint` 0 erreur ; `npm run build` (tsc -b + vite) OK.
