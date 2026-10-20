@@ -1982,3 +1982,51 @@ supprimer la colonne TYPE qui ne sert à rien à mon avis. elle fait confusion.
   `npm test -- --run src/pages/CraDetail.test.tsx` : **37/37 OK** ;
   suite complète `npm test` : 26 fichiers / **274 tests OK** ; `npm run lint` 0 erreur ;
   `npm run build` (tsc -b + vite) OK.
+
+======================================================================
+### 2026-10-20 17:21:06 — paramètres société : couleurs jour de congé et week-end
+
+**Tâche**
+```
+page paramettres
+
+ajouter paramettres (modifiables que par responsable_soc) :
+- couleur jour congé : jaune par défaut (comme actuellement)
+- couleur weekend : jaune très clair par défaut (comme actuellement)
+```
+
+**Implémentation**
+- Backend :
+  - migration Flyway `V112__soc_cra_colors.sql` : colonnes `leave_day_color`
+    (défaut `#fef9c3`, jaune actuel) et `weekend_color` (défaut `#fefce8`, jaune très clair
+    actuel) sur la table `company`.
+  - `Soc` : champs `leaveDayColor` / `weekendColor` avec ces valeurs par défaut.
+  - `SocDtos.SocDto` : expose les deux couleurs ; `SocDtos.CraColorsRequest` pour la mise à jour.
+  - `SocService.updateCraColors` : valide le format `#RRGGBB`, normalise en minuscules et
+    applique le contrôle de propriété existant (`ensureOwnerOrAdmin`).
+  - `SocController` : `PUT /api/socs/{id}/cra-colors`, réservé
+    `ADMIN` / `RESPONSIBLE_SOC` + contrôle d'accès société.
+  - `CraDto` expose `leaveDayColor` / `weekendColor` pour que la page CRA applique les
+    couleurs de la société.
+- Frontend :
+  - `api/socs.ts` : `socsApi.updateCraColors(id, { leaveDayColor, weekendColor })`.
+  - `pages/Settings.tsx` : nouvelle section « Couleurs des jours CRA » visible uniquement pour
+    `RESPONSIBLE_SOC`, chargée depuis la société sélectionnée, intégrée au bouton Enregistrer
+    (comparaison aux valeurs sauvegardées pour ne déclencher l'appel que si nécessaire).
+  - `pages/CraDetail.tsx` : congé et week-end utilisent les couleurs de la société (style
+    inline) dans le calendrier et dans les lignes ; valeurs par défaut identiques à l'existant
+    si la société n'a pas encore de couleur.
+  - i18n FR/EN/AR pour la nouvelle section.
+  - Isolation : la mise à jour passe par l'id de société + `ensureOwnerOrAdmin`, aucune requête
+    ne permet de modifier les couleurs d'une autre société.
+
+**Vérification**
+- Backend — 3 tests ajoutés dans `SocServiceTest` (normalisation/enregistrement, couleur
+  invalide, société d'un autre responsable interdite) + contrôle des couleurs par défaut.
+  `mvn -q test -Dtest='SocServiceTest,CraServiceTest'` : **129/129 OK** ;
+  suite complète `mvn test` : **523 tests, 0 échec, 0 erreur**.
+- Frontend — `Settings.test.tsx` : chargement des couleurs pour un RESPONSIBLE_SOC,
+  enregistrement via `updateCraColors`, section absente pour un CONSULTANT ; `services.test.ts`
+  couvre le nouvel endpoint ; test CRA adapté aux couleurs inline.
+  `npm test` : 27 fichiers / **276 tests OK** ; `npm run lint` 0 erreur ;
+  `npm run build` (tsc -b + vite) OK.
