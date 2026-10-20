@@ -1592,3 +1592,62 @@ et il faut que ca se voir visuellement dans le calendrier : le matin en haut, l'
 - Frontend — 2 nouveaux tests `CraDetail.test.tsx` : bascule automatique de la seconde
   demi-journée (`PM` quand `AM` est pris) et ordre DOM matin avant après-midi dans la cellule.
   `npm test -- --run src/pages/CraDetail.test.tsx` : **36/36 OK**.
+
+======================================================================
+### 2026-10-20 11:12:17 — page Indispo : jours en demi-journée dans un intervalle (01_TODO_02)
+
+**Tâche**
+```
+page Indispo
+
+actuellement, c'est un interval d'un jour ou plus entre date_deb et date_fin.
+
+on veut ajouter des spécifités sur les jours entre ces deux dates :
+un btn : Préciser les jours ayant juste une demi journée dans cet interval.
+un click sur ce btn, ca va ajouter une ligne contenant :
+. un champ de type date (compris obligatoirement entre date_deb et date_fin de cette indispo)
+. btns ratio : matin, apres-midi
+
+une visualisation en bas dans un calendrier.
+
+faire attention aux chauvauchement des autres indispos, congés, activités.
+
+donc ce calendrier montre les autres et selectionne bien l'indispo courante.
+```
+
+**Implémentation**
+- Backend — modèle : migration Flyway `V111__unavailability_half_day.sql`
+  (`unavailability_half_day` : date + `AM`/`PM`, contrainte d'unicité par date et par
+  indisponibilité, `ON DELETE CASCADE`), entité `UnavailabilityHalfDay` et collection
+  `halfDays` sur `Unavailability`.
+- Backend — `UnavailabilityDtos` : `HalfDayDto` / `HalfDayRequest` et champ `halfDays` dans
+  les DTO de lecture et d'écriture (constructeur historique conservé).
+- Backend — `UnavailabilityService` : `applyHalfDays` valide chaque date dans l'intervalle,
+  interdit les doublons, remplace les demi-journées en création/modification et les renvoie
+  triées par date dans le DTO.
+- Backend — `CraService.applyAbsence` : une demi-journée d'indisponibilité génère un congé de
+  0,5 j sur le créneau précisé (`AM`/`PM`), y compris lorsqu'une activité de 0,5 j occupe
+  l'autre créneau ; le jour entier ou le même créneau déjà utilisé est laissé intact.
+- Frontend — `pages/Unavailability.tsx`, formulaire de création/édition :
+  - bouton **« Préciser les jours ayant juste une demi-journée dans cet intervalle »** ;
+  - chaque clic ajoute une ligne date (min/max = dates de l'indispo) + radios **Matin** /
+    **Après-midi** + suppression ; les dates en doublon ou hors intervalle sont refusées ;
+  - les demi-journées existantes sont rechargées à l'édition et envoyées dans la requête ;
+  - aperçu calendrier sous le formulaire, y compris pour une indispo non encore enregistrée.
+- Frontend — `pages/UnavailabilityCalendar.tsx` : le calendrier met en évidence
+  l'indisponibilité courante (bleu), les autres indispos (indigo), les congés (ambre) et les
+  activités (point vert) ; les demi-journées sont affichées par un dégradé matin/après-midi et
+  les libellés `matin` / `aprèm`, avec légende.
+- Isolation multi-société inchangée : les nouvelles données passent par l'indisponibilité
+  existante et les contrôles `SecurityUtils.effectiveSocId` / `requireSocAccess`.
+
+**Vérification**
+- Backend — nouveaux tests `UnavailabilityServiceTest` (persistance des demi-journées, date hors
+  intervalle rejetée) et `CraServiceTest.getOrCreate_integratesValidatedHalfDayUnavailability`
+  (congé 0,5 j `AM` généré dans le CRA).
+  `mvn test` : **435 tests**, seul échec **pré-existant**
+  `SecurityIntegrationTest.adminCannotDeleteActiveUser` (403 au lieu de 400), déjà constaté sur
+  le code sans ces changements.
+- Frontend — nouveaux tests `Unavailability.test.tsx` (ajout/envoi d'une demi-journée, édition
+  avec demi-journées et affichage calendrier). `npm test` : 25 fichiers / **247 tests OK** ;
+  `npm run lint` 0 erreur ; `npm run build` (tsc -b + vite) OK.
