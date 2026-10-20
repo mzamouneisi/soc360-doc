@@ -1812,3 +1812,24 @@ a corriger svp
   suite complète `npm test` : 25 fichiers / **249 tests OK** (un premier passage a subi le
   timeout pré-existant et intermittent de `Register.test.tsx`, repassé OK au second) ;
   `npm run lint` 0 erreur ; `npm run build` (tsc -b + vite) OK.
+
+======================================================================
+### 2026-10-20 14:19:09 — consignes agent : tests obligatoires pour service/règle (01_TODO_01)
+
+**Tâche**
+```
+ajouter dans les consignes de l'agent :
+
+a chaque fois que vous ajouter un nouveau service ou regle, il faut ajouter ses tests unitaires . et les executer.
+a chaque fois que vous modifier un service ou regle, il maj ses tests unitaires . et les executer.
+```
+
+**Implémentation**
+- `AGENTS.md` (racine workspace) — nouvelle section **Règles de tests (obligatoires)** :
+  ajout d'un service/règle → tests unitaires ajoutés et exécutés ; modification d'un
+  service/règle → tests unitaires mis à jour et exécutés ; pas d'archivage d'une tâche sans
+  exécution des tests concernés.
+- `soc360-doc/AGENTS.md` — rappel de la même règle avant la commande `/todo`.
+- Changement documentaire uniquement : aucun service, aucune règle métier, aucun schéma
+  Flyway ni code backend/frontend modifié. Aucun test applicatif à ajouter/exécuter pour
+  cette tâche.

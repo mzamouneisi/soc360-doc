@@ -23,6 +23,11 @@ ou bien
 c:\pgm\nvm\v22.12.0
 -------------------------------------
 
+règle tests (obligatoire) :
+à chaque fois que vous ajoutez un nouveau service ou une règle, ajouter ses tests unitaires
+et les exécuter. à chaque fois que vous modifiez un service ou une règle, mettre à jour ses
+tests unitaires et les exécuter.
+
 command : /todo :
 
 lire un par un les fichiers soc360-doc/01_TODO_* (chaque tache peut se terminer par go).
