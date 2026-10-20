@@ -1716,3 +1716,32 @@ et le reste calendrier pour visualiser ...
   `npm test -- --run src/pages/Unavailability.test.tsx` : **27/27 OK** ;
   suite complète `npm test` : 25 fichiers / **247 tests OK** ; `npm run lint` 0 erreur ;
   `npm run build` (tsc -b + vite) OK.
+
+======================================================================
+### 2026-10-20 12:02:22 — page Indispo : largeurs raisonnables et bouton (+) rapproché (01_TODO_01)
+
+**Tâche**
+```
+page Indispo 
+
+toujours dans la mise en page :
+
+rapprocher les elements entre eux :
+largeur des listes Collaborateur et Type : raisonables. ne pas etaler sur toute la ligne. car sur pc, c'est trop moche.
+pareil pour les dates 
+le btn "+" à rapporocher au label : "Jours en demi-journée"
+```
+
+**Implémentation**
+- Frontend — `pages/Unavailability.tsx` :
+  - lignes **Collaborateur / Type** et **Du / Au** passées en `flex` avec des largeurs fixes
+    raisonnables (`w-56` pour les listes, `w-44` pour les dates) au lieu de colonnes qui
+    étiraient les champs sur toute la ligne ; `max-w-full` conservé pour les petits écrans.
+  - bouton **(+)** `Ajouter une demi-journée` placé juste à droite du label
+    **Jours en demi-journée** (`gap-2`) au lieu d'être repoussé à l'autre extrémité.
+- Aucun changement backend, Flyway, i18n ou isolation multi-société.
+
+**Vérification**
+- Frontend — `npm test -- --run src/pages/Unavailability.test.tsx` : **27/27 OK** ;
+  suite complète `npm test` : 25 fichiers / **247 tests OK** ; `npm run lint` 0 erreur ;
+  `npm run build` (tsc -b + vite) OK.
