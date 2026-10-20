@@ -1745,3 +1745,37 @@ le btn "+" à rapporocher au label : "Jours en demi-journée"
 - Frontend — `npm test -- --run src/pages/Unavailability.test.tsx` : **27/27 OK** ;
   suite complète `npm test` : 25 fichiers / **247 tests OK** ; `npm run lint` 0 erreur ;
   `npm run build` (tsc -b + vite) OK.
+
+======================================================================
+### 2026-10-20 12:09:45 — page Indispo : désactiver (+) quand la journée a déjà sa demi-journée (01_TODO_01)
+
+**Tâche**
+```
+page Indispo
+
+lorsque date_deb = date_fin
+
+c'est normal qu'on ne peut ajouter qu'une seule demi-journée d'indisponibilité.
+
+donc si on a deja ajouté une demi-journée, il faut désactiver le btn "+" et mettre un msg adéquat dans son title (info bulle).
+
+generaliser cette regle si indispo contient plusieurs jours.
+```
+
+**Implémentation**
+- Frontend — `pages/Unavailability.tsx` :
+  - calcul du nombre de jours de l'intervalle et du nombre de jours déjà couverts par une
+    demi-journée (dates uniques) ;
+  - bouton **(+)** `Ajouter une demi-journée` désactivé dès que tous les jours de l'intervalle
+    ont leur demi-journée, donc dès la première demi-journée quand `date_deb = date_fin` ;
+  - info-bulle adaptée : « Une seule demi-journée est possible quand la date de début et de fin
+    sont identiques. » pour un jour unique, sinon « Une demi-journée a déjà été précisée pour
+    chaque jour de l'intervalle. ».
+- Aucun changement backend, Flyway, i18n ou isolation multi-société.
+
+**Vérification**
+- Frontend — nouveau test `Unavailability.test.tsx` sur une indispo d'un seul jour déjà dotée
+  d'une demi-journée : bouton (+) désactivé et `title` attendu.
+  `npm test -- --run src/pages/Unavailability.test.tsx` : **28/28 OK** ;
+  suite complète `npm test` : 25 fichiers / **248 tests OK** ; `npm run lint` 0 erreur ;
+  `npm run build` (tsc -b + vite) OK.
