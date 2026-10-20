@@ -1555,3 +1555,40 @@ Donc interdire d'ajouter un autre event si on a atteint 1j dans le jour.
   affichage des radios 0,5 j et enregistrement de `halfDay = PM`, blocage de l'ajout au-delà de
   1 j. `npm test` : 25 fichiers / **243 tests OK** ; `npm run lint` 0 erreur ;
   `npm run build` (tsc -b + vite) OK.
+
+======================================================================
+### 2026-10-20 11:03:06 — page CRA : deux demi-journées complémentaires et ordre matin/après-midi (01_TODO_01)
+
+**Tâche**
+```
+page CRA
+
+si je rajoute 2 events dans le meme jour 
+si le 1er est dans le matin 
+alors le second doit etre dans l'apres midi.
+et inversement.
+
+et il faut que ca se voir visuellement dans le calendrier : le matin en haut, l'apres-mi en bas. dans la cellule jour.
+```
+
+**Implémentation**
+- Frontend — `pages/CraDetail.tsx` :
+  - `allowedHalfDaysFor` / `defaultHalfDayFor` : si un événement de 0,5 j occupe déjà le matin,
+    le second passe automatiquement l'après-midi (et inversement) ; les radios de la demi-journée
+    déjà prise sont désactivées.
+  - `updateActivity` refuse une demi-journée déjà utilisée et recalcule la demi-journée libre
+    lorsqu'on repasse un événement à 0,5 j ; `addActivity` initialise directement le créneau libre.
+  - Cellule du calendrier : les activités sont triées `AM` → journée complète → `PM`, le matin
+    apparaît donc au-dessus de l'après-midi ; un petit libellé « matin » / « après-midi » est
+    affiché dans le chip.
+- Backend — `CraService.save` : refuse deux événements de 0,5 j sur la même demi-journée
+  (« Deux événements de 0,5 jour ne peuvent pas être sur la même demi-journée »), en complément
+  de la garde existante « maximum 1 jour par jour ».
+- Aucun changement Flyway, i18n ou isolation multi-société.
+
+**Vérification**
+- Backend — nouveau test `CraServiceTest.save_rejectsTwoHalfDayEventsOnSameHalfDay` ;
+  `mvn -Dtest=CraServiceTest test` : **107/107 OK**.
+- Frontend — 2 nouveaux tests `CraDetail.test.tsx` : bascule automatique de la seconde
+  demi-journée (`PM` quand `AM` est pris) et ordre DOM matin avant après-midi dans la cellule.
+  `npm test -- --run src/pages/CraDetail.test.tsx` : **36/36 OK**.
