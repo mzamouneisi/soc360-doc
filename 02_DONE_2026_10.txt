@@ -1506,3 +1506,52 @@ si indispo est brouillon : alors supprimer ce congé et mettre à jour l'indispo
 - Frontend — nouveau test `CraDetail.test.tsx` « un manager propriétaire ne peut pas supprimer un
   congé validé » ; `npm test` : 25 fichiers / **240 tests OK** ; `npm run lint` 0 erreur ;
   `npm run build` (tsc -b + vite) OK.
+
+======================================================================
+### 2026-10-20 10:51:19 — page CRA : congés dans la liste de choix, demi-journée matin/après-midi, maximum 1 jour par jour (01_TODO_01)
+
+**Tâche**
+```
+page CRA
+
+lorsque je veux ajouter ou editer un event
+je veux avoir à droite de la liste des activités, une case à cocher (décochée par défaut) qui permet de rajouter les congés dans la liste de choix. et lorsqu'on la décoche, elle supprime les éléments de type congé.
+
+Autre chose :
+Si je selectionne "0.5j" , ajouter 2 btns radios à droite de la liste : matin , apres-midi.
+
+Enfin : dans tous les cas, s'assurer qu'on ne peut pas ajouter plus qu'une journée dans chaque jour.
+Donc interdire d'ajouter un autre event si on a atteint 1j dans le jour.
+```
+
+**Implémentation**
+- Frontend — `pages/CraDetail.tsx`, modale d'événement (`EventModal`) :
+  - nouvelle case à cocher **« Inclure les congés »**, décochée par défaut et alignée à droite de
+    la liste ; cochée, elle ajoute les activités `indispo` (congés) aux choix du sélecteur ;
+    décochée, elle les retire. Un congé déjà sélectionné reste proposé pour ne pas casser un
+    événement existant (absence liée).
+  - lorsque l'événement passe à **0,5 j**, deux boutons radio **Matin** / **Après-midi**
+    apparaissent à droite du sélecteur de durée ; ils disparaissent (et la valeur est remise à
+    `null`) dès que l'événement repasse à 1 j.
+  - la valeur `halfDay` est reprise depuis l'API et renvoyée dans `SaveCraRequest`.
+- Frontend — garde « 1 jour maximum » : le bouton « + Ajouter un événement » reste désactivé dès
+  que le total du jour atteint 1 j (la garde backend existante est conservée).
+- Backend — persistance de la demi-journée : migration Flyway
+  `V110__cra_day_activity_half_day.sql` (`half_day VARCHAR(2)` + contrainte `AM`/`PM`), enum
+  `common.enums.HalfDay`, champ `halfDay` sur `CraDayActivity`, DTO de lecture/écriture
+  (`CraDayActivityRequest` garde un constructeur compatible 5 arguments) et service
+  (`save` ne conserve `halfDay` que pour 0,5 j ; copie lors de l'intégration d'une Indispo).
+- Aucune clé i18n ajoutée ; isolation multi-société inchangée (les routes CRA conservent
+  `X-SOC-Id` / `requireSocAccess`).
+
+**Vérification**
+- Backend — nouveau test `CraServiceTest.save_persistsHalfDayForHalfDayEventsAndClearsItForFullDays`
+  (matin + après-midi sur un jour, puis remise à zéro pour 1 j).
+  `mvn -Dtest=CraServiceTest test` : **106/106 OK**.
+  Suite complète : **430/431** ; seul échec
+  `SecurityIntegrationTest.adminCannotDeleteActiveUser` (403 au lieu de 400), **pré-existant**
+  et confirmé à l'identique sur le code stashé sans ces changements.
+- Frontend — 3 nouveaux tests `CraDetail.test.tsx` : ajout/retrait des congés via la case,
+  affichage des radios 0,5 j et enregistrement de `halfDay = PM`, blocage de l'ajout au-delà de
+  1 j. `npm test` : 25 fichiers / **243 tests OK** ; `npm run lint` 0 erreur ;
+  `npm run build` (tsc -b + vite) OK.
