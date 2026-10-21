@@ -2030,3 +2030,41 @@ ajouter paramettres (modifiables que par responsable_soc) :
   couvre le nouvel endpoint ; test CRA adapté aux couleurs inline.
   `npm test` : 27 fichiers / **276 tests OK** ; `npm run lint` 0 erreur ;
   `npm run build` (tsc -b + vite) OK.
+
+======================================================================
+### 2026-10-21 11:11:33 — soc-81 commentaire facultatif pour une indisponibilité
+
+**Tâche**
+```
+soc-81 commentaires non obligatoires
+
+page Indisponibilités
+
+new or edit indispo
+
+commentaires non obligatoires
+```
+
+**Implémentation**
+- Backend — `UnavailabilityService` : suppression de l'appel `requireComment(...)` dans
+  `create` et `update` (ainsi que de la méthode devenue inutile). Le commentaire reste
+  facultatif et est toujours stocké via `trimToNull` (`null` si vide). Les commentaires de
+  validation / rejet / invalidation ne sont pas concernés.
+- Frontend — `pages/Unavailability.tsx` : suppression du contrôle bloquant
+  « Le commentaire est obligatoire » et de l'astérisque sur le libellé Commentaire. Le champ
+  reste envoyé à `null` lorsqu'il est vide.
+- Aucun changement de schéma : la colonne `unavailability.comment` était déjà nullable,
+  donc aucune migration Flyway ajoutée. La clé i18n historique
+  `Unavailability.commentaire.obligatoire` n'est plus utilisée par la page.
+
+**Vérification**
+- Backend — test `create_withoutComment_isRejected` remplacé par
+  `create_withoutComment_isAllowed` (création OK, commentaire `null`).
+  `mvn -q test -Dtest=UnavailabilityServiceTest` : **48/48 OK** ;
+  suite complète `mvn test` : **523 tests, 0 échec, 0 erreur**.
+- Frontend — test « exige un commentaire » remplacé par « permet de créer une
+  indisponibilité sans commentaire » (vérifie `comment === null` dans la requête).
+  `npm test -- --run src/pages/Unavailability.test.tsx` : **29/29 OK** ;
+  suite complète `npm test` : 27 fichiers / **276 tests OK** (le timeout pré-existant et
+  intermittent de `Register.test.tsx` est réapparu une fois, repassé OK au second run) ;
+  `npm run lint` 0 erreur ; `npm run build` (tsc -b + vite) OK.
