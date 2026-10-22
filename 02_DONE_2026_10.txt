@@ -2264,3 +2264,49 @@ les valeurs null doivent s'afficher en cellule vide dans l'ihm
   `npm test -- --run src/pages/UnavailabilityTypes.test.tsx` : **9/9 OK** ;
   suite complète `npm test` : 27 fichiers / **275 tests OK** ; `npm run lint` 0 erreur ;
   `npm run build` (tsc -b + vite) OK.
+
+======================================================================
+### 2026-10-22 15:53:48 — soc-75 décompte des jours d'indispo (calendaire/ouvrable/ouvré)
+
+**Tâche**
+```
+soc-75 Affichage des jours d'indisponibilité dans le calendrier CRA, indispo et comptabilisation des jours
+
+Appliquer le type de décompte de l’indisponibilité
+Si une indispo est comptable en jours calendaire alors la comptabilisation et l’affichage dans le calendrier CRA et indisponibilité est sur tout les jours ( y compris samedi, dimanche et jours férie )
+Si une indispo est comptable en jours ouvrable alors la comptabilisation et l’affichage dans le calendrier CRA et indisponibilité est sur les jours du lundi au samedi ( pas le dimanche)
+Si une indispo est comptable en jours ouvrés alors la comptabilisation et l’affichage dans le calendrier CRA et indisponibilité est sur les jours du lundi à vendredi
+
+on va donc se baser sur le type de décompte afin de calculer la durée de l’indispo et aussi son affichage dans le calendrier.
+```
+
+**Backend**
+- Nouveau `UnavailabilityCounting` : `CALENDAIRE` = tous les jours, `OUVRABLE` = lundi→samedi,
+  `OUVRE` = lundi→vendredi (les types `MOIS`/`ANNEE` restent comptés en calendaire pour
+  l'affichage).
+- `Unavailability.durationDays(CountType)` : somme uniquement les jours comptés ; les
+  demi-journées de début/fin ne sont retranchées que si la borne est comptée.
+- `UnavailabilityService.countTypeOf(...)` : récupère le `count_type` du type configuré de la
+  société (repli `CALENDAIRE`) ; durée, historique et DTO l'utilisent. `UnavailabilityDto`
+  expose désormais `countType`.
+- `CraService.applyAbsence` : les jours non comptés selon le type de décompte sont ignorés,
+  donc dans le CRA une indispo `OUVRE` ne colore pas samedi/dimanche et une `OUVRABLE` ne
+  colore pas dimanche.
+- Aucun changement de schéma / migration : le `count_type` existait déjà sur
+  `unavailability_type`.
+
+**Frontend**
+- `api/types.ts` : `UnavailabilityDto.countType`.
+- `pages/Unavailability.tsx` : durée de l'aperçu calculée selon le `count_type` du type
+  sélectionné ; les demi-journées d'aperçu ne sont conservées que sur les jours comptés.
+- `pages/UnavailabilityCalendar.tsx` : les jours affichés pour l'indispo sélectionnée et les
+  autres indispos sont filtrés selon leur `countType` (y compris les demi-journées).
+
+**Vérification**
+- Backend — nouveau test `create_durationFollowsCountType` (OUVRE/OUVRABLE/CALENDAIRE) et
+  `getOrCreate_ouvreUnavailability_skipsWeekendDays` (CRA : vendredi/lundi en congé,
+  samedi/dimanche en week-end).
+  `mvn test` : **532 tests, 0 échec, 0 erreur**.
+- Frontend — nouveau test « calcule la durée selon le type de décompte (ouvré = hors week-end) ».
+  `npm test` : 27 fichiers / **276 tests OK** ; `npm run lint` 0 erreur ;
+  `npm run build` (tsc -b + vite) OK.
