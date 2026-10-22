@@ -2143,3 +2143,33 @@ on peut avoir 2j, 2.5j , 0.5j, ....
   `npm test -- --run src/pages/Unavailability.test.tsx` : **28/28 OK** ;
   suite complète `npm test` : 27 fichiers / **275 tests OK** ; `npm run lint` 0 erreur ;
   `npm run build` (tsc -b + vite) OK.
+
+======================================================================
+### 2026-10-22 11:16:15 — indispos : first_day / last_day par défaut à ALL
+
+**Tâche**
+```
+indispos
+les valeurs par defaut de : first_day et last_day est : ALL
+```
+
+**Implémentation**
+- Vérification des défauts déjà en place : colonnes `unavailability.first_day` / `last_day`
+  `NOT NULL DEFAULT 'ALL'` (migration V113), champs `Unavailability.firstDay/lastDay`
+  initialisés à `DayPart.ALL`, et formulaire frontend initialisé à `ALL`.
+- Renforcement au niveau de l'API : constructeur compact de
+  `UnavailabilityDtos.UnavailabilityRequest` qui remplace `null` par `DayPart.ALL` pour
+  `firstDay` et `lastDay` (payload incomplet → journées entières).
+- Aucun changement de schéma supplémentaire (V113 couvre déjà les défauts).
+- Aucun changement d'isolation multi-société.
+
+**Vérification**
+- Backend — nouveau test `create_withoutDayParts_defaultsToAll` : requête avec `firstDay` /
+  `lastDay` nuls → DTO en `ALL`, durée de 3 jours pour un intervalle de 3 jours.
+  `mvn -q test -Dtest=UnavailabilityServiceTest` : **51/51 OK** ;
+  suite complète `mvn test` : **526 tests, 0 échec, 0 erreur**.
+- Frontend — le test de création sans commentaire vérifie aussi `firstDay === 'ALL'` et
+  `lastDay === 'ALL'` dans la requête.
+  `npm test -- --run src/pages/Unavailability.test.tsx` : **28/28 OK** ;
+  suite complète `npm test` : 27 fichiers / **275 tests OK** ; `npm run lint` 0 erreur ;
+  `npm run build` (tsc -b + vite) OK.
