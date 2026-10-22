@@ -2173,3 +2173,69 @@ les valeurs par defaut de : first_day et last_day est : ALL
   `npm test -- --run src/pages/Unavailability.test.tsx` : **28/28 OK** ;
   suite complète `npm test` : 27 fichiers / **275 tests OK** ; `npm run lint` 0 erreur ;
   `npm run build` (tsc -b + vite) OK.
+
+======================================================================
+### 2026-10-22 12:36:45 — soc-52 gestion complète des types d'indisponibilité
+
+**Tâche**
+```
+Soc-52 Gestion des types d'indisponibilité
+Acteur principal : Responsable Société
+[rubrique Types d'indisponibilités réservée au responsable_soc ; CRUD + désactivation ;
+nouveaux champs duration_value DECIMAL, duration_unit, count_type,
+remuneration BOOLEAN NULL, paid_leave_accrual, provided_by_law,
+provided_by_collective_agreement, document_required, main_condition TEXT, status
+ACTIVE/DISABLED ; catalogue initial RF21 ; validation RF22 ; isolation par société]
+```
+
+**Schéma / modèle**
+- Migration Flyway `V114__unavailability_type_settings.sql` :
+  - `duration` → `duration_value DECIMAL(10,2)` (reprise des valeurs) ;
+  - ajout `duration_unit` (`DAYS`, `MONTHS`, `YEARS`, défaut `DAYS`) ;
+  - normalisation de `count_type` vers `OUVRE`, `OUVRABLE`, `CALENDAIRE`, `MOIS`, `ANNEE` ;
+  - `cp_acquisition` → `paid_leave_accrual` (NOT NULL), `legal_provision` → `provided_by_law`
+    (NOT NULL), `collective_agreement_provision` → `provided_by_collective_agreement`
+    (BOOLEAN NOT NULL), `document_required` NOT NULL ;
+  - `main_conditions` → `main_condition TEXT` ;
+  - ajout `status` (`ACTIVE` par défaut) ; `type_label` → `name` ;
+  - contrainte d'unicité `(company_id, name)`.
+- Nouveaux enums : `DurationUnit`, `CountType`, `UnavailabilityTypeStatus`.
+- Entité `UnavailabilityTypeConfig` et DTO réécrits avec les nouveaux champs.
+
+**Backend**
+- `UnavailabilityTypeConfigService` :
+  - catalogue initial de 26 types (RF21) créé à la première consultation ;
+  - `list(socId, activeOnly)` : tous les types pour le responsable, actifs seulement pour les
+    consultants ;
+  - `create` : statut `ACTIVE`, nom obligatoire/unique par société, durée > 0, unité et type de
+    décompte obligatoires, booléens obligatoires non nuls, rémunération `TRUE/FALSE/NULL` ;
+  - `update` : mêmes validations, sans changement de société ;
+  - `disable` : passage `ACTIVE` → `DISABLED` ;
+  - `delete` : suppression physique seulement si le type n'a jamais servi, sinon désactivation
+    (les indisponibilités existantes gardent leur libellé).
+- `UnavailabilityTypeConfigController` :
+  - `GET /api/unavailability-types` (responsable/admin, tous statuts) ;
+  - `GET /api/unavailability-types/active` (types actifs pour la saisie d'indispo) ;
+  - `POST`, `PUT /{id}`, `POST /{id}/disable`, `DELETE /{id}` ;
+  - isolation via `effectiveSocId`, `requireSocAccess` et rôle
+    `ADMIN`/`RESPONSIBLE_SOC`.
+- `UnavailabilityRepository.existsByTypeAndConsultantSocId` pour la suppression logique.
+
+**Frontend**
+- `api/unavailabilityTypes.ts` : `list`, `active`, `create`, `update`, `disable`, `remove`.
+- `pages/UnavailabilityTypes.tsx` réécrit : liste avec statut et toutes les colonnes, création /
+  modification dans une popup (`Modal`), validation durée strictement positive, désactivation
+  avec confirmation, suppression logique, champs Oui/Non/NULL pour la rémunération.
+- `pages/Unavailability.tsx` utilise désormais `/active` pour ne proposer que les types actifs.
+- i18n FR/EN/AR : unités, types de décompte, statuts, libellés et message de confirmation de
+  désactivation.
+
+**Vérification**
+- Backend — `UnavailabilityTypeConfigServiceTest` réécrit (10 tests : seed, filtre actifs,
+  création/unicité/validation, update, disable, suppression logique/physique, société absente).
+  `mvn test` : **530 tests, 0 échec, 0 erreur**.
+- Frontend — `UnavailabilityTypes.test.tsx` réécrit (8 tests : liste/statuts, création popup,
+  modification, désactivation, suppression, durée invalide, rôle interdit, colonnes) ;
+  `Unavailability.test.tsx` adapté à l'API `/active`.
+  `npm test` : 27 fichiers / **274 tests OK** ; `npm run lint` 0 erreur ;
+  `npm run build` (tsc -b + vite) OK.
