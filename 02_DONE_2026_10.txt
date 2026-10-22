@@ -2239,3 +2239,28 @@ ACTIVE/DISABLED ; catalogue initial RF21 ; validation RF22 ; isolation par soci�
   `Unavailability.test.tsx` adapté à l'API `/active`.
   `npm test` : 27 fichiers / **274 tests OK** ; `npm run lint` 0 erreur ;
   `npm run build` (tsc -b + vite) OK.
+
+======================================================================
+### 2026-10-22 12:57:06 — types d'indisponibilité : valeurs nulles en cellule vide
+
+**Tâche**
+```
+Types d'indisponibilités
+
+les valeurs null doivent s'afficher en cellule vide dans l'ihm
+```
+
+**Implémentation**
+- Frontend — `pages/UnavailabilityTypes.tsx` :
+  - `yesNo(null)` renvoie désormais une chaîne vide (plus de « — »), donc les colonnes
+    Rémunération / Acquisition CP / Prévu par la loi / Convention / Document affichent une
+    cellule vide quand la valeur est nulle ;
+  - `mainCondition` nulle (ou vide) affichée en cellule vide.
+- Aucun changement backend ni de schéma : les valeurs `NULL` sont déjà conservées côté API.
+
+**Vérification**
+- Frontend — nouveau test « affiche une cellule vide pour les valeurs nulles » (rémunération
+  et condition principale nulles → aucun « — » dans la ligne).
+  `npm test -- --run src/pages/UnavailabilityTypes.test.tsx` : **9/9 OK** ;
+  suite complète `npm test` : 27 fichiers / **275 tests OK** ; `npm run lint` 0 erreur ;
+  `npm run build` (tsc -b + vite) OK.
