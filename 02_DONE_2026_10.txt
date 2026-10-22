@@ -2068,3 +2068,78 @@ commentaires non obligatoires
   suite complète `npm test` : 27 fichiers / **276 tests OK** (le timeout pré-existant et
   intermittent de `Register.test.tsx` est réapparu une fois, repassé OK au second run) ;
   `npm run lint` 0 erreur ; `npm run build` (tsc -b + vite) OK.
+
+======================================================================
+### 2026-10-22 11:01:03 — soc-81 indispos : gestion des demi-journées début/fin
+
+**Tâche**
+```
+soc-81 indispos gestion demi journees
+
+une indispo est un interval entre date_deb et date_fin
+on a au max 2 demi-journées :
+si date_deb == date_fin : on aura 1 seule demi-journee : qui peut etre AM ou PM.
+sinon :
+	si date_deb est une demi-journee : alors elle sera PM
+	si date_fin est une demi-journee : alors elle sera AM
+
+-----
+
+table unavailibility : ajouter deux champs : first_day , last_day
+leur valeur : ALL, AM, PM
+supprimer la table unavailibility_half_day
+
+--------
+
+calculer la duree de l'indispo en tenant compte des demi-journees :
+on peut avoir 2j, 2.5j , 0.5j, ....
+```
+
+**Modèle / schéma**
+- Nouvel enum `common.enums.DayPart` : `ALL`, `AM`, `PM`.
+- Migration Flyway `V113__unavailability_day_parts.sql` :
+  - ajout de `unavailability.first_day` et `unavailability.last_day` (`VARCHAR(3)`, défaut `ALL`) ;
+  - reprise des données existantes : premier jour `PM` s'il avait une demi-journée d'après-midi,
+    dernier jour `AM` s'il avait une demi-journée du matin, jour unique conservé (AM/AM ou PM/PM) ;
+  - suppression de la table `unavailability_half_day`.
+- `Unavailability` : suppression de la collection `halfDays`, ajout de `firstDay`/`lastDay`,
+  méthodes `halfDayAt(date)` et `durationDays()` (BigDecimal : 0.5, 1, 2.5, …).
+- `UnavailabilityHalfDay` supprimé.
+
+**Backend**
+- `UnavailabilityDtos` : `UnavailabilityRequest` porte `firstDay`/`lastDay` ;
+  `UnavailabilityDto` expose `firstDay`, `lastDay`, `durationDays` (BigDecimal) et conserve
+  `halfDays` **calculé** pour l'affichage calendrier.
+- `UnavailabilityService` :
+  - validation : jour unique → même partie (ALL/ALL, AM/AM ou PM/PM) ; plusieurs jours →
+    début ∈ {ALL, PM} et fin ∈ {ALL, AM} ;
+  - fusion des brouillons contigus : les bornes conservent la partie du brouillon le plus
+    ancien / le plus récent ;
+  - durée calculée avec les demi-journées (jour unique AM/PM = 0,5 j ;
+    début PM et/ou fin AM retranchés de 0,5 j) ;
+  - historique : compteurs entiers arrondis au plus proche (schéma historique inchangé).
+- `CraService.applyAbsence` utilise `unavailability.halfDayAt(date)` (plus de table de
+  demi-journées).
+- Isolation multi-société inchangée (mêmes helpers).
+
+**Frontend**
+- `api/types.ts` : `DayPart`, `UnavailabilityDto.firstDay/lastDay`, requête avec
+  `firstDay/lastDay` (plus de `halfDays` en entrée).
+- `pages/Unavailability.tsx` :
+  - suppression du bouton « Ajouter une demi-journée » et de la liste de demi-journées ;
+  - jour unique : sélecteur « Demi-journée » (Journée entière / Matin / Après-midi) ;
+  - plusieurs jours : sélecteur « Début » (Journée entière / Après-midi) et
+    « Fin » (Journée entière / Matin) ;
+  - durée affichée en temps réel (0,5 j, 2,5 j, …) ;
+  - aperçu calendrier et édition alimentés par `firstDay`/`lastDay`.
+- Calendrier inchangé (utilise toujours `halfDays`, désormais dérivé côté backend).
+
+**Vérification**
+- Backend — tests adaptés/ajoutés : bornes PM/AM sur plusieurs jours, jour unique à 0,5 j,
+  rejet d'un début AM et d'une fin PM, intégration CRA d'une demi-journée.
+  `mvn -q test -Dtest='UnavailabilityServiceTest,CraServiceTest'` : **161/161 OK** ;
+  suite complète `mvn test` : **525 tests, 0 échec, 0 erreur**.
+- Frontend — tests réécrits pour les sélecteurs début/fin et jour unique, édition et aperçu.
+  `npm test -- --run src/pages/Unavailability.test.tsx` : **28/28 OK** ;
+  suite complète `npm test` : 27 fichiers / **275 tests OK** ; `npm run lint` 0 erreur ;
+  `npm run build` (tsc -b + vite) OK.
