@@ -2441,3 +2441,37 @@ et lorsque j'edite une abscence dans le cra , en clickant sur l'event, je dois p
 - Frontend : `DocumentAttachment` **5/5** (dont visualisation), suite complète **285 tests OK**
   (timeout pré-existant de `Register.test.tsx` réapparu une fois, repassé OK au second run) ;
   `npm run lint` 0 erreur ; `npm run build` (tsc -b + vite) OK.
+
+======================================================================
+### 2026-10-23 18:03:36 — aperçu des documents lors de l'ajout / édition
+
+**Tâche**
+```
+tous les endroits où on ajoute un document <input type="file">
+
+ajouter une div où on peut visualiser le document, lors de l'edit.
+comme les images par exemple.
+```
+
+**Implémentation**
+- Nouveau composant `DocumentPreview` : affiche une image (`<img>`) pour les formats image et
+  un aperçu PDF (`<iframe>`) ; rien pour les autres formats.
+- `DocumentAttachment` (justificatifs absences/indispos) :
+  - aperçu du fichier sélectionné dans la popup avant validation ;
+  - aperçu du document déjà associé lors de l'édition (chargé via l'API documents).
+- `pages/Documents.tsx` : aperçu du fichier choisi dans la popup d'ajout.
+- `api/client.ts` : nouvelle méthode `blobUrl(path)` ; `documentsApi.previewUrl(id)` pour
+  obtenir une URL blob du document avec les en-têtes d'authentification.
+- `pages/NoteFraisList.tsx` : possédait déjà l'aperçu image/PDF, inchangé.
+- Les imports CSV (consultants, langues) ne sont pas des documents et restent inchangés.
+- i18n FR/EN/AR pour les libellés d'aperçu.
+- Aucun changement backend ni de schéma.
+
+**Correctif annexe (log GitHub Pages)**
+- Ajout de `.nojekyll` (`public/` et `docs/`) et génération automatique dans
+  `deploy_front_to_gh_pages.sh` : GitHub Pages ne lance plus Jekyll sur le site Vite.
+
+**Vérification**
+- Frontend : `DocumentAttachment` **5/5**, suite complète **285 tests OK** ;
+  `npm run lint` 0 erreur ; `npm run build` (tsc -b + vite) OK.
+- Backend inchangé (dernière suite : **536 tests OK**).
