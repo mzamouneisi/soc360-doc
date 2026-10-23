@@ -2310,3 +2310,44 @@ on va donc se baser sur le type de décompte afin de calculer la durée de l’i
 - Frontend — nouveau test « calcule la durée selon le type de décompte (ouvré = hors week-end) ».
   `npm test` : 27 fichiers / **276 tests OK** ; `npm run lint` 0 erreur ;
   `npm run build` (tsc -b + vite) OK.
+
+======================================================================
+### 2026-10-23 10:56:33 — email collaborateur obligatoire et valide à la modification
+
+**Tâche**
+```
+En tant que responsable soc ou Manager je modifie l’email d’un collaborateur
+
+Cas 1 : je vide le champ email et j’enregistre
+Comportement actuel: le pop up est fermé et le champ n’est pas réellement vidé
+Comportement attendu : le pop up n’est pas fermé et un message d’erreur est affiché pour signaler que le champ email est obligatoire
+
+Cas 2: je modifie l’email par un email qui n’est pas valide ne contenant pas “@” et j’enregistre
+Comportement actuel : le pop up est fermé et le nouveau email erronée  est enregistré
+Comportement attendu : le pop up n’est pas fermé et un message d’erreur est affiché pour signaler qu’il faut saisir un email valide
+```
+
+**Implémentation**
+- Frontend — `pages/Consultants.tsx`, `handleSubmit` en modification :
+  - email vide → message `Consultants.email.obligatoire` et la popup reste ouverte, aucun
+    appel API ;
+  - email sans `@` (regex `^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$`) → message
+    `Consultants.email.invalide`, popup ouverte, aucun appel API ;
+  - correction au passage d’un doublon d’affichage de `formError`.
+  - i18n FR/EN/AR pour les deux nouveaux messages.
+- Backend — `ConsultantService.update` :
+  - validation systématique de `request.email()` via `requireValidEmail` :
+    vide/null → `400 « L'email est obligatoire »`, format invalide → `400 « Saisissez un
+    email valide »` ;
+  - l’unicité de l’email est vérifiée sur la valeur normalisée (`trim`) avant enregistrement.
+- Aucun changement de schéma / migration, isolation société inchangée.
+
+**Vérification**
+- Backend — 2 tests ajoutés (`update_blankEmail_isRejected`, `update_invalidEmail_isRejected`).
+  `mvn -q test -Dtest=ConsultantServiceTest` : **35/35 OK** ;
+  suite complète `mvn test` : **534 tests, 0 échec, 0 erreur**.
+- Frontend — nouveau `Consultants.test.tsx` (4 tests : RESPONSIBLE_SOC et MANAGER, email vide
+  et email sans `@`, popup toujours ouverte et aucun `update` appelé).
+  `npm test` : 28 fichiers / **280 tests OK** (timeout pré-existant de `Register.test.tsx`
+  réapparu une fois, repassé OK au second run) ; `npm run lint` 0 erreur ;
+  `npm run build` (tsc -b + vite) OK.
