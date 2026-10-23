@@ -1,0 +1,9 @@
+Annotations
+1 error and 2 notices
+build
+ Logging at level: debug GitHub Pages: github-pages v232 GitHub Pages: jekyll v3.10.0 Theme: jekyll-theme-primer Theme source: /usr/local/bundle/gems/jekyll-theme-primer-0.6.0 Requiring: jekyll-github-metadata Requiring: jekyll-seo-tag Requiring: jekyll-coffeescript Requiring: jekyll-commonmark-ghpages Requiring: jekyll-gist Requiring: jekyll-github-metadata Requiring: jekyll-paginate Requiring: jekyll-relative-links Requiring: jekyll-optional-front-matter Requiring: jekyll-readme-index Requiring: jekyll-default-layout Requiring: jekyll-titles-from-headings GitHub Metadata: Initializing... Source: /github/workspace/./docs Destination: /github/workspace/./docs/_site Incremental build: disabled. Enable with --incremental Generating... Generating: JekyllOptionalFrontMatter::Generator finished in 2.0189e-05 seconds. Generating: JekyllReadmeIndex::Generator finished in 9.244e-06 seconds. Generating: Jekyll::Paginate::Pagination finished in 6.379e-06 seconds. Generating: JekyllRelativeLinks::Generator finished in 3.3758e-05 seconds. Generating: JekyllDefaultLayout::Generator finished in 1.4642e-05 seconds. Generating: JekyllTitlesFromHeadings::Generator finished in 1.0706e-05 seconds. Rendering: assets/css/style.scss Pre-Render Hooks: assets/css/style.scss Rendering Markup: assets/css/style.scss github-pages 232 | Error: No such file or directory @ dir_chdir0 - /github/workspace/docs 
+build
+"The ubuntu-latest label will migrate to Ubuntu 26 beginning October 19, 2026. For more information, see https://github.com/actions/runner-images/issues/14748"
+report-build-status
+"The ubuntu-latest label will migrate to Ubuntu 26 beginning October 19, 2026. For more information, see https://github.com/actions/runner-images/issues/14748"
+
