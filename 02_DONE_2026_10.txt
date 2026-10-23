@@ -2406,3 +2406,38 @@ soc-76 Ajouter un document lors de la création d une absence ou indisponibilit�
   `npm test` : 29 fichiers / **284 tests OK** (timeout pré-existant de `Register.test.tsx`
   réapparu une fois, repassé OK au second run) ; `npm run lint` 0 erreur ;
   `npm run build` (tsc -b + vite) OK.
+
+======================================================================
+### 2026-10-23 15:02:56 — CRA : document visible en éditant une absence
+
+**Tâche**
+```
+page CRA
+
+lorsque je declare une abscence, je peux ajouter un document.
+
+et lorsque j'edite une abscence dans le cra , en clickant sur l'event, je dois pouvoir voir le document.
+```
+
+**Implémentation**
+- Déclaration d'absence dans le CRA : la popup « Déclarer une absence » contient déjà le
+  composant `DocumentAttachment` (fichier + commentaire facultatif, association à la demande).
+- Backend — `CraDtos.LinkedUnavailabilityDto` expose désormais `documentId`, `documentName`,
+  `documentComment` (mappés depuis l'indisponibilité liée dans `CraService.toDto`), pour que le
+  CRA restitue le justificatif des absences déclarées.
+- Frontend :
+  - nouveau composant `DocumentView` (nom du document + commentaire + bouton
+    « Voir le document » qui télécharge via l'API documents) ;
+  - `EventModal` du CRA (ouvert en cliquant sur un événement/jour d'absence) reçoit le document
+    de l'absence liée couvrant la date et l'affiche en haut de la popup ;
+  - `DocumentAttachment` (formulaire d'édition d'indispo) propose aussi le bouton
+    « Voir le document » pour le document déjà associé.
+- i18n FR/EN/AR pour « Document justificatif », « Voir le document » et l'erreur de
+  téléchargement.
+- Aucun changement de schéma ni de migration.
+
+**Vérification**
+- Backend : `mvn test` → **536 tests, 0 échec, 0 erreur**.
+- Frontend : `DocumentAttachment` **5/5** (dont visualisation), suite complète **285 tests OK**
+  (timeout pré-existant de `Register.test.tsx` réapparu une fois, repassé OK au second run) ;
+  `npm run lint` 0 erreur ; `npm run build` (tsc -b + vite) OK.
