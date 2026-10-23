@@ -2351,3 +2351,58 @@ Comportement attendu : le pop up n’est pas fermé et un message d’erreur est
   `npm test` : 28 fichiers / **280 tests OK** (timeout pré-existant de `Register.test.tsx`
   réapparu une fois, repassé OK au second run) ; `npm run lint` 0 erreur ;
   `npm run build` (tsc -b + vite) OK.
+
+======================================================================
+### 2026-10-23 12:43:30 — soc-76 document justificatif des absences/indisponibilités
+
+**Tâche**
+```
+soc-76 Ajouter un document lors de la création d une absence ou indisponibilité
+- document obligatoire ou facultatif selon le type
+- popup fichier + commentaire facultatif + Annuler/Valider
+- fichier associé à la demande, nom affiché dans le formulaire
+- fichier manquant dans la popup → erreur ; document obligatoire absent → création bloquée ;
+  document facultatif absent → création autorisée ; annulation sans enregistrement
+- profils consultant et manager, absences CRA et indisponibilités
+```
+
+**Schéma**
+- Migration Flyway `V116__unavailability_document.sql` : colonnes `document_id`,
+  `document_name`, `document_comment` sur `unavailability`, avec FK vers `hr_document`
+  (`ON DELETE SET NULL`).
+
+**Backend**
+- `Unavailability` / `UnavailabilityDto` : champs `documentId`, `documentName`,
+  `documentComment` ; `UnavailabilityRequest` accepte `documentId` + `documentComment`
+  (constructeurs de compatibilité conservés).
+- `CraDtos.DeclareAbsenceRequest` : champs document avec constructeur historique conservé.
+- `UnavailabilityService` :
+  - `requireDocumentForType(...)` : si le type configuré de la société a
+    `document_required = TRUE` et qu'aucun document n'est fourni → `400` ;
+  - `applyDocument(...)` : vérifie l'existence du document, l'accès société et associe
+    l'identifiant, le nom et le commentaire ;
+  - les codes historiques du CRA (`CONGE_PAYE`, `CONGE_RTT`, `CONGE_MALADIE`, …) sont mis en
+    correspondance avec les libellés du catalogue société pour retrouver la configuration.
+- `CraService.declareLinkedAbsence` / `declareAbsence` transmettent le document.
+
+**Frontend**
+- Nouveau composant réutilisable `DocumentAttachment` : bouton « Ajouter un document »,
+  popup avec champ fichier + commentaire facultatif + Annuler/Valider, contrôle « fichier
+  obligatoire dans la popup », affichage du nom du document associé, retrait possible.
+- Upload via l'API documents existante (`documentsApi.upload`, catégorie `JUSTIFICATIF`).
+- `pages/Unavailability.tsx` : document dans le formulaire de création/modification ;
+  blocage avant envoi si le type sélectionné exige un document ; édition recharge le document
+  existant.
+- `pages/CraDetail.tsx` (popup « Déclarer une absence ») : ajout du document, transmis à
+  `crasApi.declareAbsence` ; le backend applique l'obligation selon le type.
+- i18n FR/EN/AR pour la popup document et le message d’obligation.
+
+**Vérification**
+- Backend — 2 tests ajoutés dans `UnavailabilityServiceTest` (document obligatoire absent →
+  rejet ; document fourni → associé avec nom/commentaire).
+  `mvn test` : **536 tests, 0 échec, 0 erreur**.
+- Frontend — nouveau `DocumentAttachment.test.tsx` (4 tests : validation sans fichier,
+  annulation, upload + association + commentaire, retrait).
+  `npm test` : 29 fichiers / **284 tests OK** (timeout pré-existant de `Register.test.tsx`
+  réapparu une fois, repassé OK au second run) ; `npm run lint` 0 erreur ;
+  `npm run build` (tsc -b + vite) OK.
