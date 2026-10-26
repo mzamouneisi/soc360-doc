@@ -2550,3 +2550,47 @@ d’indisponibilité
   suite complète `npm test` : 29 fichiers / **287 tests OK** ; `npm run lint` 0 erreur ;
   `npm run build` (tsc -b + vite) OK.
 - Backend inchangé (dernière suite : **538 tests OK**).
+
+======================================================================
+### 2026-10-26 10:56:20 — suppression du document retiré d'une indispo (hr_document)
+
+**Tâche**
+```
+lorsque j'ajoute un document à une indispo, je constate une nouvelle ligne dans hr_document
+
+c bon
+
+mais si je supprime ce document, cette ligne n'est pas supprimée !!
+
+pourquoi ?
+```
+
+**Cause**
+- Le retrait d'un document déjà enregistré ne faisait que détacher le document du formulaire
+  (`onChange(null)` / `documentId = null` à l'enregistrement) : aucune requête `DELETE`
+  n'était envoyée pour la ligne `hr_document`.
+- Seuls les documents encore « temporaires » (téléversés pas encore enregistrés) étaient
+  supprimés immédiatement.
+
+**Correctifs**
+- Frontend `Unavailability.tsx` : quand on retire le document d'une indispo existante puis
+  qu'on enregistre, son identifiant est mémorisé puis `documentsApi.delete(id)` est appelé
+  après l'enregistrement (fichier + ligne `hr_document`). Un retrait suivi d'une annulation
+  ne supprime pas le document.
+- Un document temporaire retiré reste supprimé immédiatement ; l'annulation du formulaire
+  nettoie aussi le temporaire.
+- Backend `DocumentController.delete` : l'utilisateur qui a téléversé le document peut le
+  supprimer (ADMIN / RESPONSIBLE_SOC conservent le droit), au lieu de la seule permission
+  `DOCUMENT_DELETE`.
+- Migration `V117__cleanup_orphan_justificatifs.sql` : purge des anciens justificatifs
+  (`JUSTIFICATIF`) qui ne sont plus référencés par aucune indisponibilité.
+- Le document retiré reste supprimé côté serveur : `DELETE /api/documents/{id}` efface le
+  fichier physique et la ligne `hr_document` (les partages sont supprimés en cascade).
+
+**Vérification**
+- Backend — nouveau test `uploaderCanDeleteOwnJustificatif` (upload puis suppression par le
+  téléverseur, ligne absente). `mvn test` : **539 tests, 0 échec, 0 erreur**.
+- Frontend — nouveau test « supprime de la base le document retiré d'une indispo existante »,
+  tests `DocumentAttachment` (temporaire supprimé, non-temporaire non supprimé).
+  `npm test` : 29 fichiers / **289 tests OK** ; `npm run lint` 0 erreur ;
+  `npm run build` (tsc -b + vite) OK.
