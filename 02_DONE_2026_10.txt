@@ -2771,3 +2771,40 @@ or on peut donner une mission de commercial à un manager etc…
 - Frontend — test manager adapté : options CONSULTANT et MANAGER affichées.
   `npm test` : 30 fichiers / **295 tests OK** ; `npm run lint` 0 erreur ;
   `npm run build` (tsc -b + vite) OK.
+
+======================================================================
+### 2026-10-26 17:39:41 — soc-84 bornes d'indispo selon le type de décompte
+
+**Tâche**
+```
+soc-84 : Gérer l ajout d indisponibilité selon le type d indisponibilité
+
+Interdire l’ajout de conges weekend ou dimanche selon le type de disponibilité
+Il faut autoriser que l’intervalle contienne le weekend dans la saisie, selon le type de disponibilité
+Il faut Controller les borne de l’intervalle il conges ne peut commencer le dimanche ou bien se terminer un dimanche , selon le type de disponibilité.
+Dans la calendrier de sélection des jours de l’indisponibilité permettre la selection des jour possible selon le type d’indisponibilité
+```
+
+**Règles appliquées**
+- `CALENDAIRE` : toutes les dates restent autorisées.
+- `OUVRABLE` : le début et la fin doivent être du lundi au samedi ; un dimanche en borne est refusé.
+- `OUVRE` : le début et la fin doivent être du lundi au vendredi ; samedi/dimanche en borne refusés.
+- Un week-end **à l’intérieur** de l’intervalle reste autorisé (il n’est simplement pas compté).
+
+**Implémentation**
+- Backend — `UnavailabilityService.validateCountedBounds` appliqué à la création, la modification
+  et la déclaration d’absence depuis le CRA, sur l’intervalle demandé **et** après fusion des
+  brouillons contigus. Messages explicites pour la date de début/fin non comptée.
+- Frontend — `pages/Unavailability.tsx` : validation des bornes avant enregistrement selon le
+  `countType` du type sélectionné, avec messages i18n FR/EN/AR.
+- Le calendrier continue d’afficher/comptabiliser uniquement les jours comptés du type.
+- Aucun changement de schéma / migration.
+
+**Vérification**
+- Backend — 2 tests ajoutés : début un samedi refusé pour `OUVRE`, fin un dimanche refusée ;
+  test de durée ajusté pour rester sur des bornes valides.
+  `mvn test` : **545 tests, 0 échec, 0 erreur**.
+- Frontend — 2 tests ajoutés : borne week-end refusée (`OUVRE`), intervalle vendredi→lundi
+  autorisé malgré le week-end interne.
+  `npm test` : 30 fichiers / **297 tests OK** ; `npm run lint` 0 erreur ;
+  `npm run build` (tsc -b + vite) OK.
