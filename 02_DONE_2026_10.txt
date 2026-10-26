@@ -2742,3 +2742,32 @@ l'image du doc à droite
 - Frontend : `npm test -- --run src/pages/Unavailability.test.tsx` : **33/33 OK** ;
   suite complète `npm test` : 29 fichiers / **291 tests OK** ; `npm run lint` 0 erreur ;
   `npm run build` (tsc -b + vite) OK.
+
+======================================================================
+### 2026-10-26 14:47:53 — soc-67 activité : liste de collaborateurs tous rôles
+
+**Tâche**
+```
+soc-67 : form nouvelle activité : liste de consultants devient liste de collaborateurs
+
+actuellement elle ne contient que les roles consultant.
+
+or on peut donner une mission de commercial à un manager etc…
+```
+
+**Implémentation**
+- Frontend (déjà en place depuis le commit `b69f9b7`) : le formulaire « Nouvelle activité »
+  utilise `consultantsApi.collaborators` et le libellé « Collaborateur ».
+- Backend — `ConsultantService.collaborators` :
+  - le rôle **MANAGER** ne se limite plus à `findByManagerIdAndRole(CONSULTANT)` : il reçoit
+    désormais tous les utilisateurs actifs de la société sélectionnée, **tous rôles hors ADMIN**
+    (consultants, managers, responsable), comme le RESPONSIBLE_SOC ;
+  - les comptes ADMIN restent exclus ; CONSULTANT renvoie toujours une liste vide.
+- Aucun changement de schéma.
+
+**Vérification**
+- Backend — test `collaborators_managerReturnsAllCompanyRolesExceptAdmin` (consultant +
+  manager + responsable présents, ADMIN exclu). `mvn test` : **543 tests, 0 échec, 0 erreur**.
+- Frontend — test manager adapté : options CONSULTANT et MANAGER affichées.
+  `npm test` : 30 fichiers / **295 tests OK** ; `npm run lint` 0 erreur ;
+  `npm run build` (tsc -b + vite) OK.
