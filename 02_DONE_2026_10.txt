@@ -2622,3 +2622,43 @@ joint s'il y en a
 - Mise en place du nettoyage des orphelins : `OrphanDocumentCleanupService`, endpoint admin
   `POST /api/documents/cleanup-orphans`, planification quotidienne, tests unitaires.
   Exécution locale : **4 justificatifs** et **6 fichiers** orphelins supprimés.
+
+======================================================================
+### 2026-10-26 11:20:53 — document d'une indispo ajouté par un autre utilisateur
+
+**Tâche**
+```
+actuellement, si un document a été ajouté par un autre user dans mon indispo, alors je ne
+peut pas visualiser le document ni le telecharger !
+
+ce n'est pas normal !
+
+a corriger
+```
+
+**Cause**
+- `DocumentController.requireDocumentAccess` n'autorisait un consultant que si
+  `hr_document.consultant_id` correspondait à son identifiant, s'il était l'uploadeur ou si le
+  document était partagé.
+- Un justificatif téléversé depuis la popup « Déclarer une absence » du CRA n'était pas lié au
+  consultant (`consultantId` non transmis), donc le consultant ne pouvait ni l'afficher ni le
+  télécharger.
+- Au passage, l'accès `RESPONSIBLE_SOC` ne vérifiait pas la société du document (isolation).
+
+**Correctifs**
+- Backend :
+  - accès autorisé au consultant propriétaire de l'indisponibilité référençant le document
+    (`UnavailabilityRepository.existsByDocumentIdAndConsultantId`), quel que soit l'uploadeur ;
+  - `RESPONSIBLE_SOC` doit désormais appartenir à la société du document
+    (`SecurityUtils.requireSocAccess`).
+- Frontend : la popup d'absence du CRA transmet `consultantId` au téléversement, pour lier le
+  justificatif au consultant dès l'upload.
+- Aucun changement de schéma / migration.
+
+**Vérification**
+- Backend — nouveau test `consultantCanDownloadJustificatifUploadedByManager` (upload manager
+  pour un consultant, téléchargement par le consultant → 200).
+  `mvn test` : **542 tests, 0 échec, 0 erreur**.
+- Frontend — `npm test` : 29 fichiers / **290 tests OK** (timeout pré-existant de
+  `Register.test.tsx` réapparu une fois, repassé OK au second run) ;
+  `npm run lint` 0 erreur ; `npm run build` (tsc -b + vite) OK.
