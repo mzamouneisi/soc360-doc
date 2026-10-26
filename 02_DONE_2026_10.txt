@@ -2662,3 +2662,49 @@ a corriger
 - Frontend — `npm test` : 29 fichiers / **290 tests OK** (timeout pré-existant de
   `Register.test.tsx` réapparu une fois, repassé OK au second run) ;
   `npm run lint` 0 erreur ; `npm run build` (tsc -b + vite) OK.
+
+======================================================================
+### 2026-10-26 11:41:03 — réorganisation IHM indisponibilités
+
+**Tâche**
+```
+refaire l'ihm indisponibilites :
+
+/indisponibilites
+
+on a le titre avec le nb elements
+on a un commentaire sur les infos de cette page
+on a un filtre par user, mois, autres
+table des indispos avec pagination.
+
+tout ça c'est ok.
+
+je veux que ce bloc soit toujours en haut.
+
+si je click sur une ligne ou click sur Edit, je dois editer cette indispo en bas :
+form de cette indispo
+si elle a un document, on doit le voir sur une div
+en plus, on voit cette indispo en gras, dans un calendar, comme c'est le cas actuellement.
+```
+
+**Implémentation**
+- `pages/Unavailability.tsx` réorganisé :
+  - le bloc haut (titre + compteur, sous-titre, filtres, table paginée) reste toujours en
+    premier et ne bouge plus ;
+  - le formulaire d'indisponibilité est déplacé **sous la liste** (et non plus au-dessus) ;
+  - clic sur une ligne éditable → ouvre ce formulaire en bas + sélectionne la ligne ;
+  - clic sur « Éditer » → même comportement ; pour une ligne non éditable, seul le calendrier
+    est affiché ;
+  - le document existant reste visualisable dans le formulaire (`DocumentAttachment`) et la
+    ligne sélectionnée affiche aussi un aperçu (`DocumentView`) ;
+  - le calendrier de l'indisponibilité sélectionnée (mise en gras via le composant existant)
+    reste affiché après le formulaire ;
+  - la prévisualisation calendrier du formulaire n'est conservée que pour la création.
+- Aucun changement backend ni de schéma.
+
+**Vérification**
+- Frontend — nouveau test « ouvre le formulaire d'édition en cliquant sur une ligne » ;
+  tests document/clic adaptés.
+  `npm test -- --run src/pages/Unavailability.test.tsx` : **33/33 OK** ;
+  suite complète `npm test` : 29 fichiers / **291 tests OK** ; `npm run lint` 0 erreur ;
+  `npm run build` (tsc -b + vite) OK.
