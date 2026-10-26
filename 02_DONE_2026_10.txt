@@ -2475,3 +2475,44 @@ comme les images par exemple.
 - Frontend : `DocumentAttachment` **5/5**, suite complète **285 tests OK** ;
   `npm run lint` 0 erreur ; `npm run build` (tsc -b + vite) OK.
 - Backend inchangé (dernière suite : **536 tests OK**).
+
+======================================================================
+### 2026-10-26 09:59:19 — soc-76 débogage document absence/indispo
+
+**Tâche**
+```
+soc-76 Ajouter un document lors de la création d une absence ou indisponibilité : debogage
+
+En tant que consultant je clique sur ajouter une absence
+Je sélectionne un type d’indisponibilité qui nécessite un document
+Et je clique sur déclarer une absence
+Le message d’erreur est affiché sur la page principale pas sur le pop up
+Le comportement attendu : le message d’erreur est affiché sur la pop up
+
+Besoin non fonctionnel: Limiter les extensions des fichier accepté dans l’upload à jpg, jpeg, png, pdf
+
+Le bouton pour ajouter un document durant la déclaration d’absence dois être désactivé si un document est déjà sélectionné, Le bouton “+”  sera réactivé si on supprime le document sélectionné
+```
+
+**Implémentation**
+- Popup « Déclarer une absence » (CRA) :
+  - `handleDeclareAbsence` renvoie désormais le message d'erreur au lieu de l'afficher sur
+    la page ;
+  - `AbsenceModal` affiche ce message dans la popup et reste ouverte ; elle ne se ferme
+    qu'en cas de succès.
+- Extensions des justificatifs limitées à **jpg, jpeg, png, pdf** :
+  - frontend : attribut `accept` sur le champ fichier de `DocumentAttachment` ;
+  - backend : nouvelle règle `DocumentUploadRules` + contrôle dans `DocumentController.upload`
+    pour la catégorie `JUSTIFICATIF` (400 sinon).
+- Bouton « + » d'ajout de document désactivé dès qu'un document est associé
+  (`disabled={disabled || value != null}`), réactivé après suppression.
+- Aucun changement de schéma / migration.
+
+**Vérification**
+- Backend — nouveau `DocumentUploadRulesTest` (extensions autorisées/refusées).
+  `mvn test` : **538 tests, 0 échec, 0 erreur**.
+- Frontend — test CRA « l'erreur de document obligatoire reste dans la popup » ; tests
+  `DocumentAttachment` (bouton désactivé avec document, réactivé après retrait, `accept`).
+  `npm test` : 29 fichiers / **286 tests OK** (timeout pré-existant de `Register.test.tsx`
+  réapparu une fois, repassé OK au second run) ; `npm run lint` 0 erreur ;
+  `npm run build` (tsc -b + vite) OK.
