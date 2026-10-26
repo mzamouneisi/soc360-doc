@@ -2708,3 +2708,37 @@ en plus, on voit cette indispo en gras, dans un calendar, comme c'est le cas act
   `npm test -- --run src/pages/Unavailability.test.tsx` : **33/33 OK** ;
   suite complète `npm test` : 29 fichiers / **291 tests OK** ; `npm run lint` 0 erreur ;
   `npm run build` (tsc -b + vite) OK.
+
+======================================================================
+### 2026-10-26 11:56:45 — liste indispos sans doublon document + form en 2 colonnes
+
+**Tâche**
+```
+liste indispos :
+quand je click sur une ligne ou btn Edit :
+ca ne sert à rien de rajouter une ligne dans la liste contenant le document joint.
+car on l'a dans la form de l'indispo.
+
+reorg form de l'indispo :
+
+partager en deux :
+ts les elements input, select, text ... à gauche
+l'image du doc à droite
+```
+
+**Implémentation**
+- `pages/Unavailability.tsx` :
+  - suppression de la ligne d'expansion « document » ajoutée sous la ligne sélectionnée ;
+    le document reste accessible dans le formulaire ;
+  - formulaire réorganisé en 2 colonnes (`lg:grid-cols-3`) :
+    - colonne gauche (`lg:col-span-2`) : consultant, type, dates, demi-journées, commentaire ;
+    - colonne droite (`lg:col-span-1`) : `DocumentAttachment` avec aperçu image/PDF,
+      ajout/retrait et bouton « Voir le document » ;
+  - la liste reste en haut, le formulaire et le calendrier de la ligne sélectionnée restent en
+    dessous.
+- Aucun changement backend ni de schéma.
+
+**Vérification**
+- Frontend : `npm test -- --run src/pages/Unavailability.test.tsx` : **33/33 OK** ;
+  suite complète `npm test` : 29 fichiers / **291 tests OK** ; `npm run lint` 0 erreur ;
+  `npm run build` (tsc -b + vite) OK.
