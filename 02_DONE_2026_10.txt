@@ -2516,3 +2516,37 @@ Le bouton pour ajouter un document durant la déclaration d’absence dois être
   `npm test` : 29 fichiers / **286 tests OK** (timeout pré-existant de `Register.test.tsx`
   réapparu une fois, repassé OK au second run) ; `npm run lint` 0 erreur ;
   `npm run build` (tsc -b + vite) OK.
+
+======================================================================
+### 2026-10-26 10:19:14 — document dans la saisie d'indispo du manager
+
+**Tâche**
+```
+verifier ca : et corriger eventuellement
+
+Le manager étant lui même un consultant, il dois suivre le meme workflow que le consultant
+durant l’ajout de documents durant la saisie d’absence ou d’indisponibilité
+
+Actuellement il n’y a pas de bouton d’ajout de document dans son interface de saisie
+d’indisponibilité
+```
+
+**Vérification**
+- Le formulaire « Nouvelle indisponibilité » (`pages/Unavailability.tsx`) rend
+  `DocumentAttachment` pour **tous les rôles**, managers compris : le bouton
+  « Ajouter un document » est présent et actif (aucun document sélectionné au départ).
+- La popup « Déclarer une absence » du CRA (`pages/CraDetail.tsx`) contient également
+  `DocumentAttachment` pour le manager sur son propre CRA.
+- Aucun correctif fonctionnel nécessaire dans le code actuel : les deux interfaces suivent
+  déjà le workflow consultant. Si l'interface déployée ne l'affiche pas, c'est un build
+  `docs/` antérieur au commit soc-76.
+- Ajout de tests de non-régression pour verrouiller le comportement :
+  - `Unavailability.test.tsx` : un MANAGER ouvre la saisie et voit le bouton
+    « Ajouter un document » actif ;
+  - `CraDetail.test.tsx` : un MANAGER déclarant une absence voit le bouton dans la popup.
+
+**Vérification**
+- Frontend : `CraDetail.test.tsx` + `Unavailability.test.tsx` → **68/68 OK** ;
+  suite complète `npm test` : 29 fichiers / **287 tests OK** ; `npm run lint` 0 erreur ;
+  `npm run build` (tsc -b + vite) OK.
+- Backend inchangé (dernière suite : **538 tests OK**).
