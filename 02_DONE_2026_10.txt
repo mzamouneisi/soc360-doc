@@ -2594,3 +2594,31 @@ pourquoi ?
   tests `DocumentAttachment` (temporaire supprimé, non-temporaire non supprimé).
   `npm test` : 29 fichiers / **289 tests OK** ; `npm run lint` 0 erreur ;
   `npm run build` (tsc -b + vite) OK.
+
+======================================================================
+### 2026-10-26 11:11:39 — visualiser le document d'une indispo au clic
+
+**Tâche**
+```
+quand je click sur une indispo ou que je l'edite, j'aimerais bien visualiser le document
+joint s'il y en a
+```
+
+**Implémentation**
+- `pages/Unavailability.tsx` : quand une indisponibilité est sélectionnée (clic sur la ligne),
+  le détail affiche désormais le document joint via `DocumentView` au-dessus du calendrier :
+  nom, commentaire, aperçu image/PDF et bouton « Voir le document ».
+- L'édition affichait déjà le document via `DocumentAttachment` (aperçu + visualisation).
+- Aucun changement backend ni de schéma.
+
+**Vérification**
+- Frontend — nouveau test : clic sur une indispo dotée d'un document → nom, commentaire et
+  bouton « Voir le document » affichés.
+  `npm test -- --run src/pages/Unavailability.test.tsx` : **32/32 OK** ;
+  suite complète `npm test` : 29 fichiers / **290 tests OK** ; `npm run lint` 0 erreur ;
+  `npm run build` (tsc -b + vite) OK.
+
+**Annexe (demande précédente)**
+- Mise en place du nettoyage des orphelins : `OrphanDocumentCleanupService`, endpoint admin
+  `POST /api/documents/cleanup-orphans`, planification quotidienne, tests unitaires.
+  Exécution locale : **4 justificatifs** et **6 fichiers** orphelins supprimés.
