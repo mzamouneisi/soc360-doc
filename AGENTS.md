@@ -23,6 +23,11 @@ ou bien
 c:\pgm\nvm\v22.12.0
 -------------------------------------
 
+règle tests sans impact (obligatoire) :
+tester avec un autre serveur (PORT=8081) et une autre base (H2 mémoire ou fichier dédié),
+ainsi que des répertoires storage/export/backup/logs dédiés, afin de ne jamais impacter
+le serveur de travail de l'utilisateur ni verrouiller sa base (./data/soc360).
+
 règle tests (obligatoire) :
 à chaque fois que vous ajoutez un nouveau service ou une règle, ajouter ses tests unitaires
 et les exécuter. à chaque fois que vous modifiez un service ou une règle, mettre à jour ses
