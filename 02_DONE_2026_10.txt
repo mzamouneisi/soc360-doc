@@ -2858,3 +2858,37 @@ consigne dans agents.md : toujours ajouter un id aux elements visible pour les n
 - Comptage : **1 350 attributs `id=` ajoutés** (1 732 dans les `.tsx` hors tests, contre
   382 avant), **3 ids existants mis à jour** (doublons corrigés), 0 doublon restant.
 - Aucun changement backend, aucune migration Flyway.
+
+------------------
+### 2026-10-27 16:25:12 — soc-82 : un manager ne peut pas valider ses propres indisponibilités
+
+**Tâche**
+```
+soc-82 Un Manager ne dois pas pouvoir valider ces propre Indisponibilite
+
+Un manager ne dois pas pouvoir valider ces propre conges
+C est son manager qui devra les valider
+```
+
+**Implémentation**
+- Backend — `UnavailabilityService` : nouvelle garde `requireNotOwnManagerReview` appliquée à
+  `validate` et `reject`. Si le principal est `MANAGER` et que l'indisponibilité lui appartient
+  (`isOwner`), l'appel renvoie **403** avec un message explicite ; la validation/rejet revient
+  à son propre manager (ou à un admin/responsable société). La garde est dans le service, donc
+  elle couvre aussi les appels directs à l'API et pas seulement l'IHM.
+- Frontend — `pages/Unavailability.tsx` : `canReview` exclut désormais le propriétaire
+  (`!isOwner(u)`), donc un manager ne voit plus les boutons « Valider »/« Rejeter » sur ses
+  propres indisponibilités soumises ; il conserve « Annuler ».
+- Frontend — `pages/CraDetail.tsx` : `canValidateLinkedAbsence` exclut aussi le propriétaire,
+  pour ne pas proposer la validation de ses propres absences liées depuis le CRA.
+- L'invalidation de sa propre indisponibilité était déjà refusée (`invalidate`) ; aucun
+  changement de schéma, aucune migration Flyway.
+
+**Tests**
+- Backend — 2 tests ajoutés dans `UnavailabilityServiceTest` :
+  `validate_ownedByOwnerManager_isForbidden`, `reject_ownedByOwnerManager_isForbidden`.
+  `mvn test` : **547 tests, 0 échec, 0 erreur**.
+- Frontend — 1 test ajouté dans `Unavailability.test.tsx` : le manager propriétaire ne voit ni
+  « Valider » ni « Rejeter ».
+  `npm test` : 30 fichiers / **298 tests OK** (2 passes consécutives) ; `npm run lint`
+  0 erreur ; `npm run build` (tsc -b + vite) OK.
