@@ -2808,3 +2808,53 @@ Dans la calendrier de sélection des jours de l’indisponibilité permettre la 
   autorisé malgré le week-end interne.
   `npm test` : 30 fichiers / **297 tests OK** ; `npm run lint` 0 erreur ;
   `npm run build` (tsc -b + vite) OK.
+
+------------------
+### 2026-10-27 15:19:39 — soc-64 : ids HTML sur tous les éléments visibles (vérification globale)
+
+**Tâche**
+```
+soc-64 Ajouter des id dans tous les elements html visibles dans l ihm
+
+pour les labels traduits, id=cle_traduction
+
+verification globale
+
+consigne dans agents.md : toujours ajouter un id aux elements visible pour les nouveaux elements dans l'ihm . si element est un label traduit, alors id=cle_traduction.
+```
+
+**Implémentation** (frontend uniquement)
+- Passe complète sur 46 fichiers `.tsx` : pages, composants partagés, layout, `soc`, i18n
+  et pages d'authentification. Ajout d'un `id` sur tous les éléments visibles (titres,
+  paragraphes, libellés, boutons, liens, champs, `select`/`option`, `textarea`, cases à
+  cocher, badges, messages d'erreur/succès, états vides, en-têtes et cellules de tableaux,
+  entrées de listes, modales).
+- Convention : `id` = **clé de traduction** pour tout libellé issu de `t('clé')`,
+  `tr('clé')` ou `dt('clé')` (ex. `id="Missions.missions"`) ; id descriptif préfixé par la
+  page/composant pour les textes non traduits (ex. `Missions.activeCount`) ; suffixe
+  `.input`/`.select`/`.textarea`/`.checkbox` pour les contrôles associés à un `Field`
+  (l'id de clé restant sur le `<label>`) ; id incluant l'entité pour les listes
+  (ex. `Consultants.row.${id}.name`).
+- Composants partagés complétés : `components/data.tsx` (`PageHeader` compteur,
+  `EmptyState` `titleId`/`descriptionId`, `ErrorBlock` `id`, `Table` lignes/cellules,
+  `Pagination`, `Modal` `titleId`), `components/ui.tsx` (`Alert`, `Card`, `Field` erreur,
+  `RefreshButton`, spinner plein écran), `components/dialog.tsx` (message, saisie,
+  boutons), `layout/MainLayout.tsx` (nav avec `id` = clés `nav.*`, marque, horloge,
+  dernier commit, utilisateur, profil, déconnexion), `LanguageSelector`,
+  `GlobalLoading`, `NotFound`.
+- Correction de 3 ids dupliqués existants (`Profile.annuler`,
+  `CraDetail.date.de.debut`, `CraDetail.date.de.fin`).
+- Aucun doublon littéral d'`id` détecté dans les fichiers `.tsx` hors tests.
+
+**Consigne AGENTS.md**
+- Ajout de la règle « ids HTML obligatoires » (id = clé de traduction pour un libellé
+  traduit, id descriptif sinon, pas de doublon par page) dans `AGENTS.md` racine et
+  `soc360-doc/AGENTS.md`.
+
+**Vérification**
+- Frontend — `npx oxlint src` : 0 erreur (avertissements pré-existants uniquement).
+- Frontend — `npm test` : 30 fichiers / **297 tests OK**.
+- Frontend — `npm run build` (`tsc -b` + `vite build`) : OK.
+- Comptage : **1 350 attributs `id=` ajoutés** (1 732 dans les `.tsx` hors tests, contre
+  382 avant), **3 ids existants mis à jour** (doublons corrigés), 0 doublon restant.
+- Aucun changement backend, aucune migration Flyway.

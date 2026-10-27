@@ -28,6 +28,12 @@ tester avec un autre serveur (PORT=8081) et une autre base (H2 mémoire ou fichi
 ainsi que des répertoires storage/export/backup/logs dédiés, afin de ne jamais impacter
 le serveur de travail de l'utilisateur ni verrouiller sa base (./data/soc360).
 
+règle IHM / ids HTML (obligatoire) :
+toujours ajouter un id aux elements visibles de l'ihm pour les nouveaux elements.
+si l'element est un label traduit, alors id = cle de traduction (ex. id="Missions.missions").
+ne jamais dupliquer un id dans une meme page : suffixer au besoin (cle.input, cle.2, cle.value).
+pour un element non traduit, utiliser un id descriptif prefixe par la page (ex. Missions.activeCount).
+
 règle tests (obligatoire) :
 à chaque fois que vous ajoutez un nouveau service ou une règle, ajouter ses tests unitaires
 et les exécuter. à chaque fois que vous modifiez un service ou une règle, mettre à jour ses
