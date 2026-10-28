@@ -3044,3 +3044,81 @@ En résumé, le consultant dispose d’un seul bouton d’export qui lui permet 
   auto-sélectionné sans mission, bouton désactivé sans mission ni mois complet, génération
   client/interne avec ouverture d'un nouvel onglet.
   `npm test` : 30 fichiers / **302 tests OK** ; `oxlint` 0 erreur ; `npm run build` OK.
+
+------------------
+### 2026-10-28 11:26:44 — soc-87 : notes de frais, justificatif obligatoire et pré-remplissage OCR
+
+**Tâche**
+```
+soc-87 Gestion des notes de frais
+
+le document (facture, reçu ...) est obligatoire.
+
+Le collaborateur upload une facture, reçu etc...
+l'application met d'abord le texte de la facture dans le textArea prévu. Puis essaye de reconnaitre le maximum de valeurs afin de les inserer dans le formulaire.
+```
+
+**Implémentation**
+- Backend — Flyway `V120__note_frais_document.sql` : colonnes `document_id` et `document_name`
+  sur `expense_report` + libellés FR/EN/AR (justificatif obligatoire, téléchargement,
+  téléversement).
+- Backend — `NoteFrais` / `NoteFraisDtos` : le justificatif est exposé dans le DTO
+  (`documentId`, `documentName`) et accepté dans la création/mise à jour.
+- Backend — `NoteFraisService` : `requireDocument` impose un justificatif non nul à la création
+  et à la modification, vérifie qu'il existe et qu'il appartient à la société et au collaborateur
+  (isolation) ; la soumission refuse aussi une note sans justificatif (400).
+  Le justificatif est stocké via le module Documents (`category = JUSTIFICATIF`) et seul son
+  identifiant/nom est référencé par la note de frais.
+- Frontend — `pages/NoteFraisList.tsx` : le fichier (image ou PDF) est d'abord téléversé via
+  `documentsApi.upload` (format contrôlé jpg/jpeg/png/pdf), puis :
+  1. le texte reconnu (OCR Tesseract pour les images, extraction PDF côté backend) est placé
+     dans la zone de texte prévue ;
+  2. `parseReceipt` reconnaît ensuite un maximum de valeurs (date, montants HT/TTC, catégorie,
+     libellé, enseigne, adresse) et pré-remplit le formulaire.
+  Le nom du justificatif et un bouton de téléchargement sont affichés ; un indicateur couvre
+  le téléversement/OCR. La création/enregistrement est bloqué sans justificatif avec un message
+  explicite (`NoteFraisList.justificatif.obligatoire.erreur`). Les ids HTML sont ajoutés sur les
+  nouveaux éléments.
+- Frontend — `api/types.ts` : `documentId`/`documentName` sur `NoteFraisDto` et
+  `CreateNoteFraisRequest`. `i18n/messages.generated.ts` : libellés FR/EN/AR.
+- Aucun impact sur `soc360-front-react-prod`.
+
+**Tests**
+- Backend — `NoteFraisServiceTest` : mock `HrDocumentRepository`, justificatif sur les créations
+  existantes, nouveaux tests « création sans justificatif refusée », « justificatif d'une autre
+  société refusé », « modification sans justificatif refusée », « soumission sans justificatif
+  refusée ». `mvn test` : **554 tests, 0 échec, 0 erreur**.
+- Frontend — `NoteFraisList.test.tsx` : mock du téléversement Documents, création avec
+  justificatif (id/nom envoyés), refus sans justificatif, téléversement + téléchargement.
+  `npm test` : 30 fichiers / **304 tests OK** ; `oxlint` 0 erreur ; `npm run build` OK.
+- Démarrage vérifié sur une copie de la base de travail (port 8081, répertoires dédiés) :
+  `Started Soc360Application`, migrations V119/V120 appliquées sans erreur.
+
+------------------
+### 2026-10-28 11:31:48 — liste « Collaborateurs » pour manager et niveaux supérieurs
+
+**Tâche**
+```
+etant manager ou plus haut niveau :
+la liste Consultant devient Collaborateur
+elle contient la liste de mes collaborateurs ainsi que moi meme.
+```
+
+**Implémentation**
+- Backend — `ConsultantService.visibleUsers` : pour un `MANAGER`, la liste principale
+  (`GET /api/consultants`) contient désormais **ses collaborateurs directs (tous rôles) + lui-même**
+  (au lieu des seuls comptes `CONSULTANT`). Pour `RESPONSIBLE_SOC` et `ADMIN`, l'utilisateur
+  courant est également ajouté s'il n'est pas déjà dans le périmètre de la société.
+- Frontend — la page `Consultants` est déjà libellée « Collaborateurs » (navigation, titre,
+  colonne et actions) ; le sous-titre est aligné : « Gérez votre équipe de collaborateurs ».
+- Backend — Flyway `V121__i18n_collaborateurs_subtitle.sql` : sous-titre FR/EN/AR ;
+  `i18n/messages.generated.ts` mis à jour.
+- Les filtres CRA / Indisponibilités utilisaient déjà `filterList` (manager = consultants +
+  lui-même) : aucun changement nécessaire.
+
+**Tests**
+- Backend — `ConsultantServiceTest` : test manager renommé et ajusté pour inclure le manager
+  lui-même, nouveaux tests « responsable société inclut soi-même » et « admin inclut soi-même ».
+  `mvn test` : **556 tests, 0 échec, 0 erreur**.
+- Frontend — `npm test` : 30 fichiers / **304 tests OK** (un test Register flaky repassé OK) ;
+  `oxlint` 0 erreur ; `npm run build` OK.
