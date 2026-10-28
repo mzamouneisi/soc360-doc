@@ -3300,3 +3300,36 @@ lorsqu'on click sur l'image de previsualisation, on affiche tout le fichier dans
   `DocumentAttachment.test.tsx` : formats acceptés étendus ; `NoteFraisList.test.tsx` :
   aperçu du document en modification. `npm test` : 30 fichiers / **314 tests OK**.
   `oxlint` 0 erreur ; build OK.
+
+------------------
+### 2026-10-28 14:09:05 — indisponibilité validée : lecture seule propriétaire / écriture manager
+
+**Tâche**
+```
+liste indispos :
+lorsqu'on click sur une element de statut validée :
+si on est propriétaire : on doit voir en bas son formulaire en mode lecture seule. on ne peut pas supprimer le doc joint. on peut zoomer le doc.
+si on est le manager du proprio de l'indispo :  on doit voir en bas son formulaire en mode write. toute modification est tracée dans l'historique.
+```
+
+**Implémentation**
+- Frontend — `pages/Unavailability.tsx` :
+  - clic sur une indisponibilité **VALIDATED** : si l'utilisateur en est le propriétaire, le
+    formulaire s'ouvre en bas en **lecture seule** (tous les champs désactivés, dates, type,
+    collaborateur, demi-journées, commentaire) ;
+  - le document joint est prévisualisé (zoom possible via la popup DocumentPreview) et le
+    bouton de suppression est désactivé (`DocumentAttachment disabled`) ;
+  - le bouton « Enregistrer » est masqué, remplacé par « Fermer », avec un bandeau
+    « Lecture seule : cette indisponibilité est validée » ;
+  - si l'utilisateur est le **manager du propriétaire**, le formulaire reste en écriture
+    (comportement existant) et la modification est envoyée via `PUT`.
+- Backend — `UnavailabilityService.update` historise déjà chaque modification (« Modification ») ;
+  test ajouté pour vérifier l'écriture dans `UnavailabilityHistory`.
+- Libellés FR/EN/AR ajoutés dans `i18n/messages.ts` (lecture seule, détail).
+
+**Tests**
+- Backend — `UnavailabilityServiceTest` : vérification de l'historique sur modification par le
+  manager. `mvn test` : **565 tests, 0 échec, 0 erreur**.
+- Frontend — test ajouté : ouverture en lecture seule de l'indispo validée du propriétaire,
+  absence du bouton Enregistrer, présence de Fermer, suppression du document désactivée.
+  `npm test` : 30 fichiers / **315 tests OK** ; `oxlint` 0 erreur ; build OK.
