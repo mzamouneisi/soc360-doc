@@ -3175,3 +3175,22 @@ elle contient la liste de mes collaborateurs ainsi que moi meme.
 
 **Vérification**
 - `npm test` : 30 fichiers / **306 tests OK** ; `oxlint` 0 erreur ; build OK.
+
+------------------
+### 2026-10-28 12:10:32 — soc-87 (suite 3) : largeur du champ date et titres des champs
+
+**Demandes**
+- Agrandir la largeur du champ `NoteFraisList.line.0.date`.
+- Mettre un `title` sur tous les champs.
+
+**Implémentation**
+- Frontend — `pages/NoteFraisList.tsx` : le champ date des lignes passe de `sm:col-span-3`
+  à `sm:col-span-4`. Un attribut `title` est ajouté sur le sélecteur d'année, le collaborateur,
+  le mois, l'année, l'enseigne, la date, la catégorie, le libellé, l'adresse, les montants HT/TTC,
+  la case « Remb. », le bouton de suppression de ligne et la zone de texte du justificatif.
+- Flyway `V125` : libellés `NoteFraisList.date` et `NoteFraisList.categorie` (FR/EN/AR) ;
+  `i18n/messages.generated.ts` aligné.
+
+**Vérification**
+- Frontend : **306 tests OK**, `oxlint` 0 erreur, build OK.
+- Backend : **560 tests OK**.
