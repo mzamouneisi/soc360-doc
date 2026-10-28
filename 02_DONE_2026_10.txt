@@ -2892,3 +2892,148 @@ C est son manager qui devra les valider
   « Valider » ni « Rejeter ».
   `npm test` : 30 fichiers / **298 tests OK** (2 passes consécutives) ; `npm run lint`
   0 erreur ; `npm run build` (tsc -b + vite) OK.
+
+------------------
+### 2026-10-28 10:36:29 — export PDF du CRA : CRA Client / CRA Interne
+
+**Tâche**
+```
+### 1. Objectif
+
+L’objectif est de permettre au consultant d’exporter son compte rendu d’activité mensuel au format PDF, avec deux possibilités : un CRA Client et un CRA Interne.
+
+Le CRA Client est destiné à être transmis au client. Il contient uniquement les journées travaillées sur une mission donnée, ainsi que les informations nécessaires à sa validation et à sa signature.
+
+Le CRA Interne reprend l’intégralité de l’activité du consultant sur le mois, notamment les différentes missions, les congés, les indisponibilités et les autres catégories de journées enregistrées.
+
+### 2. Bouton d’export et conditions d’activation
+
+Un seul bouton, intitulé « Export PDF », doit être présent sur l’écran de consultation du CRA.
+
+Ce bouton est activé uniquement si le CRA est enregistré, si son statut est Brouillon, Soumis ou Validé, et si les conditions d’export sont remplies.
+
+Lorsqu’au moins un jour travaillé sur une mission est renseigné, le bouton est activé, même si le CRA est incomplet.
+
+En revanche, si aucune mission ne comporte de jour travaillé durant le mois, le bouton est activé uniquement lorsque tous les jours ouvrés sont renseignés.
+
+Si le CRA n’est pas enregistré, si son statut n’est pas autorisé, ou si aucune mission n’a été réalisée alors que le CRA est incomplet, l’export reste désactivé.
+
+### 3. Choix du type de CRA
+
+Lorsque le consultant clique sur « Export PDF », une fenêtre de dialogue s’ouvre avec deux options : « CRA Client » et « CRA Interne », ainsi que les boutons « Générer le PDF » et « Annuler ».
+
+Si au moins une mission comporte des jours travaillés, le CRA Client est sélectionné par défaut.
+
+Le CRA Interne n’est disponible que lorsque tous les jours ouvrés du mois sont renseignés. Dans le cas contraire, cette option est grisée.
+
+Si aucune mission ne comporte de jour travaillé, le CRA Interne est sélectionné automatiquement et le CRA Client est désactivé.
+
+### 4. Sélection de la mission pour le CRA Client
+
+Le système doit identifier les missions sur lesquelles le consultant a effectivement travaillé pendant le mois sélectionné.
+
+Si une seule mission est concernée, elle est sélectionnée automatiquement.
+
+Si plusieurs missions sont concernées, une liste déroulante permet de choisir la mission souhaitée. Chaque choix est présenté sous la forme « Client – Intitulé de la mission ».
+
+Les missions sans journée travaillée pendant la période ne doivent pas apparaître dans cette liste.
+
+### 5. Contenu et présentation du CRA Client
+
+Le CRA Client doit être un document professionnel, clair et adapté à l’impression.
+
+Il comporte un en-tête indiquant le titre « Compte rendu d’activité — CRA Client », le mois, l’année et l’identité du consultant.
+
+Sous cet en-tête, un bloc récapitulatif présente trois informations : le nom du client, l’intitulé complet de la mission et le nombre total de jours travaillés. Le total doit être particulièrement visible et accompagné de son unité.
+
+Un tableau détaille ensuite les journées travaillées sur la mission sélectionnée. Les dates et les valeurs doivent être lisibles, et le total affiché doit correspondre à la somme des journées présentées.
+
+Enfin, deux zones de signature vierges sont disposées côte à côte : une pour le client et une pour le consultant. Elles doivent être suffisamment grandes pour permettre une signature manuscrite.
+
+**Règle essentielle :** le CRA Client ne doit contenir aucune information relative aux autres missions, aux autres clients, aux congés, aux indisponibilités ou aux autres absences du consultant. Ce filtrage doit être appliqué lors de la génération du document, et pas uniquement au niveau de son affichage.
+
+### 6. Contenu du CRA Interne
+
+Le CRA Interne reprend l’intégralité du compte rendu d’activité du consultant pour le mois sélectionné.
+
+Il comprend les journées travaillées sur toutes les missions, les congés, les indisponibilités, les autres absences, les différentes catégories de journées et les totaux calculés.
+
+Aucun filtrage par client ou par mission ne doit être appliqué.
+
+Le CRA Interne ne peut être généré que lorsque tous les jours ouvrés du mois sont renseignés.
+
+### 7. Format et langue des PDF
+
+Les deux types de CRA doivent être générés au format A4, en orientation paysage, avec une mise en page professionnelle et lisible.
+
+Le document doit respecter les marges, les alignements et la pagination. Aucun texte ne doit être tronqué et aucun élément ne doit se chevaucher.
+
+Si le document comporte plusieurs pages, le tableau doit se poursuivre correctement et les zones de signature du CRA Client doivent apparaître à la fin.
+
+La langue du PDF doit correspondre à celle de l’application au moment de la génération. Tous les libellés fixes doivent utiliser les traductions existantes de l’application. En revanche, les noms du consultant, du client et de la mission doivent être conservés tels qu’ils sont enregistrés.
+
+### 8. Génération et gestion des erreurs
+
+Lorsque le consultant clique sur « Générer le PDF », le système vérifie une nouvelle fois les conditions d’export et la validité des données sélectionnées.
+
+Pour un CRA Client, une mission doit être déterminée. Pour un CRA Interne, tous les jours ouvrés doivent être renseignés.
+
+Une fois le document généré, il s’ouvre dans un nouvel onglet du navigateur, sans fermer ni modifier l’onglet contenant le CRA. Le consultant peut ensuite le consulter, l’imprimer ou le télécharger grâce aux fonctionnalités du navigateur.
+
+Si la génération échoue, un message d’erreur explicite doit être affiché. Aucun document incomplet ou corrompu ne doit être présenté comme un export réussi.
+
+L’action « Annuler » ferme simplement la fenêtre de dialogue, sans générer de PDF ni modifier les données ou le statut du CRA.
+
+### 9. Cohérence des données et résultat attendu
+
+Les documents doivent toujours correspondre aux données enregistrées pour le mois sélectionné.
+
+Après chaque modification et chaque enregistrement du CRA, les conditions d’export doivent être réévaluées. Elles doivent également être vérifiées au moment de la génération pour éviter de produire un document à partir de données devenues invalides.
+
+En résumé, le consultant dispose d’un seul bouton d’export qui lui permet de générer soit un document destiné au client, limité à une mission précise et prêt à être signé, soit un document interne complet reprenant toute son activité mensuelle.
+```
+
+**Implémentation**
+- Backend — `CraController` : `GET /api/cras/{id}/export/client?projectId=&lang=` et
+  `GET /api/cras/{id}/export/company?lang=` (langue = langue de l'application au moment de la
+  génération). Le contrôle d'isolation `SecurityUtils.requireSocAccess` reste appliqué.
+- Backend — `CraService` : contrôles d'export (statut DRAFT/SUBMITTED/VALIDATED, mission
+  travaillée, tous les jours ouvrés renseignés), sélection stricte de la mission pour le CRA
+  Client (erreur 400 si plusieurs missions sans `projectId`), génération OpenPDF.
+- Backend — PDF CRA Client : en-tête, synthèse Client/Mission/Total jours, tableau compact
+  (une ligne par jour, activité groupée), total, zones de signature client/consultant.
+  La mission est filtrée à la génération : aucune autre mission, aucun congé ni absence.
+  Si une seule activité, son nom est affiché à droite du label Mission et la colonne
+  « Activité » est supprimée ; si toutes les valeurs sont en jours (heures = 0), la colonne
+  « Heures » est supprimée ; si aucun commentaire, la colonne « Commentaire » est supprimée.
+- Backend — PDF CRA Interne : synthèse, missions avec totaux, tableau compact de toutes les
+  journées (type de jour, mission, activité, heures/jours, commentaire), absences liées.
+  Mêmes règles conditionnelles sur les colonnes Heures/Commentaire ; aucune colonne Activité
+  quand une seule activité est utilisée.
+- Backend — les deux PDF sont en A4 paysage et tiennent sur **une seule page** (vérifié par
+  test avec `PdfReader.getNumberOfPages()`) grâce à une mise en page compacte (polices 7 pt,
+  marges réduites, agrégation par jour).
+- Backend — Flyway `V118__i18n_cra_pdf_export.sql` : libellés PDF FR/EN/AR (titre, client,
+  mission, date, jours, heures, commentaire, totaux, signatures, absences, légende).
+  La langue est lue via `LanguageService.messages(lang, socId)` ; les noms de consultant,
+  client et mission restent ceux enregistrés.
+- Frontend — `api/cras.ts` : `exportClientUrl(id, projectId, lang)` et
+  `exportCompanyUrl(id, lang)` via `api.blobUrl` (JWT + X-SOC-Id).
+- Frontend — `pages/CraDetail.tsx` : un seul bouton « Export PDF » (ids `CraPdf.*`), conditions
+  recalculées après chaque modification/enregistrement (missions locales + jours ouvrés),
+  dialogue avec type de CRA, mission (liste « Client – Intitulé » filtrée aux missions
+  travaillées), génération dans un nouvel onglet (onglet ouvert avant l'appel async pour
+  éviter le blocage popup), erreurs explicites, annulation sans effet.
+- Frontend — `i18n/messages.generated.ts` : libellés FR/EN/AR du bouton et du dialogue.
+- Aucun changement de schéma hors migration i18n.
+
+**Tests**
+- Backend — nouveaux tests `CraServiceTest` : export client filtré par projet, sélection
+  obligatoire quand plusieurs missions, mission inconnue refusée, CRA Interne refusé si mois
+  incomplet, génération client/interne sur **1 page** (lecture du PDF avec `PdfReader`).
+  `mvn test` : **550 tests, 0 échec, 0 erreur**.
+- Frontend — nouveaux tests `CraDetail.test.tsx` : bouton unique, dialogue, CRA Client par
+  défaut avec mission unique, CRA Interne désactivé si mois incomplet, CRA Interne
+  auto-sélectionné sans mission, bouton désactivé sans mission ni mois complet, génération
+  client/interne avec ouverture d'un nouvel onglet.
+  `npm test` : 30 fichiers / **302 tests OK** ; `oxlint` 0 erreur ; `npm run build` OK.
