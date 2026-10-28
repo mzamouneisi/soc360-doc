@@ -3333,3 +3333,28 @@ si on est le manager du proprio de l'indispo :  on doit voir en bas son formulai
 - Frontend — test ajouté : ouverture en lecture seule de l'indispo validée du propriétaire,
   absence du bouton Enregistrer, présence de Fermer, suppression du document désactivée.
   `npm test` : 30 fichiers / **315 tests OK** ; `oxlint` 0 erreur ; build OK.
+
+------------------
+### 2026-10-28 14:17:26 — indisponibilité annulée : modification et resoumission possibles
+
+**Tâche**
+```
+si un collaborateur annule son indispo, il peut la modifier et la re soumettre à son manager ...
+```
+
+**Implémentation**
+- Backend — `UnavailabilityService.requireEditable` accepte désormais le statut `CANCELLED`
+  en plus de `DRAFT` et `REJECTED` : le collaborateur peut modifier une indisponibilité qu'il
+  a annulée, puis la resoumettre via `submit` (qui la repasse en `SUBMITTED`).
+- Backend — commentaire de `cancel` mis à jour : une indispo validée annulée passe en
+  `CANCELLED` et redevient modifiable/resoumettable.
+- Frontend — `pages/Unavailability.tsx` : `canEdit` et `canSubmit` incluent `CANCELLED` pour
+  le propriétaire. Le clic sur une indispo annulée ouvre le formulaire en écriture et le
+  bouton « Soumettre » est disponible.
+- L'historique continue d'enregistrer la modification puis la soumission.
+
+**Tests**
+- Backend — nouveaux tests : `update_cancelledByOwner_isAllowed`,
+  `submit_cancelled_isAllowed`. `mvn test` : **567 tests, 0 échec, 0 erreur**.
+- Frontend — test ajouté : modification + resoumission d'une indispo annulée par son
+  propriétaire. `npm test` : 30 fichiers / **316 tests OK** ; `oxlint` 0 erreur ; build OK.
