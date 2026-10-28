@@ -3155,3 +3155,23 @@ elle contient la liste de mes collaborateurs ainsi que moi meme.
 - Frontend — `NoteFraisList.test.tsx` : justificatif en tête (via les tests de téléversement),
   collaborateur connecté pré-sélectionné, refus d'une ligne incomplète.
   `npm test` : 30 fichiers / **306 tests OK** ; `oxlint` 0 erreur ; `npm run build` OK.
+
+------------------
+### 2026-10-28 12:02:00 — soc-87 (suite 2) : bouton « + » pour joindre le justificatif
+
+**Demande**
+- Désactiver le bouton « Ajouter une facture » s'il y a déjà une facture.
+- Le bouton devient « + » avec le titre « Joindre une facture… ».
+
+**Implémentation**
+- Frontend — `pages/NoteFraisList.tsx` : le sélecteur de fichier est rendu par un bouton « + »
+  (title = « Joindre une facture (image / PDF) », `aria-label` conservé pour l'accessibilité).
+  Il est désactivé (`disabled`, `aria-disabled`, opacité/cursor) dès qu'un justificatif est
+  déjà téléversé ou pendant le téléversement. L'utilisateur peut retirer le justificatif puis
+  en joindre un autre.
+- Frontend — `NoteFraisList.test.tsx` : test de téléversement enrichi (bouton « + »,
+  désactivation après upload) et ancien test multi-factures remplacé par le test de
+  désactivation du bouton après le premier justificatif.
+
+**Vérification**
+- `npm test` : 30 fichiers / **306 tests OK** ; `oxlint` 0 erreur ; build OK.
