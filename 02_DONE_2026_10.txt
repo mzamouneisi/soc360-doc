@@ -3360,3 +3360,41 @@ si un collaborateur annule son indispo, il peut la modifier et la re soumettre �
   `submit_cancelled_isAllowed`. `mvn test` : **567 tests, 0 échec, 0 erreur**.
 - Frontend — test ajouté : modification + resoumission d'une indispo annulée par son
   propriétaire. `npm test` : 30 fichiers / **316 tests OK** ; `oxlint` 0 erreur ; build OK.
+
+------------------
+### 2026-10-28 16:36:23 — soc-83 : réactiver un type d'indisponibilité
+
+**Tâche**
+```
+soc-83 Ajouter un bouton pour reactiver un type d indisponibilitee
+
+Ajouter un bouton pour réactiver un type d'indisponibilité qui a été préalablement désactivé .
+A un instant T , un type d’activité dois pouvoir être réactivé s’il a un statut désactivé
+ou bien être désactivé s’il a un statut actif
+
+il faut distinguer entre un type d’indisponibilité supprimé et un type désactivé. Il doivent avoir un statut différent en base de données.
+
+On ne peut pas supprimer un type d’indispo s’il est déjà lié à une indispo. Mais à la place, on peut le désactiver afin de ne plus l’utiliser plus tard.
+```
+
+**Implémentation**
+- Backend — `UnavailabilityTypeStatus` : ajout de `DELETED` (distinct de `DISABLED`).
+- Backend — `UnavailabilityTypeConfigService` :
+  - `enable(id)` : réactive un type `DISABLED` (400 si le type n'est pas désactivé) ;
+  - `delete(id)` : si le type est lié à une indisponibilité, suppression refusée (400) avec
+    invitation à le désactiver ; sinon le type passe en `DELETED` (suppression logique, la ligne
+    reste en base) ;
+  - la liste exclut les types `DELETED` ; la recréation d'un type portant le même nom réactive
+    la ligne supprimée au lieu d'en créer une seconde.
+- Backend — `UnavailabilityTypeConfigController` : endpoint `POST /{id}/enable`.
+- Frontend — `pages/UnavailabilityTypes.tsx` : bouton « Réactiver » (icône refresh) pour les
+  types `DISABLED`, avec confirmation ; le bouton « Désactiver » reste pour les `ACTIVE`.
+- Frontend — `api/unavailabilityTypes.ts` : `enable(id)` ; `types.ts` : statut `DELETED`.
+- Libellés FR/EN/AR ajoutés (`UnavailabilityTypes.enable`, `confirmEnable`, `status.DELETED`).
+
+**Tests**
+- Backend — `UnavailabilityTypeConfigServiceTest` : `enable_disabledType_setsActive`,
+  `enable_activeType_isRejected`, suppression d'un type utilisé refusée, suppression logique
+  d'un type non utilisé (`DELETED`). `mvn test` : **569 tests, 0 échec, 0 erreur**.
+- Frontend — test de réactivation après confirmation.
+  `npm test` : 30 fichiers / **317 tests OK** ; `oxlint` 0 erreur ; build OK.
