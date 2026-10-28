@@ -3027,6 +3027,13 @@ En résumé, le consultant dispose d’un seul bouton d’export qui lui permet 
 - Frontend — `i18n/messages.generated.ts` : libellés FR/EN/AR du bouton et du dialogue.
 - Aucun changement de schéma hors migration i18n.
 
+**Correctif Flyway**
+- La base de travail avait déjà appliqué `V118` : la migration a été restaurée à l'identique
+  (checksum `1276929550`) et les 3 libellés de catégories (congés, formations, inter-contrat)
+  ont été déplacés dans une nouvelle migration `V119__i18n_cra_pdf_categories.sql`.
+  Démarrage vérifié sur une copie de la base de travail (port 8081, répertoires dédiés) :
+  `Started Soc360Application`, aucun checksum mismatch.
+
 **Tests**
 - Backend — nouveaux tests `CraServiceTest` : export client filtré par projet, sélection
   obligatoire quand plusieurs missions, mission inconnue refusée, CRA Interne refusé si mois
