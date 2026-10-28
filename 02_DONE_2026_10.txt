@@ -3398,3 +3398,44 @@ On ne peut pas supprimer un type d’indispo s’il est déjà lié à une indis
   d'un type non utilisé (`DELETED`). `mvn test` : **569 tests, 0 échec, 0 erreur**.
 - Frontend — test de réactivation après confirmation.
   `npm test` : 30 fichiers / **317 tests OK** ; `oxlint` 0 erreur ; build OK.
+
+------------------
+### 2026-10-28 17:30:01 — soc-88 : jours fériés chômés payés / non payés
+
+**Tâche**
+```
+soc-88 Gestion des Jours fériers
+
+Que ca soit des jours fériés nationaux ou spécifiques à la société.
+
+Rajouter la notion de Jour férié chaumé payé et chaumé non payé :
+
+par défaut tout jour férié est chaumé payé. Mais le Responsable_Soc peut le modifier afin qu’il devient chaumé non payé.
+
+On doit donc avoir une enum contenant ces deux valeurs.
+
+Et lors de modification d’un jour férié, on a une liste contenant ces deux valeurs pour le champ IS_CHAUME_PAYE.
+```
+
+**Implémentation**
+- Backend — enum `HolidayPaidStatus { CHOME_PAYE, CHOME_NON_PAYE }`.
+- Backend — migration `V129` : colonne `is_chome_paye` sur `company_holiday` et
+  `public_holiday`, valeur par défaut `CHOME_PAYE`.
+- Backend — `SocHoliday` / `PublicHoliday` : champ `isChomePaye` (défaut `CHOME_PAYE`).
+  Les jours fériés nationaux calculés sont également en chômé payé par défaut.
+- Backend — `SocHolidayDtos` (DTO et requête) exposent `isChomePaye` ;
+  `SocHolidayService.create` l'applique (défaut payé), nouvelle méthode `update` pour
+  modifier le libellé et le statut, `duplicate` copie le statut.
+- Backend — `PUT /api/soc-holidays/{id}` (ADMIN / RESPONSIBLE_SOC / MANAGER).
+- Frontend — `pages/Holidays.tsx` : clic sur un jour ouvre une modale de création/modification
+  avec le libellé et une liste « Chômé payé / Chômé non payé » (défaut payé) ; suppression
+  disponible depuis la modale. Le statut est affiché dans la case du calendrier (vert payé,
+  rouge non payé) et dans le titre.
+- Frontend — types `HolidayPaidStatus`, `SocHolidayDto`/`PublicHolidayDto` et API
+  `socHolidaysApi.create/update` mis à jour.
+
+**Tests**
+- Backend — `SocHolidayServiceTest` : statut payé par défaut, statut demandé à la création,
+  modification libellé + statut. `mvn test` : **571 tests, 0 échec, 0 erreur**.
+- Frontend — test de modification du statut via la modale.
+  `npm test` : 30 fichiers / **318 tests OK** ; `oxlint` 0 erreur ; build OK.
