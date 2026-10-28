@@ -3351,7 +3351,9 @@ si un collaborateur annule son indispo, il peut la modifier et la re soumettre �
 - Frontend — `pages/Unavailability.tsx` : `canEdit` et `canSubmit` incluent `CANCELLED` pour
   le propriétaire. Le clic sur une indispo annulée ouvre le formulaire en écriture et le
   bouton « Soumettre » est disponible.
-- L'historique continue d'enregistrer la modification puis la soumission.
+- L'historique continue d'enregistrer la modification puis la soumission. L'enregistrement
+  d'une indisponibilité annulée la repasse en **DRAFT** (brouillon), prête à être soumise au
+  manager via le bouton « Soumettre ».
 
 **Tests**
 - Backend — nouveaux tests : `update_cancelledByOwner_isAllowed`,
