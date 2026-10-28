@@ -3157,7 +3157,7 @@ elle contient la liste de mes collaborateurs ainsi que moi meme.
   `npm test` : 30 fichiers / **306 tests OK** ; `oxlint` 0 erreur ; `npm run build` OK.
 
 ------------------
-### 2026-10-28 12:02:00 — soc-87 (suite 2) : bouton « + » pour joindre le justificatif
+### 2026-10-28 11:59:38 — soc-87 (suite 2) : bouton « + » pour joindre le justificatif
 
 **Demande**
 - Désactiver le bouton « Ajouter une facture » s'il y a déjà une facture.
