@@ -3122,3 +3122,36 @@ elle contient la liste de mes collaborateurs ainsi que moi meme.
   `mvn test` : **556 tests, 0 échec, 0 erreur**.
 - Frontend — `npm test` : 30 fichiers / **304 tests OK** (un test Register flaky repassé OK) ;
   `oxlint` 0 erreur ; `npm run build` OK.
+
+------------------
+### 2026-10-28 11:54:22 — soc-87 (suite) : justificatif en tête, collaborateurs et champs obligatoires
+
+**Demandes**
+- Le justificatif doit être en haut du formulaire, bien visible.
+- Remplacer « Consultant » par « Collaborateur ».
+- Champs obligatoires : nom d'enseigne, catégorie, date, montant(s).
+- Par défaut, le collaborateur est celui qui est connecté.
+- Largeur du champ date (jj/mm) un peu plus grande.
+
+**Implémentation**
+- Frontend — `pages/NoteFraisList.tsx` : le bloc « Justificatif obligatoire » (téléversement,
+  aperçu, OCR, téléchargement) est déplacé en tête du formulaire, avec un encadré visible et
+  un titre dédié ; le champ date de chaque ligne passe en `sm:col-span-3` (largeur `jj/mm`
+  plus confortable).
+- Frontend — collaborateur par défaut = utilisateur connecté (`user.consultantId ?? user.id`),
+  y compris pour un manager/admin ; l'option est ajoutée à la liste si elle n'y figure pas.
+- Validation des lignes : nom d'enseigne, catégorie, date et au moins un montant (HT ou TTC)
+  sont obligatoires ; message explicite et `required`/`aria-required` sur les champs.
+- Backend — `NoteFraisService.applyLines` : mêmes contrôles (400) pour enseigne, catégorie,
+  date et montant.
+- Libellés : `NoteFraisList.consultant`, `Activities.consultant`, `SocAdmin.consultant`,
+  `SocAdmin.dep.consultant`, `DemoSoc.consultant` passent à « Collaborateur » (FR/EN/AR).
+- Flyway `V122` (libellés Collaborateur), `V123` (message champs obligatoires),
+  `V124` (ajout catégorie au message). `i18n/messages.generated.ts` aligné.
+
+**Tests**
+- Backend — `NoteFraisServiceTest` : nouveaux contrôles enseigne, catégorie, date, montant.
+  `mvn test` : **560 tests, 0 échec, 0 erreur**.
+- Frontend — `NoteFraisList.test.tsx` : justificatif en tête (via les tests de téléversement),
+  collaborateur connecté pré-sélectionné, refus d'une ligne incomplète.
+  `npm test` : 30 fichiers / **306 tests OK** ; `oxlint` 0 erreur ; `npm run build` OK.
