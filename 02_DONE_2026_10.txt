@@ -3194,3 +3194,109 @@ elle contient la liste de mes collaborateurs ainsi que moi meme.
 **Vérification**
 - Frontend : **306 tests OK**, `oxlint` 0 erreur, build OK.
 - Backend : **560 tests OK**.
+
+------------------
+### 2026-10-28 13:46:25 — soc-74 : pas d'indisponibilité dans le passé + formulaire strict
+
+**Tâche**
+```
+soc-74 On ne peut pas ajouter une indispo dans le passee
+
+Ex : si on est le 15/09/2026
+
+on ne peut pas ajouter une indispo contenant une date < date_aujourdhui
+
+donc pas de 14/09/2026 et inferieur.
+
+il faut donc interdire la saisie dans le calendrier des dates du passé.
+
+desactiver le btn "+" si le formulaire n'est pas valide.
+
+Collaborateur par défaut : user connected.
+date debut et fin par defaut : today.
+champs obligatoires :
+Collaborateur
+Type
+date_debut , date_fin
+```
+
+**Implémentation**
+- Backend — `UnavailabilityService` : `requireNotInPast` appliqué à la création ; une date de
+  début antérieure à aujourd'hui renvoie **400** (« Une indisponibilité ne peut pas être saisie
+  dans le passé »). L'horloge de référence est injectable (`Clock`, figée dans les tests) pour
+  garder les tests déterministes. La modification d'une indisponibilité existante reste possible
+  (les données passées existantes ne sont pas bloquées).
+- Frontend — `pages/Unavailability.tsx` :
+  - dates de début et de fin par défaut = **aujourd'hui** ;
+  - collaborateur par défaut = **utilisateur connecté** (`user.consultantId ?? user.id`) ;
+  - les sélecteurs de date interdisent le passé (`min = max(aujourd'hui, date d'embauche)`),
+    la date de fin restant ≥ date de début ;
+  - champs obligatoires : collaborateur (pour un non-consultant), type, date de début, date de fin ;
+  - le bouton de création/enregistrement (icône « + ») est désactivé tant que le formulaire n'est
+    pas valide ; le contrôle de passé est aussi refait dans `handleSave` pour une création.
+- Flyway `V127` : libellé `Unavailability.date.passee` (FR/EN/AR) ; `messages.generated.ts` aligné.
+
+**Tests**
+- Backend — nouveau test `create_startDateInPast_isRejected` ; horloge de test figée pour les
+  dates historiques des autres tests. `mvn test` : **565 tests, 0 échec, 0 erreur**.
+- Frontend — tests ajoutés : dates du jour + collaborateur connecté par défaut, bouton « Créer »
+  désactivé si un champ obligatoire manque ; tests existants adaptés aux dates futures.
+  `npm test` : 30 fichiers / **310 tests OK** ; `oxlint` 0 erreur ; `npm run build` OK.
+
+------------------
+### 2026-10-28 13:55:02 — aperçu document : popup plein écran, zoom et agrandissement
+
+**Tâche**
+```
+lorsqu'on click sur l'image de previsualisation, on affiche tout le fichier dans une popup.
+avec la possibilité de zoomer plus , agrandir la largeur, longueur de la popup. et meme la maximiser
+```
+
+**Implémentation**
+- Frontend — `components/DocumentPreview.tsx` : le clic sur l'aperçu ouvre une popup
+  (`Modal`) affichant le document complet (image, PDF, texte, bureautique).
+- Barre d'outils de la popup : zoom − / + (50 % → 300 %, images et texte), bouton
+  « Agrandir / Réduire » qui bascule la popup en taille `full` (96 vw, hauteur 80 vh),
+  PDF et bureautique en iframe plein écran.
+- `components/data.tsx` : la `Modal` accepte une taille `full` (`max-w-[96vw]`).
+- Libellés FR/EN/AR ajoutés dans `i18n/messages.ts` (zoom, agrandir, réduire).
+- Tests — `DocumentPreview.test.tsx` : zoom à 125 %, bascule en mode agrandi.
+
+------------------
+### 2026-10-28 13:55:02 — aperçu systématique des documents joints
+
+**Tâche**
+```
+lorsqu'on ajoute un document dans une indispo, abscence, note de frais, ....
+on doit toujour le previsualiser.
+de meme lorsqu'on l'edite.
+
+si c'est une image, c'est ce qu'on fait actuellement.
+si c'est du txt : on lit le fichier, on affiche la 1ere page.
+si c'est du pdf ou doc, docx, xls, xlsx, ... : on affiche la 1er page.
+
+lorsqu'on click sur l'image de previsualisation, on affiche tout le fichier dans une popup.
+```
+
+**Implémentation**
+- Frontend — `components/DocumentPreview.tsx` : aperçu systématique selon le type :
+  - images : affichage direct (comportement existant) ;
+  - PDF : première page dans l'iframe (`#page=1`, sans barre d'outils) ;
+  - texte (`txt`, `csv`, `md`, `json`, `xml`, `log`) : lecture du fichier et affichage des
+    25 premières lignes (première page) ;
+  - bureautique (`doc`, `docx`, `xls`, `xlsx`, `ppt`, `pptx`, `odt`, `ods`, `rtf`) : carte
+    d'aperçu avec le nom et ouverture du fichier complet dans la popup (le rendu visuel
+    dépend du support du navigateur) ;
+  - clic sur l'aperçu : document complet dans la popup (voir entrée précédente).
+- Frontend — `components/DocumentAttachment.tsx` : l'aperçu est chargé et affiché pour
+  tous les types (plus seulement image/PDF), y compris à l'édition ; la liste des formats
+  acceptés est étendue aux fichiers texte et bureautiques.
+- Frontend — `pages/NoteFraisList.tsx` : utilise `DocumentPreview` (aperçu à l'ajout et à
+  l'édition) ; lecture locale des fichiers texte pour pré-remplir la zone de texte, sans
+  message d'erreur pour les formats bureautiques non extractibles.
+- Frontend — `components/Unavailability.tsx` / `CraDetail.tsx` bénéficient automatiquement
+  de l'aperçu via `DocumentAttachment` (indisponibilités et absences).
+- Tests — `DocumentPreview.test.tsx` : première page texte, aperçu bureautique, popup ;
+  `DocumentAttachment.test.tsx` : formats acceptés étendus ; `NoteFraisList.test.tsx` :
+  aperçu du document en modification. `npm test` : 30 fichiers / **314 tests OK**.
+  `oxlint` 0 erreur ; build OK.
