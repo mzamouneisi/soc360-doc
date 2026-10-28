@@ -3434,6 +3434,12 @@ Et lors de modification d’un jour férié, on a une liste contenant ces deux v
 - Frontend — types `HolidayPaidStatus`, `SocHolidayDto`/`PublicHolidayDto` et API
   `socHolidaysApi.create/update` mis à jour.
 
+**Correctif Flyway**
+- La base de travail avait déjà appliqué `V129` : migration restaurée à l'identique
+  (checksum `1675782807`) et les libellés `Holidays.date` / `Holidays.jour.ferie.modifie`
+  déplacés dans `V130__i18n_holiday_editor.sql`. Démarrage vérifié sur une copie de la base
+  (port 8081) : `Started Soc360Application`, aucun checksum mismatch.
+
 **Tests**
 - Backend — `SocHolidayServiceTest` : statut payé par défaut, statut demandé à la création,
   modification libellé + statut. `mvn test` : **571 tests, 0 échec, 0 erreur**.
