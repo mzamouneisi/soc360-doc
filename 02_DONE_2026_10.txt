@@ -3852,3 +3852,36 @@ pour les cra : la navigation des mois doit etre dans la page cra dans la popup
   dans la popup), `Unavailability.test.tsx` (formulaire/calendrier en popup).
   `npm test` : 34 fichiers / **334 tests OK** ; `oxlint` 0 erreur ; `npm run build` OK.
 - Backend : aucun changement.
+
+------------------
+### 2026-10-29 22:41:17 — Navigation des mois dans la popup CRA
+
+**Tâche**
+```
+la navigation "Mois" dois permettre de naviguer dans les mois pour voir si ya un cra dans le mois selected 
+et l'afficher dans la popup (sans la fermer !)
+cette navigation n'est pas un filtre de la liste des cras comme actuellement.
+```
+
+Complément demandé :
+```
+le btn "Nouveau Cra" à mettre comme "+" à coté de refresh en haut
+```
+
+**Implémentation**
+- Frontend — `pages/CraList.tsx` : la popup CRA dispose de son propre état de navigation
+  (`detailYear`, `detailMonth`, consultant et type du CRA ouvert). Changer de mois/année
+  recherche le CRA du collaborateur pour ce mois (`findByConsultant`) et l'affiche dans la
+  même popup, sans la fermer et **sans filtrer la liste**.
+- Frontend — si aucun CRA n'existe pour le mois navigué, la popup reste ouverte et affiche
+  « Aucun CRA pour ce mois ». Les gardes de date d'embauche restent appliquées.
+- Frontend — le bouton « Nouveau Cra » est déplacé en haut de page sous forme d'icône « + »
+  à côté du bouton Actualiser (`PageHeader.actions`).
+- i18n — migration `V136` : libellé `CraList.aucun.cra.pour.ce.mois` (FR/EN/AR).
+
+**Tests**
+- Frontend — `CraList.test.tsx` : navigation « Mois suivant » dans la popup → ouvre le CRA
+  du mois suivant sans fermer la popup et sans relancer le chargement de la liste ;
+  ouverture du détail au clic, options de mois/année dans la popup.
+  `npm test` : 34 fichiers / **335 tests OK** ; `oxlint` 0 erreur ; `npm run build` OK.
+- Backend — `mvn test` : **586 tests, 0 échec, 0 erreur** (migration V136 validée).
