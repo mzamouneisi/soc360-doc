@@ -3667,3 +3667,30 @@ c'est mieux d'empecher la sélection de date si le type d’indisponibilité cho
   calendrier sont désactivés. `npm test` : 31 fichiers / **327 tests OK** ;
   `oxlint` 0 erreur ; `npm run build` OK.
 - Backend : aucun changement (validation serveur existante conservée).
+
+------------------
+### 2026-10-29 16:43:31 — Aperçu document carré dans le formulaire d'indisponibilité
+
+**Tâche**
+```
+form indispo
+
+limiter la largeur de la div qui contient l'image du document: 
+largeur = longueur 
+```
+
+**Implémentation**
+- Frontend — `components/DocumentPreview.tsx` : nouvelle option `square` ; le conteneur
+  d'aperçu devient carré (`aspect-square`) et l'image / le PDF / le texte occupent toute la
+  hauteur du carré (`h-full object-contain`).
+- Frontend — `components/DocumentAttachment.tsx` : nouvelles options `previewSquare` et
+  `previewClassName`, transmises à `DocumentPreview`.
+- Frontend — `pages/Unavailability.tsx` : le justificatif de l'indisponibilité utilise
+  `previewSquare` avec `max-w-48`, ce qui limite la largeur à 12 rem et rend la zone
+  d'aperçu carrée (largeur = hauteur).
+
+**Tests**
+- Frontend — `Unavailability.test.tsx` : l'aperçu du document joint porte bien les classes
+  `aspect-square` et `max-w-48`.
+  `npm test` : 31 fichiers / **327 tests OK** ; `oxlint` 0 erreur ; `npm run build` OK.
+- Backend : aucun changement.
