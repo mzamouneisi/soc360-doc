@@ -3559,3 +3559,53 @@ click sur un element de la liste des notes de frais : ouvre le formulaire de la 
 - Frontend — `NoteFraisList.test.tsx` : clic sur une ligne ouvre le formulaire éditable
   (manager), clic sur une note soumise ouvre le formulaire en lecture seule (collaborateur).
   `npm test` : 30 fichiers / **324 tests OK** ; `oxlint` 0 erreur ; `npm run build` OK.
+
+------------------
+### 2026-10-29 15:10:43 — Droits des boutons et actions de la note de frais
+
+**Tâche**
+```
+gestion des notes de frais :
+
+les btns dans la liste : pour chaque ligne :
+
+edit : write par defaut. read only si le collaborateur == userConnected et que statut = soumise ou valide.
+supprimer : par defaut on peut supprimer avec confirmation. mais grisé si collaborateur == userConnected et que statut = soumise ou valide.
+historique : comme pour le cra et indispos.
+
+lorsqu'on ouvre la note de frais , on a des btns en bas du formulaire :
+
+save : grisé si collaborateur == userConnected et que statut = soumise ou valide.
+cancel
+btn soumettre ou valider selon le collaborateur et le userConnected  : 
+	si userConnected = collaborateur alors : soumettre 
+	si userConnected = manager du collaborateur : valider 
+btn rejeter : si userConnected = manager du collaborateur et que statut != rejeté.
+```
+
+**Implémentation**
+- Frontend — `pages/NoteFraisList.tsx` : le bouton « Modifier » est toujours affiché ;
+  il ouvre le formulaire en écriture par défaut et en lecture seule uniquement lorsque
+  l'utilisateur connecté est le collaborateur de la note et que le statut est soumis ou
+  validé (`isReadOnlyForUser`).
+- Frontend — bouton « Suppr. » toujours affiché, grisé dans ce même cas ; le manager peut
+  supprimer une note soumise ou validée après confirmation.
+- Frontend — bouton « Historique » conservé pour chaque ligne.
+- Frontend — bas du formulaire : « Annuler » et « Enregistrer » toujours présents ;
+  « Enregistrer » est grisé en lecture seule. Ajout des boutons contextuels :
+  « Soumettre » si l'utilisateur connecté est le collaborateur (brouillon/rejetée),
+  « Valider » et « Rejeter » si l'utilisateur connecté est le manager du collaborateur
+  (note soumise). Après l'action, le formulaire se ferme et la liste est rafraîchie.
+- Backend — `NoteFraisService.submit` réservé au collaborateur concerné (403 sinon) ;
+  `delete` interdit au collaborateur sur une note soumise/validée mais autorisé au manager.
+- Les actions de ligne appellent `stopPropagation` pour ne pas ouvrir le formulaire en
+  plus de l'action demandée.
+
+**Tests**
+- Backend — `NoteFraisServiceTest` : suppression d'une note soumise par le manager
+  autorisée, soumission par un manager refusée (403). `mvn test` : **583 tests,
+  0 échec, 0 erreur**.
+- Frontend — `NoteFraisList.test.tsx` : bouton Modifier présent et Suppr. grisé en
+  lecture seule, Enregistrer grisé dans le formulaire, Soumettre côté collaborateur,
+  Valider/Rejeter côté manager.
+  `npm test` : 30 fichiers / **324 tests OK** ; `oxlint` 0 erreur ; `npm run build` OK.
