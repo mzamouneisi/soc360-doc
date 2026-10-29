@@ -3691,6 +3691,26 @@ largeur = longueur
 
 **Tests**
 - Frontend — `Unavailability.test.tsx` : l'aperçu du document joint porte bien les classes
-  `aspect-square` et `max-w-48`.
+  de dimensions finales.
   `npm test` : 31 fichiers / **327 tests OK** ; `oxlint` 0 erreur ; `npm run build` OK.
 - Backend : aucun changement.
+
+------------------
+### 2026-10-29 16:49:15 — Ajustement dimensions aperçu justificatif indispo
+
+**Tâche**
+```
+multiplier x2 la largeur de l'image actuelle : donc 24 rem . pour la longueur : 20 rem
+```
+
+**Implémentation**
+- Frontend — l'aperçu du justificatif dans le formulaire d'indisponibilité passe de
+  `max-w-48` + `aspect-square` (12 rem de côté) à une zone de **24 rem de large**
+  (`w-96`, avec `max-w-full`) et **20 rem de haut** (`h-80`).
+- Frontend — `DocumentPreview` / `DocumentAttachment` : l'option d'aperçu est renommée
+  `fill` / `previewFill` (remplissage `h-full`) au lieu de `square`, pour permettre une
+  zone rectangulaire sans contrainte de ratio carré.
+
+**Tests**
+- Frontend — `Unavailability.test.tsx` : l'aperçu porte bien `w-96` et `h-80`.
+  `npm test` : 31 fichiers / **327 tests OK** ; `oxlint` 0 erreur ; `npm run build` OK.
