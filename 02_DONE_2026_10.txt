@@ -3714,3 +3714,24 @@ multiplier x2 la largeur de l'image actuelle : donc 24 rem . pour la longueur : 
 **Tests**
 - Frontend — `Unavailability.test.tsx` : l'aperçu porte bien `w-96` et `h-80`.
   `npm test` : 31 fichiers / **327 tests OK** ; `oxlint` 0 erreur ; `npm run build` OK.
+
+------------------
+### 2026-10-29 17:06:27 — soc-91 activer/désactiver un type d'activité
+
+**Tâche**
+```
+soc-91 Gestion des types d activités : activer/desactiver ne doit pas faire apparaitre la form du type d activitee. comme pour le btn supprimer.
+```
+
+**Implémentation**
+- Frontend — `pages/ActivityTypes.tsx` : le bouton d'activation/désactivation appelle
+  désormais `stopPropagation` avant `handleToggleActive`, comme le bouton Supprimer, afin
+  que le clic sur la ligne ne déclenche pas en plus l'ouverture du formulaire de modification.
+- Le formulaire ne s'ouvre plus lors de l'activation/désactivation ; seule la boîte de
+  confirmation puis la mise à jour du statut sont exécutées.
+
+**Tests**
+- Frontend — nouveau `ActivityTypes.test.tsx` : clic sur « Désactiver » → aucun formulaire
+  « Modifier le type » affiché, confirmation puis `update(id, { active: false })` envoyé.
+  `npm test` : 32 fichiers / **328 tests OK** ; `oxlint` 0 erreur ; `npm run build` OK.
+- Backend : aucun changement.
