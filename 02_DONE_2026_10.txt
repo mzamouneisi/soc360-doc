@@ -3735,3 +3735,70 @@ soc-91 Gestion des types d activités : activer/desactiver ne doit pas faire app
   « Modifier le type » affiché, confirmation puis `update(id, { active: false })` envoyé.
   `npm test` : 32 fichiers / **328 tests OK** ; `oxlint` 0 erreur ; `npm run build` OK.
 - Backend : aucun changement.
+
+------------------
+### 2026-10-29 22:09:20 — Refonte de la page Base de données
+
+**Tâche**
+```
+page Base de données : à refaire 
+
+la colonne gauche (20% par defaut) resizable :
+<h2> tableSelected (nbElements)  </h2> 
+input text pour rechercher une table
+liste des tables de style :
+    <ol height=500px>
+      <li>table1</li>
+      <li>table2</li>
+      <li>table3</li>
+      ....
+    </ol>
+
+structure de la tableSelected :
+nomCol type size defaultValue
+...
+
+-----------
+
+la colonne de droite (80%)
+tabs :
+Données SQL Relations
+
+Données : contient les lignes de la tableSelected avec pagination comme maintenant. 
+SQL : la console sql doit contenir par défaut la requette : select * from <tableSelected>;
+le btn Executer doit executer la requette sql de la console et afficher le resultat en bas de la console avec pagination.
+si le sql est un update ou delete ou insert ou drop ou ... : afficher en bas le resultat : 
+3 lignes mises à jour 
+etc ...
+
+Relations : laisser tel quelle.
+```
+
+Complément demandé en cours de tâche :
+```
+faire un btnen tete de la colonne gauche afin d'afficher ou cacher la colonne gauche
+```
+
+**Implémentation**
+- Backend — `ColumnDetails` expose désormais `size` et `defaultValue` (lus via
+  `DatabaseMetaData.COLUMN_SIZE` / `COLUMN_DEF`).
+- Backend — nouveau `SqlExecutionResult` (`query`, `rows`, `affectedRows`, `command`) ;
+  `POST /api/tables/execute` renvoie soit les lignes d'un SELECT, soit le nombre de lignes
+  affectées pour INSERT/UPDATE/DELETE, soit 0 pour une commande DDL.
+- Frontend — `pages/Tables.tsx` refaite : colonne gauche à 20 % par défaut, redimensionnable
+  par une poignée ; titre `table (nbElements)`, recherche de table, liste `<ol>` de hauteur
+  500 px et structure de la table (`nomCol type size defaultValue`).
+- Frontend — bouton en tête de la colonne gauche pour la masquer/afficher (icônes chevron) ;
+  la colonne droite occupe alors toute la largeur.
+- Frontend — colonne droite à onglets Données / SQL / Relations. Données conservent la
+  pagination ; SQL est pré-rempli avec `SELECT * FROM <table>;` et affiche le résultat paginé
+  ou un message du type « 3 ligne(s) mise(s) à jour » ; Relations restent inchangées.
+- i18n — migrations `V134` et `V135` (recherche, structure, colonnes, onglets, messages de
+  résultat, afficher/masquer la colonne gauche) + libellés FR/EN/AR.
+
+**Tests**
+- Backend — `TableServiceTest` : SELECT, UPDATE avec `affectedRows`, DDL, et lecture de
+  `COLUMN_SIZE` / `COLUMN_DEF`. `mvn test` : **586 tests, 0 échec, 0 erreur**.
+- Frontend — nouveau `Tables.test.tsx` : recherche et structure de table, console SQL
+  pré-remplie avec message de lignes affectées, affichage/masquage de la colonne gauche.
+  `npm test` : 33 fichiers / **331 tests OK** ; `oxlint` 0 erreur ; `npm run build` OK.
