@@ -3802,3 +3802,53 @@ faire un btnen tete de la colonne gauche afin d'afficher ou cacher la colonne ga
 - Frontend — nouveau `Tables.test.tsx` : recherche et structure de table, console SQL
   pré-remplie avec message de lignes affectées, affichage/masquage de la colonne gauche.
   `npm test` : 33 fichiers / **331 tests OK** ; `oxlint` 0 erreur ; `npm run build` OK.
+
+------------------
+### 2026-10-29 22:30:55 — Norme : clic sur une ligne ouvre le formulaire en popup
+
+**Tâche**
+```
+norme de nos tables modifiables :
+lorsqu'on click sur une ligne, on affiche le formulaire de cette ligne dans une popup.
+c'est le cas pour certaines tables mais pas toutes.
+Clients : c'est ok
+mais CRA : pas ok 
+donc à refaire .
+
+indispos aussi
+
+Documents : click sur une ligne : previsualiser dans une fenetre qu'on peut agrandir , faire des zoom, 
+
+Base de données : à faire aussi pour les tables 
+```
+
+Compléments demandés en cours de tâche :
+```
+pour les indispos : integrer le calendrier de l'indispo en desous du formulaire
+vous avez oublié le cra
+pour les cra : la navigation des mois doit etre dans la page cra dans la popup
+```
+
+**Implémentation**
+- CRA — `pages/CraList.tsx` : clic sur une ligne ouvre le détail dans une popup
+  (`Modal` plein écran) ; les boutons d'action de la ligne appellent `stopPropagation`.
+  La navigation des mois (sélecteurs mois/année, précédent, mois courant, suivant) est
+  déplacée dans la popup, au-dessus du détail du CRA.
+- Indispos — `pages/Unavailability.tsx` : toute ligne ouvre le formulaire dans une popup
+  (`Modal` plein écran), en écriture si autorisé sinon en lecture seule. Le calendrier de
+  l'indisponibilité est intégré **sous le formulaire** dans la popup. Le paramètre `?open`
+  ouvre également la popup correspondante.
+- Documents — `pages/Documents.tsx` : clic sur une ligne charge l'aperçu et ouvre la
+  fenêtre de prévisualisation (`DocumentPreview`) immédiatement en plein écran, avec zoom
+  et agrandissement. Les boutons Télécharger / Supprimer n'ouvrent pas l'aperçu.
+- Base de données — `pages/Tables.tsx` : clic sur une ligne de données ouvre la popup de
+  modification de la ligne ; les boutons Modifier / Supprimer appellent `stopPropagation`.
+- `components/DocumentPreview.tsx` : nouvelles options `initialFullOpen` et `onFullClose`
+  pour ouvrir/fermer directement la grande fenêtre d'aperçu.
+
+**Tests**
+- Frontend — nouveaux/mis à jour : `Documents.test.tsx` (aperçu au clic), `Tables.test.tsx`
+  (ligne ouverte en popup), `CraList.test.tsx` (détail CRA en popup, navigation des mois
+  dans la popup), `Unavailability.test.tsx` (formulaire/calendrier en popup).
+  `npm test` : 34 fichiers / **334 tests OK** ; `oxlint` 0 erreur ; `npm run build` OK.
+- Backend : aucun changement.
