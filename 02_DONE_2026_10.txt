@@ -3535,3 +3535,27 @@ il faut donc un champ activity : liste
 - Frontend — `NoteFraisList.test.tsx` : sélection d'une mission dans le formulaire de
   création et envoi de `activityId: 7`.
   `npm test` : 30 fichiers / **322 tests OK** ; `oxlint` 0 erreur ; `npm run build` OK.
+
+------------------
+### 2026-10-29 14:34:41 — Ouverture du formulaire au clic sur une note de frais
+
+**Tâche**
+```
+click sur un element de la liste des notes de frais : ouvre le formulaire de la note.
+```
+
+**Implémentation**
+- Frontend — `pages/NoteFraisList.tsx` : ajout de `onRowClick` sur le tableau, qui ouvre
+  le formulaire de la note cliquée via `openView` / `openEdit`.
+- Frontend — le formulaire s'ouvre en **lecture seule** (champs désactivés, bouton
+  « Fermer » à la place d'« Enregistrer ») lorsque le collaborateur n'a pas le droit de
+  modifier la note (note soumise/validée ou payée) ; il reste éditable pour le manager et
+  pour les brouillons/rejetées.
+- Frontend — les boutons d'action de la ligne (modifier, soumettre, annuler, valider,
+  rejeter, supprimer, historique) appellent désormais `stopPropagation` pour ne pas
+  déclencher en plus l'ouverture du formulaire.
+
+**Tests**
+- Frontend — `NoteFraisList.test.tsx` : clic sur une ligne ouvre le formulaire éditable
+  (manager), clic sur une note soumise ouvre le formulaire en lecture seule (collaborateur).
+  `npm test` : 30 fichiers / **324 tests OK** ; `oxlint` 0 erreur ; `npm run build` OK.
