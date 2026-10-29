@@ -3633,3 +3633,37 @@ Un manager ne dois pas pouvoir gérer les jours féries seulement le responsable
 - Frontend — `Holidays.test.tsx` : sous-titre et édition présents pour le responsable
   société, clic sans ouverture d'éditeur pour un manager.
   `npm test` : 30 fichiers / **325 tests OK** ; `oxlint` 0 erreur ; `npm run build` OK.
+
+------------------
+### 2026-10-29 16:36:05 — soc-84 sélection de dates selon le type d'indisponibilité
+
+**Tâche**
+```
+soc-84 Gérer l ajout d indisponibilité selon le type d indisponibilité
+
+Le calendrier devra empêcher la sélection de date en fonction du type d’indisponibilité choisi
+Actuellement la sélection est possible et un message d’erreur apparait en voulant valider l’indisponibilité
+
+c'est mieux d'empecher la sélection de date si le type d’indisponibilité choisi l'interdit.
+```
+
+**Implémentation**
+- Frontend — `components/DateField.tsx` : ajout de la propriété `filterDate` transmise à
+  `react-datepicker`, permettant de désactiver des jours dans le calendrier localisé.
+- Frontend — `pages/Unavailability.tsx` : les champs « Du » et « Au » utilisent désormais
+  `DateField` avec un filtre basé sur le `countType` du type sélectionné :
+  - `OUVRE` → samedis et dimanches désactivés ;
+  - `OUVRABLE` → dimanches désactivés ;
+  - `CALENDAIRE` / `MOIS` / `ANNEE` → toutes les dates restent sélectionnables.
+- Frontend — le bouton « Créer / Enregistrer » est désactivé si la date de début ou de fin
+  sélectionnée n'est pas comptée pour le type (en complément du blocage du calendrier).
+- Frontend — le changement de type efface les dates devenues invalides pour le nouveau type
+  (par exemple un samedi après passage en type « ouvré »).
+
+**Tests**
+- Frontend — nouveau `components/DateField.test.tsx` : les dates refusées par `filterDate`
+  sont marquées désactivées dans le calendrier ; conversion locale → ISO.
+- Frontend — `Unavailability.test.tsx` : pour un type ouvré, tous les jours de week-end du
+  calendrier sont désactivés. `npm test` : 31 fichiers / **327 tests OK** ;
+  `oxlint` 0 erreur ; `npm run build` OK.
+- Backend : aucun changement (validation serveur existante conservée).
