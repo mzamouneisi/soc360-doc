@@ -3609,3 +3609,27 @@ btn rejeter : si userConnected = manager du collaborateur et que statut != rejet
   lecture seule, Enregistrer grisé dans le formulaire, Soumettre côté collaborateur,
   Valider/Rejeter côté manager.
   `npm test` : 30 fichiers / **324 tests OK** ; `oxlint` 0 erreur ; `npm run build` OK.
+
+------------------
+### 2026-10-29 16:10:47 — Jours fériés réservés au responsable société
+
+**Tâche**
+```
+Un manager ne dois pas pouvoir gérer les jours féries seulement le responsable société pourra les gérer
+```
+
+**Implémentation**
+- Backend — `SocHolidayController` : `@PreAuthorize` des opérations d'écriture (création,
+  modification, suppression, duplication) limité à `ADMIN` et `RESPONSIBLE_SOC` ;
+  le rôle `MANAGER` est retiré. La consultation (`GET`) reste ouverte.
+- Frontend — `pages/Holidays.tsx` : `canEdit` limité à `ADMIN` / `RESPONSIBLE_SOC`. Un
+  manager peut consulter le calendrier mais ne peut plus ouvrir l'éditeur, modifier un
+  jour férié ni dupliquer l'année.
+
+**Tests**
+- Backend — `SecurityIntegrationTest` : un manager reçoit 403 sur
+  `POST /api/soc-holidays`, un responsable société reçoit 200 et crée le jour férié.
+  `mvn test` : **585 tests, 0 échec, 0 erreur**.
+- Frontend — `Holidays.test.tsx` : sous-titre et édition présents pour le responsable
+  société, clic sans ouverture d'éditeur pour un manager.
+  `npm test` : 30 fichiers / **325 tests OK** ; `oxlint` 0 erreur ; `npm run build` OK.
