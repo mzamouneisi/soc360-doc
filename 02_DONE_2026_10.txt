@@ -3445,3 +3445,93 @@ Et lors de modification d’un jour férié, on a une liste contenant ces deux v
   modification libellé + statut. `mvn test` : **571 tests, 0 échec, 0 erreur**.
 - Frontend — test de modification du statut via la modale.
   `npm test` : 30 fichiers / **318 tests OK** ; `oxlint` 0 erreur ; build OK.
+
+------------------
+### 2026-10-29 10:20:02 — Gestion des notes de frais
+
+**Tâche**
+```
+Gestion des notes de frais :
+
+comme pour les indispos et cra :
+un collaborateur peut ajouter une note de frais
+il peut :
+la soumettre à son manager 
+l'annuler et devient brouillon
+peut toujours la consulter : si elle est soumise ou validee : elle devient read only. mais pour son manager c'est write. si modif : historiser.
+le manager peut valider, rejeter avec commentaire.
+```
+
+**Implémentation**
+- Backend — `NoteFraisService` : nouvelle méthode `cancel(id)` (une note `SUBMITTED`
+  redevient `DRAFT`, `submittedAt` remis à null, réservée au collaborateur concerné).
+- Backend — lecture seule : une note `SUBMITTED`/`VALIDATED` n'est plus modifiable par son
+  collaborateur (`requireUpdatable` / `requireEditable`) ; le manager/admin/responsable peut
+  toujours la modifier (sauf note `PAID`), et chaque modification est historisée.
+- Backend — soumission limitée aux états `DRAFT`/`REJECTED` ; validation limitée à
+  `SUBMITTED`/`REJECTED` (un manager ne peut pas valider sa propre note) ; rejet limité à
+  `SUBMITTED` avec **motif obligatoire** ; suppression refusée pour une note soumise,
+  validée ou payée.
+- Backend — audit : entité `NoteFraisHistory`, repository, table `expense_report_history`
+  (migration `V131`), historique enregistré à la création, modification, soumission,
+  annulation, validation et rejet (auteur, statut et montant avant/après, commentaire).
+- Backend — endpoints `POST /api/note-frais/{id}/cancel` et
+  `GET /api/note-frais/{id}/history` ; isolation multi-société via
+  `SecurityUtils.requireSocAccess` sur toutes les opérations (lecture, mise à jour,
+  soumission, annulation, validation, rejet, suppression, historique).
+- Frontend — `api/noteFrais.ts` : `cancel(id)` et `history(id)` ; types
+  `NoteFraisHistoryDto`.
+- Frontend — `pages/NoteFraisList.tsx` : bouton « Annuler la soumission » pour le
+  collaborateur, bouton « Historique » et modale d'audit (date, auteur, commentaire, statut
+  et montant avant/après). Le bouton « Modifier » n'apparaît pour le collaborateur que sur
+  un brouillon/rejetée ; le manager peut modifier une note soumise/validée. Suppression
+  limitée aux brouillons/rejetées.
+- i18n — migration `V132` et libellés FR/EN/AR (`NoteFraisList.annuler.la.soumission`,
+  `NoteFraisList.historique`, `NoteFraisList.historique.de.la.note.de.frais`, colonnes
+  d'historique, `NoteFraisList.fermer`).
+
+**Tests**
+- Backend — `NoteFraisServiceTest` : annulation d'une note soumise (retour brouillon) et
+  refus sur note validée, lecture seule du collaborateur sur note soumise, modification
+  autorisée et historisée par le manager, rejet sans motif refusé, rejet par un consultant
+  interdit, historique, suppression d'un brouillon et refus de suppression d'une note
+  soumise. `mvn test` : **579 tests, 0 échec, 0 erreur**.
+- Frontend — `NoteFraisList.test.tsx` : annulation de la soumission, lecture seule du
+  collaborateur, modification d'une note soumise par le manager, affichage de l'historique.
+  `npm test` : 30 fichiers / **322 tests OK** ; `oxlint` 0 erreur ; `npm run build` OK.
+
+------------------
+### 2026-10-29 10:24:46 — Lien note de frais / mission
+
+**Tâche**
+```
+Une note de frais pourra être relié a une mission
+il faut donc un champ activity : liste
+```
+
+**Implémentation**
+- Backend — `NoteFrais` : nouvelle relation optionnelle `ManyToOne` vers `Activity`
+  (colonne `activity_id`).
+- Backend — migration `V133` : ajout de `expense_report.activity_id`, contrainte
+  `ON DELETE SET NULL` vers `activity` et index dédié.
+- Backend — `NoteFraisDtos` : `NoteFraisDto` expose `activityId` / `activityName` ;
+  `CreateNoteFraisRequest` accepte `activityId` (constructeur de compatibilité conservé).
+- Backend — `NoteFraisService.applyActivity` : chargement de la mission, contrôle
+  d'isolation société (`requireSocAccess`) et refus si la mission nominative appartient à
+  un autre collaborateur ; le rattachement est appliqué à la création et à la modification.
+- Frontend — `api/types.ts` : `activityId` / `activityName` sur `NoteFraisDto` et
+  `activityId` sur `CreateNoteFraisRequest`.
+- Frontend — `pages/NoteFraisList.tsx` : liste déroulante « Mission / activité » dans le
+  formulaire (chargée via `activitiesApi.findAll` pour la société et le collaborateur
+  sélectionnés), option « Aucune mission », colonne Mission dans le tableau et envoi de
+  `activityId` à la création/modification.
+- i18n — libellés FR/EN/AR `NoteFraisList.mission`, `NoteFraisList.aucune.mission`,
+  `NoteFraisList.selectionner.une.mission` (migration `V133`).
+
+**Tests**
+- Backend — `NoteFraisServiceTest` : rattachement d'une mission à la création
+  (`activityId` / `activityName`) et refus d'une mission d'une autre société.
+  `mvn test` : **581 tests, 0 échec, 0 erreur**.
+- Frontend — `NoteFraisList.test.tsx` : sélection d'une mission dans le formulaire de
+  création et envoi de `activityId: 7`.
+  `npm test` : 30 fichiers / **322 tests OK** ; `oxlint` 0 erreur ; `npm run build` OK.
