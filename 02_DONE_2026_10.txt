@@ -4628,3 +4628,40 @@ il faut avoir l'apercu aussi à l'ouverture de la note de frais.
 - Backend — `DocumentShareIntegrationTest` : téléchargement du justificatif d'une note de
   frais par le manager.
   `mvn test` : **598 tests, 0 échec, 0 erreur** (migration V151 validée).
+
+### 2026-10-30 19:01:03 — Notes de frais : suppression des lignes liées au document retiré
+
+**Tâche**
+```
+lorsqu'on retire un doc joint de la note de frais, il faut supprimer les lignes qui correspondent à ce document.
+```
+
+**Implémentation**
+- Frontend — `pages/NoteFraisList.tsx` : chaque ligne de dépense porte un indicateur
+  `fromDocument`. Les lignes issues du document (OCR/import ou lignes d'une note existante
+  avec justificatif) sont marquées ; celles ajoutées manuellement ne le sont pas.
+- Le retrait du document supprime les lignes marquées `fromDocument` et conserve les lignes
+  manuelles ; s'il n'en reste aucune, une ligne vide est proposée.
+
+**Tests**
+- Frontend — `NoteFraisList.test.tsx` : après confirmation du retrait, la ligne
+  « Déjeuner client » issue du document disparaît et une ligne vide la remplace.
+  `npm test` : 36 fichiers / **353 tests OK** ; `oxlint` sans nouvelle erreur ; `npm run build` OK.
+
+### 2026-10-30 19:01:04 — Notes de frais : confirmation de suppression d'une ligne
+
+**Tâche**
+```
+lorsqu'on click sur supprimer la ligne de depenses d'une note de frais, il faut demander confirmation
+```
+
+**Implémentation**
+- Frontend — `pages/NoteFraisList.tsx` : le bouton icône de suppression d'une ligne ouvre
+  désormais une confirmation (`NoteFraisList.confirmer.supprimer.la.ligne`) avant de retirer
+  la ligne.
+- i18n — migration `V152` : message de confirmation FR/EN/AR.
+
+**Tests**
+- Frontend — `NoteFraisList.test.tsx` : Annuler conserve la ligne, confirmer la supprime.
+  `npm test` : 36 fichiers / **353 tests OK** ; `oxlint` sans nouvelle erreur ; `npm run build` OK.
+- Backend — `mvn test` : **598 tests, 0 échec, 0 erreur** (migration V152 validée).
