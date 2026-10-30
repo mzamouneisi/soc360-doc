@@ -4315,3 +4315,87 @@ ajouter btn "PDF" dans la liste des cra , lorsque cela est possible
 - Frontend — `CraList.test.tsx` : bouton PDF présent et ouverture du dialogue « Export PDF
   du CRA » ; bouton absent pour un CRA annulé.
   `npm test` : 36 fichiers / **346 tests OK** ; `oxlint` sans nouvelle erreur ; `npm run build` OK.
+
+### 2026-10-30 17:17:12 — PDF CRA : tableau calendrier Client et Interne
+
+**Tâche**
+```
+> **Objectif :** Générer le haut de page / en-tête d'un Compte Rendu d'Activité (CRA) mensuel au format PDF/HTML, décliné en deux versions : **Version Client** et **Version Interne**.
+
+### **1. Structure commune aux deux versions (En-tête principal)**
+
+* **Alignement supérieur :**
+* **À gauche :** Emplacement pour le **Logo de la société**.
+* **Au centre :** Titre principal **« Compte rendu d'activité mensuel »** (texte en gras, centré).
+* **Ligne de séparation :** Une ligne horizontale fine séparant le titre des informations détaillées.
+* **Légende (au-dessus du tableau) :**
+* Une icône/carré gris clair avec le libellé `Week-end`.
+* Une icône/carré jaune clair avec le libellé `Férié`.
+* **Informations générales (Ligne centrale) :**
+* `Mois : [Mois Année]` (ex: Novembre 2022).
+* `Jours potentiels : [Nombre]` (ex: 20).
+
+### **2. Spécificités de la VERSION CLIENT**
+
+Bloc d'informations supérieures (à gauche) :
+* **Nom et prénom :** `[Nom et Prénom du consultant]`
+* **Référence interne :** `[Référence interne de la prestation]`
+* **Lieu(x) d'intervention(s) :** `[Lieu]`
+* **Unité :** `Jours`
+* *(Au centre)* **Référence client :** `[Référence client]`
+
+Structure du tableau de saisie (Client) :
+* **Colonnes de gauche :**
+1. `Client` (Contient : *Nom du client*)
+2. `Contrat` (Contient : *Référence du contrat*)
+3. `Total` (Somme des jours travaillés)
+* **Colonnes de droite (Calendrier) :**
+* En-tête supérieur : `Jours du mois` englobant toutes les dates (de 1 à 30/31).
+* Ligne 1 : Numéros des jours (1, 2, 3, ...).
+* Ligne 2 : Initiales des jours de la semaine (`M`, `M`, `J`, `V`, `S`, `D`, `L`, ...).
+* Les jours de week-end doivent être surlignés en **gris clair** et les jours fériés en **jaune clair**.
+* **Ligne finale :** Ligne `Total` résumant le nombre de jours par colonne et le total global.
+
+### **3. Spécificités de la VERSION INTERNE**
+
+Bloc d'informations supérieures (à gauche) :
+* **Nom et prénom :** `[Nom et Prénom du consultant]`
+* **Unité :** `Jours`
+*(Note : Pas de Référence interne, Lieu d'intervention, ni Référence client sur ce bloc pour la version interne)*.
+
+Structure du tableau de saisie (Interne) :
+* **Colonnes de gauche :**
+1. `Type d'activité` (Contient : *Mission client*, *Indisponibilité*, etc.)
+2. `Détails` (Contient : *Nom client - référence contrat*, ou type d'absence comme *Exemple CP*, *Exemple RTT*)
+3. `Total` (Somme des jours par ligne)
+* **Colonnes de droite (Calendrier) :**
+* Identique à la version client (`Jours du mois`, numéros de jours, initiales des jours, couleur gris pour week-ends et jaune pour jours fériés).
+* **Ligne finale :** Ligne `Total` calculant la somme complète des jours travaillés et des indisponibilités.
+```
+
+**Implémentation**
+- Backend — `CraService` : remplacement des tableaux « liste de dates » par un **tableau
+  calendrier** commun (`addCalendarGrid`) pour le CRA Client et le CRA Interne :
+  - colonnes de gauche `Client / Contrat / Total` (Client) ou
+    `Type d'activité / Détails / Total` (Interne) ;
+  - en-tête `Jours du mois` + numéros des jours + initiales localisées des jours ;
+  - jours de week-end surlignés en **gris clair**, jours fériés en **jaune clair** (légende
+    alignée sur ces couleurs) ;
+  - une colonne par jour avec les jours saisis, et ligne `Total` (total par ligne, total
+    global et total par colonne).
+- CRA Client : une ligne `Nom du client / Référence du contrat (nom du projet)`.
+- CRA Interne : agrégation par groupe — `Mission client` (client + projet),
+  `Indisponibilité` (nom de l'activité, ex. congé payé), `Formation`, `Inter-contrat`,
+  `Autre` ; tri Mission → Indisponibilité → Formation → Inter-contrat → Autre.
+- En-tête conservé et aligné sur les maquettes (logo/nom société, titre, légende,
+  consultant, référence interne, lieu, unité, mois, jours potentiels, référence client).
+- i18n — migration `V147` : libellés FR/EN/AR `CraPdf.contract`, `activityType`, `details`,
+  `daysOfMonth`, `activityType.mission`, `activityType.unavailability`,
+  `activityType.formation`, `activityType.interContract`, `activityType.other`.
+
+**Tests**
+- Backend — `CraServiceTest` : vérification de l'en-tête calendrier Client (`Contract`,
+  `Days of the month`) et Interne (`Activity type`, `Details`, `Client mission`,
+  `Unavailability`, `Congé payé`, `Mission SFR`).
+- Backend — `mvn test` : **597 tests, 0 échec, 0 erreur** (migration V147 validée).
+- Rendu PDF vérifié visuellement (Client et Interne) via conversion PDF → PNG.
