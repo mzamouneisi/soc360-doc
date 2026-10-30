@@ -4500,3 +4500,31 @@ ex : 50px
 **Tests**
 - Backend — `CraServiceTest` : PDF toujours sur **1 page**, libellés de signature présents.
 - Backend — `mvn test` : **597 tests, 0 échec, 0 erreur**.
+
+### 2026-10-30 18:04:59 — soc-87 Notes de frais : libellé « Remboursée » et cadre de ligne
+
+**Tâche**
+```
+soc-87 Gestion des notes de frais 
+
+La case à cocher “Remb.”  n’est pas compréhensible : A bien re ecrire afin qu'elle soit compréhensible. ex: Remboursée.
+
+Le lien pour supprimer la ligne devra être positionner de manière à indiquer que c’est la ligne qui sera supprimé : 
+mettre tous les elements de la ligne dans un cadre 
+mettre le btn "Supprimer" comme icone à droite du cadre 
+```
+
+**Implémentation**
+- Frontend — `pages/NoteFraisList.tsx` : la case à cocher utilise le libellé explicite
+  **Remboursée** (`NoteFraisList.remboursee`) au lieu de « Remb. ».
+- Tous les champs de la ligne sont regroupés dans un cadre (`NoteFraisList.line.<i>.frame`) ;
+  le bouton **Supprimer** devient une icône (corbeille) placée à droite du cadre, à
+  l'extérieur de celui-ci.
+- i18n — migration `V149` : clé `NoteFraisList.remboursee` (FR/EN/AR), répercutée dans
+  `messages.generated.ts`.
+
+**Tests**
+- Frontend — `NoteFraisList.test.tsx` : libellé « Remboursée » affiché, icône Supprimer
+  présente avec `aria-label` et située hors du cadre de ligne.
+  `npm test` : 36 fichiers / **348 tests OK** ; `oxlint` sans nouvelle erreur ; `npm run build` OK.
+- Backend — `mvn test` : **597 tests, 0 échec, 0 erreur** (migration V149 validée).
