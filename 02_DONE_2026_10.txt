@@ -4693,3 +4693,22 @@ sauf si le userConnected est le manager du collaborateur de cette note. ensuite 
 - Backend — `NoteFraisServiceTest` : manager direct autorisé et historisé, autre manager
   refusé (403).
   `mvn test` : **599 tests, 0 échec, 0 erreur**.
+
+### 2026-10-30 19:10:24 — Notes de frais : la suppression d'une ligne ne ferme plus le formulaire
+
+**Tâche**
+```
+lorsqu'on click sur "supprimer la ligne de depenses" d'une note de frais, la popup du formulaire ne doit pas se fermer.
+```
+
+**Implémentation**
+- Cause : le bouton icône de suppression de ligne, placé dans le `<form>`, n'avait pas de
+  `type="button"` et déclenchait donc la soumission du formulaire (fermeture de la popup).
+- Frontend — `pages/NoteFraisList.tsx` : ajout de `type="button"` sur l'icône de suppression
+  de ligne ; la confirmation puis la suppression s'effectuent sans soumettre ni fermer la
+  modale.
+
+**Tests**
+- Frontend — `NoteFraisList.test.tsx` : le bouton a bien `type="button"`, la ligne est
+  supprimée après confirmation et le formulaire reste ouvert.
+  `npm test` : 36 fichiers / **354 tests OK** ; `oxlint` sans nouvelle erreur ; `npm run build` OK.
