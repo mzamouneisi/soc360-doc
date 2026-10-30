@@ -4768,3 +4768,19 @@ faire un espace de 30px entre eux
 - Frontend — `NoteFraisList.test.tsx` : vérification de la classe `space-y-[30px]` sur la
   colonne contenant le justificatif et les champs.
   `npm test` : 36 fichiers / **354 tests OK** ; `oxlint` sans nouvelle erreur ; `npm run build` OK.
+
+### 2026-10-30 19:26:21 — Notes de frais : cadre autour des champs Collaborateur/Mission/Mois/Année
+
+**Tâche**
+```
+mettre un cadre avec bordure pour les 4 elements : Collaborateur, Mission, Mois, Anneee
+```
+
+**Implémentation**
+- Frontend — `pages/NoteFraisList.tsx` : les quatre champs sont regroupés dans un cadre
+  bordé (`NoteFraisList.justificatif.champs`, `rounded-lg border border-gray-200 p-3`).
+
+**Tests**
+- Frontend — `NoteFraisList.test.tsx` : vérification de la bordure du cadre et de la
+  présence du champ Mission à l'intérieur.
+  `npm test` : 36 fichiers / **354 tests OK** ; `oxlint` sans nouvelle erreur ; `npm run build` OK.
