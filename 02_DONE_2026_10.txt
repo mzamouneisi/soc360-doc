@@ -4013,3 +4013,25 @@ label : couleur texte bleue ciel, font Bold , size 12 px
 - Frontend — `Settings.test.tsx` : modification du fond d'en-tête et appel de
   `updateFormSettings` avec les valeurs par défaut attendues.
   `npm test` : 34 fichiers / **338 tests OK** ; `oxlint` 0 erreur ; `npm run build` OK.
+
+------------------
+### 2026-10-30 10:08:56 — Clic sur une société ouvre son formulaire
+
+**Tâche**
+```
+on avait dit que pour chaque table, lorsque je click sur un element de sa liste, j'ouvre son formulaire dans un popup
+ca ne marche pas sur "Mes sociétés" , "Toutes les sociétés"
+```
+
+**Implémentation**
+- Frontend — `pages/SocAdmin.tsx` : ajout de `onRowClick={openEdit}` sur la table des
+  sociétés (utilisée par « Mes sociétés » et « Toutes les sociétés »).
+- Le formulaire s'ouvre dans la popup existante ; il est éditable si l'utilisateur peut
+  gérer la société, sinon il s'ouvre en lecture seule (champs désactivés, bouton Fermer).
+- Les boutons Modifier / Supprimer conservent leur `stopPropagation`.
+
+**Tests**
+- Frontend — nouveau `SocAdmin.test.tsx` : clic sur la ligne « Acme » → popup
+  « Modifier Acme » affichée.
+  `npm test` : 35 fichiers / **339 tests OK** ; `oxlint` 0 erreur ; `npm run build` OK.
+- Backend : aucun changement.
