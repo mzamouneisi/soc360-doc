@@ -4425,3 +4425,61 @@ il ne faut pas ouvrir le cra en arriere plan
 - Frontend — `CraList.test.tsx` : le clic sur **PDF** ouvre la modale d'export, ne rend pas
   le CRA (`CraDetail.total.jours` absent) et la génération appelle l'API avec la mission.
   `npm test` : 36 fichiers / **346 tests OK** ; `oxlint` sans nouvelle erreur ; `npm run build` OK.
+
+### 2026-10-30 17:31:49 — PDF CRA : cadres de signature Client et Interne
+
+**Tâche**
+```
+vous avez oublié les cadres en bas pour la signature 
+client et collaborateur pour cra client 
+et signature 
+manager et collaborateur pour cra interne
+```
+
+**Implémentation**
+- Backend — `CraService` : le CRA Client affiche les cadres **Signature du client** et
+  **Signature du collaborateur** ; le CRA Interne affiche **Signature du manager** et
+  **Signature du collaborateur**.
+- i18n — migration `V148` : clés `CraPdf.signatureCollaborator` et
+  `CraPdf.signatureManager` (FR/EN/AR).
+
+**Tests**
+- Backend — `CraServiceTest` : présence des libellés de signature attendus et absence de
+  l'ancien « Consultant signature ».
+- Backend — `mvn test` : **597 tests, 0 échec, 0 erreur**.
+
+### 2026-10-30 17:31:50 — PDF CRA : cadres de signature en bas de page
+
+**Tâche**
+```
+les cadres de signatures doivent etre à la fin de la page
+```
+
+**Implémentation**
+- Backend — `CraService` : les cadres sont dessinés via un `PdfPageEventHelper` en bas de la
+  dernière page (`writeSelectedRows`), sans consommer d'espace dans le flux ; une nouvelle
+  page est créée si le contenu est trop proche du bas.
+- Rendu PDF vérifié visuellement (Client et Interne) : cadres complets, alignés en bas.
+
+**Tests**
+- Backend — `CraServiceTest` : le PDF reste sur **1 page** et contient les libellés de
+  signature.
+- Backend — `mvn test` : **597 tests, 0 échec, 0 erreur**.
+
+### 2026-10-30 17:31:51 — Liste CRA : bouton PDF uniquement si export possible
+
+**Tâche**
+```
+si l'export pdf n'est pas disponible alors ne pas mettre le btn pdf dans la ligne du cra dans la liste 
+```
+
+**Implémentation**
+- Frontend — `pages/CraList.tsx` : chargement des activités de la société et calcul exact
+  de l'exportabilité de chaque CRA (mission client avec jours, ou tous les jours ouvrés
+  renseignés pour l'interne, statut exportable). Le bouton **PDF** n'est rendu que si
+  l'export est réellement possible.
+
+**Tests**
+- Frontend — `CraList.test.tsx` : bouton absent pour un CRA annulé et pour un brouillon
+  vide ; bouton présent et export fonctionnel pour un CRA complet.
+  `npm test` : 36 fichiers / **347 tests OK** ; `oxlint` sans nouvelle erreur ; `npm run build` OK.
