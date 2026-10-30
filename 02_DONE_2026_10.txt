@@ -4255,3 +4255,42 @@ taille 14 px, nom du projet en gras et en majuscules.
   en gras/majuscules) ; assertion du dialogue de désactivation mise à jour à 14 px.
   `npm test` : 36 fichiers / **344 tests OK** ; `oxlint` 0 erreur ; `npm run build` OK.
 - Backend — `mvn test` : **597 tests, 0 échec, 0 erreur** (migration V145 validée).
+
+### 2026-10-30 16:39:23 — soc-80 Export PDF du CRA : mise à jour de l'en-tête Client/Interne
+
+**Tâche**
+```
+soc-80 Export PDF du CRA : maj format
+
+refaire les haut des pages cra client et interne.
+
+exemple :
+C:\Users\mza\Documents\home\github\mza\doc\esn360\cra_pdf_partie_haute_client.png
+C:\Users\mza\Documents\home\github\mza\doc\esn360\cra_pdf_partie_haute_interne.png
+```
+
+**Implémentation**
+- Backend — `CraService` : nouvel en-tête commun `addCraPdfHeader` pour les exports
+  **CRA Client** (`buildMissionClientPdf`) et **CRA Interne** (`buildInternalPdf`) :
+  - logo de la société à gauche (image `soc.logo` si lisible, sinon nom de la société en
+    rouge), titre « Compte rendu d'activité mensuel » centré ;
+  - filet horizontal sous le titre ;
+  - légende **Week-end / Férié** avec les couleurs de la société (`weekend_color`,
+    `leave_day_color`) ;
+  - bloc gauche : *Nom et prénom* (consultant en rouge gras), *Référence interne*
+    (nom du projet, CRA Client), *Lieu(x) d'intervention(s)*, *Unité : Jours* ;
+  - bloc droit : *Mois* (mois localisé + année), *Jours potentiels* calculés depuis les
+    types de jours du CRA (hors week-end, férié et avant embauche), *Référence client*
+    (CRA Client).
+- Le CRA Interne n'affiche pas les références, conformément à la maquette.
+- Les tableaux de détail existants sont conservés ; seule la partie haute est refondue.
+- i18n — migration `V146` : libellés FR/EN/AR de l'en-tête (`CraPdf.title`,
+  `nameAndFirstName`, `internalReference`, `clientReference`, `interventionPlaces`,
+  `unit`, `unitDays`, `month`, `potentialDays`, `weekend`, `holiday`).
+
+**Tests**
+- Backend — `CraServiceTest` : extraction du texte PDF (`PdfTextExtractor`) et vérification
+  de l'en-tête Client (titre, nom, référence interne, jours potentiels, référence client,
+  unité, logo/nom société) et Interne (titre, nom, jours potentiels, unité, absence de
+  référence interne).
+- Backend — `mvn test` : **597 tests, 0 échec, 0 erreur** (migration V146 validée).
