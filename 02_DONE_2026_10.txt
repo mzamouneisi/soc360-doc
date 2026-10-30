@@ -4186,3 +4186,47 @@ on demande confirmation pour désactiver le projet
 - Frontend — nouveau `Projects.test.tsx` : suppression après confirmation sans dépendance,
   et désactivation proposée lorsqu'une mission est rattachée.
   `npm test` : 36 fichiers / **344 tests OK** ; `oxlint` 0 erreur ; `npm run build` OK.
+
+------------------
+### 2026-10-30 14:47:05 — Mise en forme du dialogue de désactivation d'un projet
+
+**Tâche**
+```
+changer le formattage du texte de confirmation pour desactiver un projet
+ex: 
+actuellement :
+Le projet « dev interne » est associé aux objets suivants : • Mission : dev soc360
+• Mission : Com. Il ne peut pas être supprimé. Voulez-vous le désactiver ?
+
+a faire :
+Le projet « dev interne » est associé aux objets suivants :
+1. Mission : dev soc360
+2. Mission : Com
+
+Il ne peut pas être supprimé.
+
+Voulez-vous le désactiver ?
+--------------------------------
+avec font size : 12px
+nom du projet en bold et en majiscule 
+les noms des objets liés (ici des missions) en gras.
+```
+
+**Implémentation**
+- Frontend — `components/dialog.tsx` : `DialogOptions.messageNode` permet d'afficher un
+  contenu riche à la place du message texte dans la boîte de confirmation.
+- Frontend — `pages/Projects.tsx` : le dialogue de désactivation affiche désormais :
+  - une introduction avec le nom du projet en **gras et majuscules** ;
+  - une liste numérotée des objets liés, avec le nom de chaque mission en **gras** ;
+  - les phrases « Il ne peut pas être supprimé. » et « Voulez-vous le désactiver ? »
+    séparées par des espaces verticaux ;
+  - une taille de police de **12 px** pour l'ensemble du contenu.
+- Un message texte de repli reste fourni pour les tests et les usages non riches.
+- i18n — migration `V144` : libellés FR/EN/AR du dialogue (intro avant/après, objets,
+  impossibilité de suppression, confirmation de désactivation, libellé « Mission »).
+
+**Tests**
+- Frontend — `Projects.test.tsx` : vérification du `messageNode` (taille 12 px, projet en
+  gras/majuscules, liste numérotée, nom de mission en gras).
+  `npm test` : 36 fichiers / **344 tests OK** ; `oxlint` 0 erreur ; `npm run build` OK.
+- Backend — `mvn test` : **597 tests, 0 échec, 0 erreur** (migration V144 validée).
