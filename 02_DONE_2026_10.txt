@@ -4061,3 +4061,28 @@ ce qui n'est pas le cas actuellement : regression
   CRA ouvert dans la popup.
   `npm test` : 35 fichiers / **340 tests OK** ; `oxlint` 0 erreur ; `npm run build` OK.
 - Backend — `mvn test` : **593 tests, 0 échec, 0 erreur** (migration V142 validée).
+
+------------------
+### 2026-10-30 11:52:46 — Tous les CRA, toutes années confondues
+
+**Tâche**
+```
+la page devrait afficher tous les cra ordonnee par date de cra desc 
+```
+
+**Implémentation**
+- Backend — `CraRepository` : nouvelles requêtes triées par année, mois et id décroissants
+  pour un consultant, une société, un manager et toutes les sociétés.
+- Backend — `CraService` / `CraController` : nouveaux endpoints
+  `GET /api/cras/consultant/{id}/all`, `/api/cras/soc/{socId}/all`,
+  `/api/cras/manager/all` et `/api/cras/all` (ADMIN), avec les mêmes contrôles
+  d'isolation (`requireConsultantSocAccess`, `effectiveSocId`) que les endpoints annuels.
+- Frontend — `api/cras.ts` : `findAllByConsultant`, `findAllBySoc`, `findAllByManager`,
+  `findAll`.
+- Frontend — `pages/CraList.tsx` : la liste charge désormais tous les CRA, sans filtre
+  d'année, et reste triée du mois le plus récent au plus ancien (`year`, `month`, `id`).
+
+**Tests**
+- Frontend — `CraList.test.tsx` : affichage simultané de CRA de 2025 et 2026.
+  `npm test` : 35 fichiers / **341 tests OK** ; `oxlint` 0 erreur ; `npm run build` OK.
+- Backend — `mvn test` : **593 tests, 0 échec, 0 erreur**.
