@@ -4294,3 +4294,24 @@ C:\Users\mza\Documents\home\github\mza\doc\esn360\cra_pdf_partie_haute_interne.p
   unité, logo/nom société) et Interne (titre, nom, jours potentiels, unité, absence de
   référence interne).
 - Backend — `mvn test` : **597 tests, 0 échec, 0 erreur** (migration V146 validée).
+
+### 2026-10-30 16:48:29 — Liste des CRA : bouton PDF
+
+**Tâche**
+```
+ajouter btn "PDF" dans la liste des cra , lorsque cela est possible
+```
+
+**Implémentation**
+- Frontend — `pages/CraList.tsx` : bouton texte **PDF** dans la colonne Actions de chaque
+  CRA exportable (`type CRA`, statut DRAFT/SUBMITTED/VALIDATED, au moins une journée
+  d'activité renseignée). Le clic ouvre la popup du CRA avec le dialogue d'export PDF
+  déjà affiché, sans déclencher l'ouverture de la ligne.
+- Frontend — `pages/CraDetail.tsx` : prop `autoOpenExport` ; le dialogue d'export est
+  ouvert automatiquement une fois le CRA et ses activités chargés, si l'export est possible.
+- Règle IHM : ids `CraList.pdf.<id>`.
+
+**Tests**
+- Frontend — `CraList.test.tsx` : bouton PDF présent et ouverture du dialogue « Export PDF
+  du CRA » ; bouton absent pour un CRA annulé.
+  `npm test` : 36 fichiers / **346 tests OK** ; `oxlint` sans nouvelle erreur ; `npm run build` OK.
