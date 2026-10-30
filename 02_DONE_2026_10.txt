@@ -4399,3 +4399,29 @@ Structure du tableau de saisie (Interne) :
   `Unavailability`, `Congé payé`, `Mission SFR`).
 - Backend — `mvn test` : **597 tests, 0 échec, 0 erreur** (migration V147 validée).
 - Rendu PDF vérifié visuellement (Client et Interne) via conversion PDF → PNG.
+
+### 2026-10-30 17:21:25 — Liste des CRA : export PDF sans ouvrir le CRA en arrière-plan
+
+**Tâche**
+```
+sur liste des cra
+
+lorsqu'on click sur le btn pdf :
+
+il ne faut pas ouvrir le cra en arriere plan
+```
+
+**Implémentation**
+- Frontend — `pages/CraList.tsx` : le bouton **PDF** n'ouvre plus la popup du CRA. Il charge
+  le CRA complet et ses activités, puis affiche une **modale d'export autonome** :
+  choix CRA Client / CRA Interne, sélection de la mission si nécessaire, puis génération.
+- Calcul local des missions exportables (hors congés, formation, inter-contrat) et du
+  caractère complet du mois pour activer/désactiver chaque option, comme dans le détail.
+- Frontend — `pages/CraDetail.tsx` : suppression de la prop `autoOpenExport` et de l'effet
+  d'ouverture automatique, devenus inutiles.
+- Règle IHM : ids suffixés `.list` pour ne pas entrer en collision avec la modale du détail.
+
+**Tests**
+- Frontend — `CraList.test.tsx` : le clic sur **PDF** ouvre la modale d'export, ne rend pas
+  le CRA (`CraDetail.total.jours` absent) et la génération appelle l'API avec la mission.
+  `npm test` : 36 fichiers / **346 tests OK** ; `oxlint` sans nouvelle erreur ; `npm run build` OK.
