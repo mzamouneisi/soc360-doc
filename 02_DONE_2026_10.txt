@@ -4665,3 +4665,31 @@ lorsqu'on click sur supprimer la ligne de depenses d'une note de frais, il faut 
 - Frontend — `NoteFraisList.test.tsx` : Annuler conserve la ligne, confirmer la supprime.
   `npm test` : 36 fichiers / **353 tests OK** ; `oxlint` sans nouvelle erreur ; `npm run build` OK.
 - Backend — `mvn test` : **598 tests, 0 échec, 0 erreur** (migration V152 validée).
+
+### 2026-10-30 19:07:25 — Notes de frais : verrouillage des notes soumises/validées hors manager
+
+**Tâche**
+```
+si une note de frais est valide ou soumise 
+on ne peut pas la modifier et donc on ne peut pas supprimer les lignes de depenses en particulier 
+sauf si le userConnected est le manager du collaborateur de cette note. ensuite on historise les modifs.
+```
+
+**Implémentation**
+- Backend — `NoteFraisDtos.NoteFraisDto` : ajout de `managerId` (manager direct du
+  collaborateur) pour permettre le contrôle côté client.
+- Backend — `NoteFraisService.requireUpdatable` : une note `SUBMITTED`/`VALIDATED` est
+  interdite à la modification (400 pour le propriétaire, 403 pour les autres) sauf pour le
+  manager direct du collaborateur (`isManagerOf`), dont la modification reste historisée.
+- Frontend — `pages/NoteFraisList.tsx` : `isReadOnlyForUser` verrouille toute note
+  soumise/validée sauf pour `nf.managerId === user.id` ; les icônes de suppression de ligne
+  et de document joint sont explicitement désactivées en lecture seule.
+- Frontend — `api/types.ts` : ajout de `managerId`.
+
+**Tests**
+- Frontend — `NoteFraisList.test.tsx` : un responsable non manager ne peut pas supprimer
+  une ligne d'une note soumise ; le manager du collaborateur conserve la main.
+  `npm test` : 36 fichiers / **354 tests OK** ; `oxlint` sans nouvelle erreur ; `npm run build` OK.
+- Backend — `NoteFraisServiceTest` : manager direct autorisé et historisé, autre manager
+  refusé (403).
+  `mvn test` : **599 tests, 0 échec, 0 erreur**.
