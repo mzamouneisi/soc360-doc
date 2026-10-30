@@ -4594,3 +4594,37 @@ il faut faire un test de non reg dessus
   hors de tout `fieldset`.
   `npm test` : 36 fichiers / **350 tests OK** ; `oxlint` sans nouvelle erreur ; `npm run build` OK.
 - Backend — `mvn test` : **597 tests, 0 échec, 0 erreur** (migration V150 validée).
+
+### 2026-10-30 18:57:03 — Notes de frais : confirmation de retrait et aperçu à l'ouverture
+
+**Tâche**
+```
+lorsqu'on click sur "retirer document joint", il faut toujours demander confirmation.
+
+Actuellement :
+l'apercu du document joint se fait seulement lorsqu'on ajoute un document
+mais pas lors de l'ouverture d'une note de frais existante.
+il faut avoir l'apercu aussi à l'ouverture de la note de frais.
+```
+
+**Implémentation**
+- Frontend — `pages/NoteFraisList.tsx` :
+  - le clic sur **Retirer** ouvre désormais une boîte de confirmation
+    (`NoteFraisList.confirmer.retirer.le.document.joint` avec le nom du fichier) ;
+  - l'aperçu du document est rendu **hors du fieldset** du formulaire, en haut de la
+    modale sous le titre **Document joint**, y compris à l'ouverture d'une note existante
+    et en lecture seule.
+- Backend — `DocumentController` : un justificatif rattaché à une note de frais est
+  accessible aux utilisateurs ayant accès aux notes de la société
+  (`NoteFraisRepository.existsByDocumentId` + `requireSocAccess`), ce qui permet l'aperçu
+  par le manager / responsable et pas seulement par l'uploader.
+- i18n — migration `V151` : message de confirmation (FR/EN/AR).
+
+**Tests**
+- Frontend — `NoteFraisList.test.tsx` : confirmation obligatoire (Annuler conserve le
+  document, Retirer après confirmation le supprime) ; aperçu affiché à l'ouverture par clic
+  de ligne et en lecture seule, hors de tout `fieldset`.
+  `npm test` : 36 fichiers / **351 tests OK** ; `oxlint` sans nouvelle erreur ; `npm run build` OK.
+- Backend — `DocumentShareIntegrationTest` : téléchargement du justificatif d'une note de
+  frais par le manager.
+  `mvn test` : **598 tests, 0 échec, 0 erreur** (migration V151 validée).
