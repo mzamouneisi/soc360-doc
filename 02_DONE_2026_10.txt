@@ -4146,3 +4146,43 @@ il ne sera pas créé tant que je n'ai rien enregistré.
   ce mois, aucun libellé « Aucun CRA pour ce mois », aucune création en base.
   `npm test` : 35 fichiers / **342 tests OK** ; `oxlint` 0 erreur ; `npm run build` OK.
 - Backend : aucun changement.
+
+------------------
+### 2026-10-30 12:41:53 — soc-92 suppression d'un projet associé à des missions
+
+**Tâche**
+```
+soc-92 Gestion des Projets 
+
+Gérer le cas de suppression d’un projet auquel est associé une mission
+Actuellement un message erreur interne est affiché.
+
+Si un projet n’est associé à aucun objet, on peut le supprimer avec confirmation.
+
+Sinon,
+On ne peut pas supprimer un projet auquel est associé une mission ou un autre objet :
+on liste les objets attachés
+on demande confirmation pour désactiver le projet
+```
+
+**Implémentation**
+- Backend — `ActivityRepository` : `findByProjectId` et `existsByProjectId`.
+- Backend — `ProjectService` : `dependencies(id)` liste les missions/activités rattachées
+  (`ProjectDependencyDto { type, label }`) ; `delete(id)` refuse proprement (400) si le
+  projet possède des missions au lieu de provoquer une erreur interne ; `deactivate(id)`
+  passe le projet en inactif.
+- Backend — `ProjectController` : `GET /api/projects/{id}/dependencies` et
+  `POST /api/projects/{id}/deactivate` (ADMIN / RESPONSIBLE_SOC), avec contrôle
+  d'isolation société.
+- Frontend — `api/projects.ts` / `types.ts` : `dependencies` et `deactivate`.
+- Frontend — `pages/Projects.tsx` : suppression d'un projet sans objet après confirmation ;
+  si des missions sont rattachées, affichage de la liste des objets et proposition de
+  désactiver le projet, puis mise à jour du statut dans la liste.
+- i18n — migration `V143` : libellés FR/EN/AR des dialogues de suppression/désactivation.
+
+**Tests**
+- Backend — `ProjectServiceTest` : refus de suppression avec missions, liste des missions
+  rattachées, désactivation du projet. `mvn test` : **597 tests, 0 échec, 0 erreur**.
+- Frontend — nouveau `Projects.test.tsx` : suppression après confirmation sans dépendance,
+  et désactivation proposée lorsqu'une mission est rattachée.
+  `npm test` : 36 fichiers / **344 tests OK** ; `oxlint` 0 erreur ; `npm run build` OK.
