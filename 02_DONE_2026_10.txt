@@ -3885,3 +3885,39 @@ le btn "Nouveau Cra" à mettre comme "+" à coté de refresh en haut
   ouverture du détail au clic, options de mois/année dans la popup.
   `npm test` : 34 fichiers / **335 tests OK** ; `oxlint` 0 erreur ; `npm run build` OK.
 - Backend — `mvn test` : **586 tests, 0 échec, 0 erreur** (migration V136 validée).
+
+------------------
+### 2026-10-30 09:43:44 — Police des en-têtes de tableau paramétrable
+
+**Tâche**
+```
+font des entete des tableau : Bold size 20px 
+a mettre dans les paramettres user
+```
+
+Complément demandé :
+```
+15px taille font entete par defaut
+```
+
+**Implémentation**
+- Backend — `UserAccount` : nouveau champ `tableHeaderFontSize` (défaut **15 px**),
+  exposé dans `UserDto`.
+- Backend — endpoint `PUT /api/auth/me/table-header-font-size` (validation 8–48 px) et
+  service `updateTableHeaderFontSize`.
+- Backend — migration `V137` : colonne `user_account.table_header_font_size` (défaut 20)
+  + libellés FR/EN/AR ; migration `V138` : défaut ramené à **15 px** et mise à jour des
+  comptes encore à 20 px.
+- Frontend — variable CSS `--table-header-font-size` (défaut 15 px), injectée depuis le
+  compte connecté ; règle globale `thead th` en **gras** avec cette taille, prioritaire sur
+  les anciennes classes `text-xs` de tous les tableaux.
+- Frontend — `pages/Settings.tsx` : nouveau réglage « En-têtes de tableau » (sélection de
+  la taille, options 10 à 24 px) enregistré via `authApi.updateTableHeaderFontSize`.
+- Frontend — `api/auth.ts`, `api/types.ts`, `AuthContext`, `i18n/messages.ts`.
+
+**Tests**
+- Backend — `AuthServiceTest` : enregistrement d'une taille valide, refus d'une taille
+  invalide. `mvn test` : **588 tests, 0 échec, 0 erreur**.
+- Frontend — `Settings.test.tsx` : changement de la taille des en-têtes et appel de
+  `updateTableHeaderFontSize(24)`.
+  `npm test` : 34 fichiers / **336 tests OK** ; `oxlint` 0 erreur ; `npm run build` OK.
