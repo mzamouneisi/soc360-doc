@@ -4230,3 +4230,28 @@ les noms des objets liés (ici des missions) en gras.
   gras/majuscules, liste numérotée, nom de mission en gras).
   `npm test` : 36 fichiers / **344 tests OK** ; `oxlint` 0 erreur ; `npm run build` OK.
 - Backend — `mvn test` : **597 tests, 0 échec, 0 erreur** (migration V144 validée).
+
+### 2026-10-30 15:01:07 — Mise en forme du dialogue de suppression d'un projet
+
+**Tâche**
+```
+formatter aussi le message de confirmation de suppression de projet
+(« Supprimer le projet « … » ? ») comme le dialogue de désactivation :
+taille 14 px, nom du projet en gras et en majuscules.
+```
+
+**Implémentation**
+- Frontend — `pages/Projects.tsx` : le dialogue de suppression utilise désormais un
+  `messageNode` riche (14 px) avec le nom du projet en **gras et majuscules**,
+  encadré par les fragments i18n « Supprimer le projet « » / « » ? ».
+- Correction de la tâche précédente : la taille du dialogue de désactivation passe de
+  **12 px à 14 px** pour rester cohérente.
+- i18n — migration `V145` : libellés FR/EN/AR `Projects.supprimer.le.projet.intro.before`
+  et `.after` ; `messages.generated.ts` régénéré.
+- Règle IHM : ids `Projects.supprimer.le.projet.content` / `.message` ajoutés.
+
+**Tests**
+- Frontend — `Projects.test.tsx` : vérifie le `messageNode` de suppression (14 px, projet
+  en gras/majuscules) ; assertion du dialogue de désactivation mise à jour à 14 px.
+  `npm test` : 36 fichiers / **344 tests OK** ; `oxlint` 0 erreur ; `npm run build` OK.
+- Backend — `mvn test` : **597 tests, 0 échec, 0 erreur** (migration V145 validée).
