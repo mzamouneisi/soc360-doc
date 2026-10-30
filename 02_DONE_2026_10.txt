@@ -3921,3 +3921,35 @@ Complément demandé :
 - Frontend — `Settings.test.tsx` : changement de la taille des en-têtes et appel de
   `updateTableHeaderFontSize(24)`.
   `npm test` : 34 fichiers / **336 tests OK** ; `oxlint` 0 erreur ; `npm run build` OK.
+
+------------------
+### 2026-10-30 09:51:18 — Couleurs des en-têtes de tableau
+
+**Tâche**
+```
+paramettre user :
+ajouter couleur entete texte : blanc 
+modifier couleur entete : bleue 
+```
+
+**Implémentation**
+- Backend — `UserAccount` : `tableHeaderTextColor` (défaut **blanc** `#ffffff`) et
+  `tableHeaderColor` par défaut **bleu** `#1d48eb` ; champs exposés dans `UserDto`.
+- Backend — `PUT /api/auth/me/table-colors` accepte désormais `tableHeaderTextColor`
+  (validation hexadécimale) en plus des couleurs d'en-tête et de bordure.
+- Backend — migration `V139` : colonne `table_header_text_color` (défaut blanc), défaut de
+  `table_header_color` passé à `#1d48eb` et mise à jour des comptes encore en `#f9fafb`.
+- Frontend — variable CSS `--table-header-text` (défaut blanc) injectée depuis le compte ;
+  règle globale `thead th` : texte dans cette couleur, en plus du gras et de la taille
+  configurables.
+- Frontend — `pages/Settings.tsx` : nouveau sélecteur « Couleur du texte d'en-tête »
+  (blanc par défaut) à côté des couleurs d'en-tête et de bordure ; en-tête par défaut bleu.
+  Aperçu du tableau mis à jour avec la couleur de texte choisie.
+- Frontend — `api/auth.ts`, `api/types.ts`, `AuthContext`, `i18n/messages.ts` (FR/EN/AR).
+
+**Tests**
+- Backend — `AuthServiceTest` : enregistrement de la couleur de texte d'en-tête et refus
+  d'une couleur invalide. `mvn test` : **590 tests, 0 échec, 0 erreur**.
+- Frontend — `Settings.test.tsx` : modification de la couleur du texte d'en-tête et appel
+  de `updateTableColors('#1d48eb', '#e5e7eb', '#000000')`.
+  `npm test` : 34 fichiers / **337 tests OK** ; `oxlint` 0 erreur ; `npm run build` OK.
