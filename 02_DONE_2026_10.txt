@@ -3976,3 +3976,40 @@ par defaut couleur bordure entete : noir
   `mvn test` : **591 tests, 0 échec, 0 erreur**.
 - Frontend — `Settings.test.tsx` : enregistrement des couleurs avec bordure noire.
   `npm test` : 34 fichiers / **337 tests OK** ; `oxlint` 0 erreur ; `npm run build` OK.
+
+------------------
+### 2026-10-30 10:03:53 — Paramètres d'apparence des formulaires
+
+**Tâche**
+```
+paramettre user des formulaires :
+
+entete : couleur fond : bleue ciel, couleur texte blanc, size texte 15px, font Bold 
+label : couleur texte bleue ciel, font Bold , size 12 px
+```
+
+**Implémentation**
+- Backend — `UserAccount` : nouveaux paramètres `formHeaderBackgroundColor` (bleu ciel
+  `#0ea5e9`), `formHeaderTextColor` (blanc), `formHeaderFontSize` (15), `
+  formLabelTextColor` (bleu ciel `#0ea5e9`) et `formLabelFontSize` (12), exposés dans
+  `UserDto`.
+- Backend — endpoint `PUT /api/auth/me/form-settings` avec validation des couleurs
+  hexadécimales et des tailles (en-tête 8–32 px, libellés 8–24 px).
+- Backend — migration `V141` : ajout des colonnes correspondantes sur `user_account`.
+- Frontend — `Modal` : l'en-tête utilise le fond bleu ciel, le texte blanc 15 px en gras
+  (valeurs venant des paramètres utilisateur) ; la croix de fermeture suit la couleur du
+  texte.
+- Frontend — règle globale des libellés de formulaire : couleur bleu ciel, gras, 12 px,
+  pilotée par les variables CSS `--form-label-*`.
+- Frontend — `AuthContext` injecte `--form-header-*` et `--form-label-*` depuis le compte.
+- Frontend — `pages/Settings.tsx` : nouvelle section « Formulaires » (fond et texte de
+  l'en-tête, tailles, couleur et taille des libellés) enregistrée via
+  `authApi.updateFormSettings`.
+- i18n — libellés FR/EN/AR de la section Formulaires.
+
+**Tests**
+- Backend — `AuthServiceTest` : enregistrement des paramètres de formulaire, refus des
+  couleurs/tailles invalides. `mvn test` : **593 tests, 0 échec, 0 erreur**.
+- Frontend — `Settings.test.tsx` : modification du fond d'en-tête et appel de
+  `updateFormSettings` avec les valeurs par défaut attendues.
+  `npm test` : 34 fichiers / **338 tests OK** ; `oxlint` 0 erreur ; `npm run build` OK.
