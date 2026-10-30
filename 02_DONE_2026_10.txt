@@ -4483,3 +4483,20 @@ si l'export pdf n'est pas disponible alors ne pas mettre le btn pdf dans la lign
 - Frontend — `CraList.test.tsx` : bouton absent pour un CRA annulé et pour un brouillon
   vide ; bouton présent et export fonctionnel pour un CRA complet.
   `npm test` : 36 fichiers / **347 tests OK** ; `oxlint` sans nouvelle erreur ; `npm run build` OK.
+
+### 2026-10-30 17:36:42 — PDF CRA : marge sous les cadres de signature
+
+**Tâche**
+```
+laisser l'espace entre les cadres signatures et la fin de la page 
+ex : 50px
+```
+
+**Implémentation**
+- Backend — `CraService` : les cadres de signature sont remontés de **50 px** par rapport au
+  bas de page (`document.bottomMargin() + 50 + hauteur`), avec seuil de nouvelle page ajusté.
+- Rendu PDF vérifié visuellement (Client et Interne) : espace de 50 px sous les cadres.
+
+**Tests**
+- Backend — `CraServiceTest` : PDF toujours sur **1 page**, libellés de signature présents.
+- Backend — `mvn test` : **597 tests, 0 échec, 0 erreur**.
