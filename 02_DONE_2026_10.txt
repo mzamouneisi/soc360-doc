@@ -4732,3 +4732,22 @@ afin de gagner de la place, mettre sur la meme ligne la partie pour ajouter le d
 - Frontend — `NoteFraisList.test.tsx` : vérification que la section justificatif et l'aperçu
   sont bien dans le même conteneur `lg:flex-row`.
   `npm test` : 36 fichiers / **354 tests OK** ; `oxlint` sans nouvelle erreur ; `npm run build` OK.
+
+### 2026-10-30 19:23:26 — Notes de frais : champs Collaborateur/Mission/Mois/Année sous le justificatif
+
+**Tâche**
+```
+comme il reste un vide en bas de la partie "ajouter document" , alors faire monter en desous, les elements  : Collaborateur, Mission, Mois, Annee
+```
+
+**Implémentation**
+- Frontend — `pages/NoteFraisList.tsx` : les champs **Collaborateur**, **Mission**, **Mois**
+  et **Année** sont déplacés dans la colonne de gauche, juste sous le cadre
+  « Justificatif », pour occuper l'espace vide à côté de l'aperçu.
+- Disposition en grille 2 colonnes dans cette demi-largeur ; champs explicitement
+  désactivés en lecture seule (ils ne sont plus dans le `<fieldset disabled>`).
+
+**Tests**
+- Frontend — `NoteFraisList.test.tsx` : les champs sont dans le conteneur de la ligne
+  justificatif/aperçu mais hors du cadre « Justificatif ».
+  `npm test` : 36 fichiers / **354 tests OK** ; `oxlint` sans nouvelle erreur ; `npm run build` OK.
