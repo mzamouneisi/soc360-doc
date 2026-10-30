@@ -4086,3 +4086,36 @@ la page devrait afficher tous les cra ordonnee par date de cra desc
 - Frontend — `CraList.test.tsx` : affichage simultané de CRA de 2025 et 2026.
   `npm test` : 35 fichiers / **341 tests OK** ; `oxlint` 0 erreur ; `npm run build` OK.
 - Backend — `mvn test` : **593 tests, 0 échec, 0 erreur**.
+
+------------------
+### 2026-10-30 12:05:38 — Nouveau CRA : aperçu sans création jusqu'à l'enregistrement
+
+**Tâche**
+```
+lorsque je click sur new cra
+on regarde si dans le mois courant il n y a pas de cra : alors on se place dedans mais on ne cree pas de cra sauf si je modifie et je sauvegarde.
+si mois courant ya un cra, on se deplace au mois suivant etc ... jusqu'a trouver un mois où ya pas de cra.
+
+pour que cet algo soit plus rapide, on pourrait faire une variable monthOfextNewCra qui sera mise a jour a chaque changement de  la liste des cra.
+```
+
+**Implémentation**
+- Backend — `CraService` : extraction de `buildForMonth` (construction des jours sans
+  persistance) et nouvel aperçu `previewForMonth` ; `createForMonth` persiste désormais
+  explicitement le résultat.
+- Backend — `GET /api/cras/preview/{consultantId}/{year}/{month}` : renvoie un CRA
+  transient (id null) avec les jours du mois, sans aucune écriture en base.
+- Frontend — `CraList` : le clic sur « Nouveau Cra » ne crée plus de CRA. Il calcule le
+  premier mois sans CRA à partir de la liste déjà chargée (l'équivalent de
+  `monthOfNextNewCra`, recalculé à chaque rechargement) et ouvre un aperçu dans la popup.
+- Frontend — `CraDetail` : supporte un `preview` (aucun `getById`) ; le CRA n'est créé
+  (`getOrCreate`) qu'au moment de l'enregistrement, puis les jours sont sauvegardés. La
+  soumission/validation après enregistrement utilise l'identifiant réel retourné.
+- Frontend — l'historique et l'export sont désactivés tant que le CRA n'a pas été créé.
+
+**Tests**
+- Backend — `CraServiceTest` : `previewForMonth` renvoie les jours du mois avec un id null
+  et ne persiste aucun CRA. `mvn test` : **594 tests, 0 échec, 0 erreur**.
+- Frontend — `CraList.test.tsx` : Nouveau Cra ouvre un aperçu sans appel à `getOrCreate` ;
+  l'enregistrement du brouillon déclenche ensuite `getOrCreate` puis `save`.
+  `npm test` : 35 fichiers / **342 tests OK** ; `oxlint` 0 erreur ; `npm run build` OK.
