@@ -3953,3 +3953,26 @@ modifier couleur entete : bleue
 - Frontend — `Settings.test.tsx` : modification de la couleur du texte d'en-tête et appel
   de `updateTableColors('#1d48eb', '#e5e7eb', '#000000')`.
   `npm test` : 34 fichiers / **337 tests OK** ; `oxlint` 0 erreur ; `npm run build` OK.
+
+------------------
+### 2026-10-30 09:57:01 — Bordure des en-têtes noire par défaut
+
+**Tâche**
+```
+paramettre user 
+par defaut couleur bordure entete : noir 
+```
+
+**Implémentation**
+- Backend — `UserAccount` : `tableBorderColor` par défaut **noir** `#000000`.
+- Backend — migration `V140` : défaut de `table_border_color` passé à `#000000` et mise à
+  jour des comptes encore en `#e5e7eb`.
+- Frontend — `--table-border` par défaut à `#000000` (CSS + `AuthContext`), valeurs de
+  repli de `Settings.tsx` alignées sur le noir.
+- Le réglage « Couleur de bordure » reste modifiable dans les paramètres utilisateur.
+
+**Tests**
+- Backend — `AuthServiceTest` : couleur de bordure par défaut noire.
+  `mvn test` : **591 tests, 0 échec, 0 erreur**.
+- Frontend — `Settings.test.tsx` : enregistrement des couleurs avec bordure noire.
+  `npm test` : 34 fichiers / **337 tests OK** ; `oxlint` 0 erreur ; `npm run build` OK.
