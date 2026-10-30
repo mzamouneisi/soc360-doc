@@ -4035,3 +4035,29 @@ ca ne marche pas sur "Mes sociétés" , "Toutes les sociétés"
   « Modifier Acme » affichée.
   `npm test` : 35 fichiers / **339 tests OK** ; `oxlint` 0 erreur ; `npm run build` OK.
 - Backend : aucun changement.
+
+------------------
+### 2026-10-30 11:46:17 — Créer un CRA pour n'importe quel mois sans CRA
+
+**Tâche**
+```
+on doit pouvoir ajouter un nouveau cra dans n'importe quel mois où on n'a pas de cra.
+ce qui n'est pas le cas actuellement : regression
+```
+
+**Implémentation**
+- Frontend — `pages/CraList.tsx` : dans la popup CRA, lorsque la navigation mensuelle
+  arrive sur un mois sans CRA, le message « Aucun CRA pour ce mois » est accompagné d'un
+  bouton « Créer le CRA de ce mois ».
+- Le bouton crée le CRA pour le mois/année navigué et le collaborateur affiché
+  (`detailConsultantId`, sinon l'utilisateur courant), via `crasApi.getOrCreate`, puis
+  ouvre immédiatement le CRA créé dans la même popup.
+- La liste est rechargée si le mois créé appartient à une autre année.
+- i18n — migration `V142` : libellé `CraList.creer.le.cra.de.ce.mois` (FR/EN/AR).
+
+**Tests**
+- Frontend — `CraList.test.tsx` : navigation vers un mois sans CRA puis clic sur
+  « Créer le CRA de ce mois » → `getOrCreate(consultant, année, mois, 'CRA')` appelé et
+  CRA ouvert dans la popup.
+  `npm test` : 35 fichiers / **340 tests OK** ; `oxlint` 0 erreur ; `npm run build` OK.
+- Backend — `mvn test` : **593 tests, 0 échec, 0 erreur** (migration V142 validée).
