@@ -4119,3 +4119,30 @@ pour que cet algo soit plus rapide, on pourrait faire une variable monthOfextNew
 - Frontend — `CraList.test.tsx` : Nouveau Cra ouvre un aperçu sans appel à `getOrCreate` ;
   l'enregistrement du brouillon déclenche ensuite `getOrCreate` puis `save`.
   `npm test` : 35 fichiers / **342 tests OK** ; `oxlint` 0 erreur ; `npm run build` OK.
+
+------------------
+### 2026-10-30 12:24:24 — Mois sans CRA : afficher un CRA vide à remplir
+
+**Tâche**
+```
+page new cra
+en se deplacant avec les fleches, il arrive un mois où on affiche le label : Aucun CRA pour ce mois.
+je ne veux pas avoir ça : je veux afficher toute la page d'un cra vide que je peux remplir si je veux.
+il ne sera pas créé tant que je n'ai rien enregistré.
+```
+
+**Implémentation**
+- Frontend — `pages/CraList.tsx` : lors de la navigation mensuelle dans la popup, si aucun
+  CRA n'existe pour le mois ciblé, on ouvre désormais le formulaire complet d'un **CRA vide
+  en aperçu** (via `detailPreview`), au lieu d'afficher « Aucun CRA pour ce mois ».
+- Le message « Aucun CRA pour ce mois » et son bouton « Créer le CRA de ce mois » sont
+  retirés de la popup.
+- Le CRA vide reste non persisté : la création en base n'a lieu qu'à l'enregistrement
+  (`getOrCreate` puis `save` dans `CraDetail`), conformément au comportement de l'aperçu.
+- La navigation vers un mois contenant déjà un CRA continue d'ouvrir ce CRA.
+
+**Tests**
+- Frontend — `CraList.test.tsx` : navigation vers un mois sans CRA → `preview` appelé pour
+  ce mois, aucun libellé « Aucun CRA pour ce mois », aucune création en base.
+  `npm test` : 35 fichiers / **342 tests OK** ; `oxlint` 0 erreur ; `npm run build` OK.
+- Backend : aucun changement.
