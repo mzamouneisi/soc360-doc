@@ -4528,3 +4528,43 @@ mettre le btn "Supprimer" comme icone à droite du cadre
   présente avec `aria-label` et située hors du cadre de ligne.
   `npm test` : 36 fichiers / **348 tests OK** ; `oxlint` sans nouvelle erreur ; `npm run build` OK.
 - Backend — `mvn test` : **597 tests, 0 échec, 0 erreur** (migration V149 validée).
+
+### 2026-10-30 18:08:41 — Notes de frais : libellés des champs de la ligne de dépense
+
+**Tâche**
+```
+mettre des libélés dans la ligne de dépenses de la note de frais
+afin qu'on sache de quoi il s'agit 
+```
+
+**Implémentation**
+- Frontend — `components/ui.tsx` : `Field` accepte désormais une `className`, ce qui permet
+  de l'utiliser directement dans les grilles.
+- Frontend — `pages/NoteFraisList.tsx` : chaque champ de la ligne de dépense est précédé
+  d'un libellé visible : **Nom enseigne**, **Date**, **Catégorie**, **Libellé / action**,
+  **Adresse**, **Montant HT €**, **Montant TTC €**, et **Remboursée**.
+- Règle IHM : ids de libellés `NoteFraisList.line.<i>.<champ>.label`.
+
+**Tests**
+- Frontend — `NoteFraisList.test.tsx` : vérification de la présence de tous les libellés
+  visibles dans le formulaire.
+  `npm test` : 36 fichiers / **349 tests OK** ; `oxlint` sans nouvelle erreur ; `npm run build` OK.
+
+### 2026-10-30 18:08:42 — Notes de frais : document joint visible à l'ouverture
+
+**Tâche**
+```
+lorsqu'on ouvre une note de frais, il faut qu'on visualise le document joint 
+```
+
+**Implémentation**
+- Vérification du comportement existant : l'ouverture d'une note (clic sur la ligne ou
+  bouton Modifier) charge `documentsApi.previewUrl` puis affiche le `DocumentPreview` dans
+  la section « Justificatif » du formulaire ; le téléchargement reste disponible.
+- Ajout d'un test de non-régression sur l'ouverture par clic de ligne (et non uniquement
+  par le bouton Modifier).
+
+**Tests**
+- Frontend — `NoteFraisList.test.tsx` : clic sur la ligne → aperçu de l'image du
+  justificatif affiché (`blob:preview`).
+  `npm test` : 36 fichiers / **349 tests OK** ; `oxlint` sans nouvelle erreur ; `npm run build` OK.
