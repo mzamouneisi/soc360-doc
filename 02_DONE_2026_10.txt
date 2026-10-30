@@ -4751,3 +4751,20 @@ comme il reste un vide en bas de la partie "ajouter document" , alors faire mont
 - Frontend — `NoteFraisList.test.tsx` : les champs sont dans le conteneur de la ligne
   justificatif/aperçu mais hors du cadre « Justificatif ».
   `npm test` : 36 fichiers / **354 tests OK** ; `oxlint` sans nouvelle erreur ; `npm run build` OK.
+
+### 2026-10-30 19:25:01 — Notes de frais : espace de 30 px sous le justificatif
+
+**Tâche**
+```
+faire un espace de 30px entre eux 
+```
+
+**Implémentation**
+- Frontend — `pages/NoteFraisList.tsx` : la colonne de gauche (justificatif puis champs
+  Collaborateur/Mission/Mois/Année) utilise `space-y-[30px]` ; le `mt-4` redondant de la
+  grille est retiré, laissant exactement 30 px entre le cadre du justificatif et les champs.
+
+**Tests**
+- Frontend — `NoteFraisList.test.tsx` : vérification de la classe `space-y-[30px]` sur la
+  colonne contenant le justificatif et les champs.
+  `npm test` : 36 fichiers / **354 tests OK** ; `oxlint` sans nouvelle erreur ; `npm run build` OK.
