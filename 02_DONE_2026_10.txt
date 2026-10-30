@@ -4712,3 +4712,23 @@ lorsqu'on click sur "supprimer la ligne de depenses" d'une note de frais, la pop
 - Frontend — `NoteFraisList.test.tsx` : le bouton a bien `type="button"`, la ligne est
   supprimée après confirmation et le formulaire reste ouvert.
   `npm test` : 36 fichiers / **354 tests OK** ; `oxlint` sans nouvelle erreur ; `npm run build` OK.
+
+### 2026-10-30 19:20:46 — Notes de frais : ajout du document et aperçu sur la même ligne
+
+**Tâche**
+```
+afin de gagner de la place, mettre sur la meme ligne la partie pour ajouter le document et l'apercu.
+```
+
+**Implémentation**
+- Frontend — `pages/NoteFraisList.tsx` : la section **Justificatif** (ajout/suppression du
+  document) et l'aperçu **Document joint** sont regroupés dans une même ligne flexible
+  (`NoteFraisList.justificatif.apercu.row`, `lg:flex-row`), chacun prenant la moitié de la
+  largeur sur grand écran et s'empilant sur mobile.
+- La section d'ajout est sortie du `<form>` pour être alignée avec l'aperçu ; en lecture
+  seule, le champ fichier et le bouton Retirer restent explicitement désactivés.
+
+**Tests**
+- Frontend — `NoteFraisList.test.tsx` : vérification que la section justificatif et l'aperçu
+  sont bien dans le même conteneur `lg:flex-row`.
+  `npm test` : 36 fichiers / **354 tests OK** ; `oxlint` sans nouvelle erreur ; `npm run build` OK.
