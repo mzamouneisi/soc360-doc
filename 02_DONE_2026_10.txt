@@ -4568,3 +4568,29 @@ lorsqu'on ouvre une note de frais, il faut qu'on visualise le document joint
 - Frontend — `NoteFraisList.test.tsx` : clic sur la ligne → aperçu de l'image du
   justificatif affiché (`blob:preview`).
   `npm test` : 36 fichiers / **349 tests OK** ; `oxlint` sans nouvelle erreur ; `npm run build` OK.
+
+### 2026-10-30 18:25:00 — Notes de frais : aperçu du document visible à l'ouverture (correctif)
+
+**Tâche**
+```
+lorsqu'on ouvre une note de frais, il faut qu'on previsualise le document joint
+ca marchait avant
+pourquoi vs l'avez enlevé.
+il faut faire un test de non reg dessus
+```
+
+**Implémentation**
+- Cause : l'aperçu était rendu à l'intérieur du `<fieldset disabled={readOnlyForm}>`.
+  En lecture seule (note soumise/validée), il se retrouvait dans la zone désactivée du
+  formulaire.
+- Frontend — `pages/NoteFraisList.tsx` : l'aperçu du document est déplacé **hors du
+  fieldset**, en haut de la modale, sous un titre **Document joint**, et reste donc visible
+  et interactif quel que soit le statut de la note.
+- i18n — migration `V150` : clé `NoteFraisList.document.joint` (FR/EN/AR).
+
+**Tests**
+- Frontend — `NoteFraisList.test.tsx` : tests de non-régression sur l'ouverture par clic de
+  ligne et en lecture seule (note `SUBMITTED`) : aperçu affiché, titre présent et aperçu
+  hors de tout `fieldset`.
+  `npm test` : 36 fichiers / **350 tests OK** ; `oxlint` sans nouvelle erreur ; `npm run build` OK.
+- Backend — `mvn test` : **597 tests, 0 échec, 0 erreur** (migration V150 validée).
