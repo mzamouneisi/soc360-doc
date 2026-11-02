@@ -50,3 +50,22 @@ il faut aussi retirer la ligne de depense : comme si on click sur supprimer
   issue du document disparait elle aussi après confirmation du retrait.
   `npm test` : 36 fichiers / **356 tests OK** ; `oxlint` sans nouvelle erreur ;
   `npm run build` OK.
+
+### 2026-11-02 10:09:07 — soc-87 (suite 2) : disparition complète des champs de dépense
+
+**Tâche**
+```
+retirer le doc de la note de frais dois faire disparaitre la ligne de dépense ainsi que tous ses champs de saisies.
+```
+
+**Implémentation**
+- Frontend — `pages/NoteFraisList.tsx` : au retrait du document joint, la liste des lignes de
+  dépense est vidée (`lines: []`) au lieu d'être remplacée par une ligne vide. La ligne et
+  tous ses champs de saisie disparaissent ; le bouton « Ajouter une ligne » reste disponible
+  pour en recréer une.
+
+**Tests**
+- Frontend — `NoteFraisList.test.tsx` : après confirmation du retrait, plus aucun champ de
+  ligne (`NoteFraisList.line.0.*`) n'est présent dans le formulaire.
+  `npm test` : 36 fichiers / **356 tests OK** ; `oxlint` sans nouvelle erreur ;
+  `npm run build` OK.
