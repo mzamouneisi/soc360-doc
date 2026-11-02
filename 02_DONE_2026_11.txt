@@ -291,3 +291,21 @@ agrandir la largeur et longueur
   avec logo, logo de la société affiché et texte SOC360 absent.
   `npm test` : 41 fichiers / **374 tests OK** ; `oxlint` sans nouvelle erreur ;
   `npm run build` OK.
+
+### 2026-11-02 12:30:04 — soc-96 (suite 2) : logo encore agrandi
+
+**Tâche**
+```
+agrandit encore ce logo
+```
+
+**Implémentation**
+- Frontend — `layout/SocBrandLogo.tsx` : le logo personnalisé passe de `h-20` à `h-28`
+  (112 px de haut) sur toute la largeur disponible (`w-full`, `object-contain`).
+- Frontend — `pages/MainLayout.tsx` : la zone de marque passe de `h-24` à `h-32` pour
+  laisser respirer le logo agrandi.
+
+**Tests**
+- Frontend — `SocBrandLogo.test.tsx` inchangé et toujours vert.
+  `npm test` : 41 fichiers / **374 tests OK** ; `oxlint` sans nouvelle erreur ;
+  `npm run build` OK.
