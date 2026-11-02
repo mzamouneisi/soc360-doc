@@ -1,0 +1,33 @@
+### 2026-11-02 09:47:44 — soc-87 : suppression des lignes et de la note liées au document joint
+
+**Tâche**
+```
+soc-87  lorsqu’on supprime le document joint, on dois supprimer les lignes de dépenses liées ainsi que la note contenant le total texte du document.
+```
+
+**Implémentation**
+- Backend — `NoteFraisRepository` : ajout de `findByDocumentId`.
+- Backend — `NoteFraisService.deleteByDocumentId` : supprime toutes les notes de frais
+  rattachées au justificatif (leurs lignes de dépenses sont supprimées par cascade /
+  orphanRemoval, l'historique par la FK `ON DELETE CASCADE`).
+- Backend — `DocumentController.delete` : appelle `noteFraisService.deleteByDocumentId(id)`
+  avant de supprimer le document, ses partages et le fichier stocké.
+- Backend — `HrDocumentRepository.findOrphanJustificatifs` : un justificatif référencé par une
+  note de frais n'est plus considéré comme orphelin (le nettoyage nocturne ne casse plus les
+  notes existantes).
+- Frontend — `pages/NoteFraisList.tsx` : le retrait du document joint efface aussi la note
+  « Infos facture (texte de la facture) » (`infosFacture`), en plus des lignes issues du
+  document.
+
+**Tests**
+- Backend — `NoteFraisServiceTest` : suppression de toutes les notes liées, cas
+  `documentId` nul.
+- Backend — `DocumentShareIntegrationTest` : suppression du justificatif via l'API entraine
+  la suppression de la note de frais et de sa ligne de dépense.
+- Backend — `CraServiceTest` : tests dépendants de la date rendus déterministes (premier
+  jour ouvré du mois au lieu du 1er, qui tombait un dimanche en novembre 2026).
+  `mvn test` : **602 tests, 0 échec, 0 erreur**.
+- Frontend — `NoteFraisList.test.tsx` : après confirmation du retrait, le texte de la
+  facture est vidé.
+  `npm test` : 36 fichiers / **355 tests OK** ; `oxlint` sans nouvelle erreur ;
+  `npm run build` OK.
