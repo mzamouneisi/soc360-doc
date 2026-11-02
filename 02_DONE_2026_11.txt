@@ -69,3 +69,45 @@ retirer le doc de la note de frais dois faire disparaitre la ligne de dépense a
   ligne (`NoteFraisList.line.0.*`) n'est présent dans le formulaire.
   `npm test` : 36 fichiers / **356 tests OK** ; `oxlint` sans nouvelle erreur ;
   `npm run build` OK.
+
+### 2026-11-02 10:26:29 — soc-95 : plage de dates depuis l'embauche jusqu'à +3 ans
+
+**Tâche**
+```
+soc-95 Impossible d accéder a des dates avant 2025 en CRA pour un consultant embauché en 2023
+
+donc on revient en arrière au max la date d'embauche du collaborateur du cra.
+
+et pour le futur, on prévoit 3 ans max à partir d'aujourd'hui.
+
+faire de meme pour les indispos et note de frais
+```
+
+**Implémentation**
+- Frontend — nouveau module `lib/period.ts` : `parseHirePeriod`, `maxPeriod` (aujourd'hui + 3
+  ans), `allowedYears` (année d'embauche → +3 ans ; année précédente si embauche inconnue) et
+  `allowedMonths` (mois d'embauche la première année, mois courant pour l'année +3).
+- Frontend — `pages/CraList.tsx` : la navigation de la popup CRA utilise la date d'embauche du
+  collaborateur concerné (soi-même ou le collaborateur choisi par un manager/admin) comme
+  borne basse, et aujourd'hui + 3 ans comme borne haute ; les flèches précédent/suivant sont
+  bornées.
+- Frontend — `pages/IndispoList.tsx` : mêmes bornes pour la navigation des indispos
+  (année/mois), avec blocage de la navigation au-delà de +3 ans.
+- Frontend — `pages/NoteFraisList.tsx` : la liste et le formulaire proposent les années depuis
+  la date d'embauche du collaborateur jusqu'à +3 ans ; les mois sont filtrés (mois d'embauche
+  la première année, mois courant pour l'année +3) ; le changement de collaborateur recale
+  l'année/mois si nécessaire.
+- Frontend — `pages/Unavailability.tsx` : les champs de date sont plafonnés à aujourd'hui + 3
+  ans en plus de la borne basse (date d'embauche / aujourd'hui).
+
+**Tests**
+- Frontend — `lib/period.test.ts` : parsing de la date d'embauche, bornes +3 ans, années et
+  mois filtrés.
+- Frontend — `CraList.test.tsx` : un consultant embauché en 2023 voit 2023 → 2029, pas 2022
+  ni 2030.
+- Frontend — `IndispoList.test.tsx` (nouveau) : périodes 2023 → 2029, mois filtrés par
+  embauche et par la borne future.
+- Frontend — `NoteFraisList.test.tsx` : listes d'années/mois de la liste et du formulaire
+  bornées par l'embauche et +3 ans.
+  `npm test` : 38 fichiers / **364 tests OK** ; `oxlint` sans nouvelle erreur ;
+  `npm run build` OK.
