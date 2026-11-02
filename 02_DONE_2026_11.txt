@@ -382,3 +382,40 @@ agrandir un peu plus la taille de la police du copyright
 **Tests**
 - Frontend — `npm test` : 41 fichiers / **374 tests OK** ; `oxlint` sans nouvelle erreur ;
   `npm run build` OK.
+
+### 2026-11-02 12:43:36 — Clic sur le logo de la société : ouverture du site
+
+**Tâche**
+```
+click sur le logo de la societe nous ouvre le site de la societe dans un nouvel onglet
+```
+
+**Implémentation**
+- Backend — `UserDtos.SocLiteDto` : ajout du `website` de la société (constructeurs de
+  compatibilité conservés) ; `AuthService.mySocs/addSoc` le renseigne.
+- Frontend — `api/types.ts` : `SocLiteDto.website`.
+- Frontend — `layout/SocBrandLogo.tsx` : le logo est enveloppé dans un lien
+  (`MainLayout.logo.link`) lorsque la société a un site ; ouverture dans un nouvel onglet
+  (`target="_blank"`, `rel="noreferrer"`), ajout automatique de `https://` si le protocole
+  manque.
+
+**Tests**
+- Frontend — `SocBrandLogo.test.tsx` : lien présent avec le site, nouvel onglet, ajout de
+  `https://` si absent.
+  `npm test` : 41 fichiers / **376 tests OK** ; `oxlint` sans nouvelle erreur ;
+  `npm run build` OK.
+- Backend — `mvn test` : **618 tests, 0 échec, 0 erreur**.
+
+### 2026-11-02 12:43:36 — Copyright entièrement en gras
+
+**Tâche**
+```
+la font de tout le texte du copyright doit etre en gras
+```
+
+**Implémentation**
+- Frontend — `layout/MainLayout.tsx` : le pied de page « © Copyright SOC360
+  www.eisi-consulting.fr » passe en `font-bold` (texte et lien).
+
+**Tests**
+- Frontend — `oxlint` sans nouvelle erreur ; `npm run build` OK.
