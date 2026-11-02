@@ -448,3 +448,38 @@ pouvez vous augmenter encore le coté noir foncé
 
 **Tests**
 - Frontend — `oxlint` sans nouvelle erreur ; `npm run build` OK.
+
+### 2026-11-02 14:54:39 — soc-87 : suppression de « Remboursé » et statut « Payée »
+
+**Tâche**
+```
+soc-87 notes de frais : On va enlever le champ “Remboursé” : 
+
+Car on va introduire un statut “Payé” après Validation de la note de frais par le manager du collaborateur.
+
+C’est le manager qui va changer le statut du “Validé” à “Payé”.
+```
+
+**Implémentation**
+- Backend — `NoteFraisDtos.LineDto`/`LineRequest` et `NoteFraisLine` : suppression du champ
+  `reimbursed` ; migration `V156` : `DROP COLUMN expense_report_line.reimbursed`.
+- Backend — `NoteFraisService.applyLines/toLineDto` et PDF interne : suppression de la colonne
+  « Remb. » et du champ par ligne.
+- Backend — `NoteFraisService.pay` + `POST /api/note-frais/{id}/pay` : passage d'une note
+  `VALIDATED` à `PAID` (date `paidAt`, historique « Paiement »), rôles
+  ADMIN/RESPONSIBLE_SOC/MANAGER, refus si la note n'est pas validée.
+- Backend — migration `V155` : clé i18n `NoteFraisList.marquer.payee` (FR/EN/AR).
+- Frontend — `pages/NoteFraisList.tsx` : suppression du champ/checkbox « Remboursée » du
+  formulaire ; bouton « Marquer payée » pour une note validée (liste et formulaire, manager
+  autorisé) ; une note `PAID` est en lecture seule.
+- Frontend — `api/noteFrais.ts`/`types.ts` : `pay(id)`, suppression de `reimbursed` des types
+  de ligne et des requêtes.
+
+**Tests**
+- Backend — `NoteFraisServiceTest` : paiement d'une note validée (statut `PAID`, `paidAt`,
+  historique) et refus d'une note non validée.
+  `mvn test` : **620 tests, 0 échec, 0 erreur** (migrations V155/V156 validées).
+- Frontend — `NoteFraisList.test.tsx` : plus de champ « Remboursée » ; bouton « Marquer payée »
+  appelle l'API. Test `Register` rendu plus robuste (timeout 15 s, charge de la suite).
+  `npm test` : 41 fichiers / **377 tests OK** ; `oxlint` sans nouvelle erreur ;
+  `npm run build` OK.
