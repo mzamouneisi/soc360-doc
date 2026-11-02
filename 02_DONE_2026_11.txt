@@ -330,3 +330,18 @@ Copyright SOC360 www.eisi-consulting.fr
 **Tests**
 - Frontend — `npm test` : 41 fichiers / **374 tests OK** ; `oxlint` sans nouvelle erreur ;
   `npm run build` OK.
+
+### 2026-11-02 12:34:55 — Copyright : police agrandie, symbole © et lien bleu
+
+**Tâche**
+```
+agrandit un peu plus la font du copyright. ajouter le symbole du copyright. mettre en bleu le site eisi
+```
+
+**Implémentation**
+- Frontend — `layout/MainLayout.tsx` : pied de page en `text-sm` (au lieu de `text-xs`),
+  ajout du symbole « © » avant « Copyright SOC360 », et lien `www.eisi-consulting.fr`
+  affiché en bleu (`text-brand-600`) avec soulignement au survol.
+
+**Tests**
+- Frontend — `npm run lint` OK ; `npm run build` OK.
