@@ -434,3 +434,17 @@ font noir foncé : © Copyright SOC360
 
 **Tests**
 - Frontend — `oxlint` sans nouvelle erreur ; `npm run build` OK.
+
+### 2026-11-02 13:59:25 — Copyright : noir encore plus foncé
+
+**Tâche**
+```
+pouvez vous augmenter encore le coté noir foncé
+```
+
+**Implémentation**
+- Frontend — `layout/MainLayout.tsx` : le texte « © Copyright SOC360 » passe de
+  `text-gray-900` à `text-black` (noir pur) ; le lien reste bleu.
+
+**Tests**
+- Frontend — `oxlint` sans nouvelle erreur ; `npm run build` OK.
