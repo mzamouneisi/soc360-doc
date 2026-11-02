@@ -111,3 +111,36 @@ faire de meme pour les indispos et note de frais
   bornées par l'embauche et +3 ans.
   `npm test` : 38 fichiers / **364 tests OK** ; `oxlint` sans nouvelle erreur ;
   `npm run build` OK.
+
+### 2026-11-02 10:58:34 — soc-87 : PDF interne des notes de frais du mois
+
+**Tâche**
+```
+soc-87 : notes de frais : generation pdf des notes de frais du mois.  click sur le montant du mois.
+
+document interne 
+
+comme pour le cra pdf interne
+```
+
+**Implémentation**
+- Backend — `NoteFraisRepository` : `findByConsultantSocIdAndMonthAndYear` pour charger les
+  notes du mois de la société.
+- Backend — `NoteFraisService.exportMonthPdf` : génère un PDF interne (A4 paysage) avec
+  en-tête société/logo, titre « Notes de frais — <mois> <année> », période, nombre de notes,
+  total général, puis le détail des lignes (collaborateur, date, catégorie, libellé, enseigne,
+  adresse, HT, TTC, remboursée). Libellés issus de l'i18n, mois localisé, montants formatés.
+- Backend — `NoteFraisDtos.PdfExport` et `GET /api/note-frais/export/month/{socId}/{year}/{month}`
+  (rôles ADMIN/RESPONSIBLE_SOC/MANAGER), isolation via `effectiveSocId`.
+- Frontend — `api/noteFrais.ts` : `exportMonthPdf`.
+- Frontend — `pages/NoteFraisList.tsx` : le montant de chaque mois du graphique « Montants par
+  mois » devient un bouton qui télécharge le PDF du mois (désactivé si montant nul).
+
+**Tests**
+- Backend — `NoteFraisServiceTest` : génération PDF du mois (nom de fichier, type MIME, contenu
+  non vide) et rejet d'un mois invalide.
+  `mvn test` : **604 tests, 0 échec, 0 erreur**.
+- Frontend — `NoteFraisList.test.tsx` : clic sur le montant d'août télécharge le PDF
+  (`socId`, année, mois, langue) ; mois sans montant désactivé.
+  `npm test` : 38 fichiers / **365 tests OK** ; `oxlint` sans nouvelle erreur ;
+  `npm run build` OK.
