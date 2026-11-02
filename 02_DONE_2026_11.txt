@@ -176,7 +176,62 @@ soc-96 # Gestion du logo de la société
 Permettre au Responsable Société d'ajouter, modifier ou supprimer le logo de sa société, lors de sa création ou depuis ses paramètres.
 
 **Règle fondamentale :** le logo SOC360 est le logo par défaut. Il doit être automatiquement affiché lorsqu'aucun logo personnalisé n'est associé à la société.
-[...]
+
+## 1. Ajout et modification du logo
+- L'ajout du logo est facultatif lors de la création d'une société.
+- Le Responsable Société peut ajouter ou remplacer le logo depuis les paramètres de la société.
+- Formats autorisés : PNG, JPG et JPEG.
+- Taille maximale : 2 Mo.
+- Vérifier l'extension, le type MIME et le contenu réel du fichier pour éviter les fichiers falsifiés.
+- Refuser tout fichier non conforme avec un message explicite.
+- Proposer une prévisualisation avant validation.
+- Permettre de remplacer ou supprimer un fichier avant validation.
+- En cas d'échec du remplacement, conserver le logo existant.
+
+## 2. Affichage du logo
+- Afficher le logo personnalisé en haut à gauche de l'application, à la place du logo SOC360.
+- Si aucun logo personnalisé n'existe, afficher automatiquement le logo SOC360.
+- Conserver les proportions originales : aucun étirement, aucune déformation ni aucun recadrage.
+- Adapter automatiquement la taille à la zone disponible et centrer le logo.
+- Toujours afficher le logo correspondant à la société de l'utilisateur.
+
+## 3. Suppression du logo personnalisé
+- Proposer l'action « Supprimer le logo » uniquement lorsqu'un logo personnalisé existe.
+- Demander une confirmation avant suppression.
+- En cas d'annulation, ne rien modifier.
+- Après confirmation, dissocier ou supprimer le logo personnalisé et afficher automatiquement le logo SOC360.
+- Ne jamais supprimer la ressource par défaut SOC360.
+
+## 4. Stockage et sécurité
+- Associer chaque logo à sa société via `id_soc`.
+- Stocker le fichier dans un espace de stockage adapté et conserver ses métadonnées en base :
+  - `logo_path` : chemin ou référence du fichier.
+  - `logo_filename` : nom du fichier.
+  - `logo_mime_type` : type MIME.
+  - `updated_at` : date de dernière modification.
+- Ne pas stocker directement le contenu du fichier en base de données.
+- Garantir l'isolation des logos entre sociétés.
+- Réserver l'ajout, le remplacement et la suppression au rôle **Responsable Société**.
+
+## 5. Règles métier essentielles
+1. Une société peut avoir zéro ou un logo personnalisé.
+2. Le logo SOC360 est toujours disponible comme solution de remplacement par défaut.
+3. L'absence de logo personnalisé ne doit jamais empêcher l'affichage du logo.
+4. Un logo personnalisé ne doit jamais être visible depuis une autre société.
+5. Le remplacement doit être atomique : un fichier invalide ou une erreur ne doit jamais faire perdre le logo existant.
+6. La suppression d'un logo ne doit affecter ni les autres sociétés ni le logo SOC360.
+
+## 6. Critères de validation
+Vérifier les scénarios suivants :
+- Création d'une société avec ou sans logo.
+- Import d'un fichier valide ou non conforme (format, contenu, taille).
+- Prévisualisation, remplacement et suppression avant validation.
+- Modification du logo depuis les paramètres.
+- Conservation de l'ancien logo en cas d'échec du remplacement.
+- Suppression avec confirmation ou annulation.
+- Retour automatique au logo SOC360 après suppression.
+- Affichage correct du logo selon la société connectée.
+- Vérification des droits et de l'isolation entre sociétés.
 ```
 
 **Implémentation**
