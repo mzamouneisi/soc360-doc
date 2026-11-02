@@ -144,3 +144,24 @@ comme pour le cra pdf interne
   (`socId`, année, mois, langue) ; mois sans montant désactivé.
   `npm test` : 38 fichiers / **365 tests OK** ; `oxlint` sans nouvelle erreur ;
   `npm run build` OK.
+
+### 2026-11-02 11:01:26 — Cadres de signature CRA : deux carrés séparés
+
+**Tâche**
+```
+modifier les cadres de signatures :
+au lieu de prendre toute la ligne 
+on fait deux carrés séparrés 
+avec une largeur et longueur suffisant pour une signature
+```
+
+**Implémentation**
+- Backend — `CraService` : nouveau `SignatureLayout` (cadre 220 × 90 pt, écart 40 pt) utilisé
+  par l'événement de page des PDF CRA Client et Interne. Les deux cadres de signature ne
+  prennent plus toute la ligne : ce sont deux boîtes séparées, centrées en bas de la dernière
+  page, avec une hauteur minimale suffisante pour signer.
+
+**Tests**
+- Backend — `CraServiceTest` : vérification du layout (largeur/hauteur suffisantes, écart > 0,
+  largeur totale inférieure à la page) et non-régression des exports PDF existants.
+  `mvn test` : **605 tests, 0 échec, 0 erreur**.
