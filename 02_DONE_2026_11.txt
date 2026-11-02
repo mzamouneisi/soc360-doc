@@ -419,3 +419,18 @@ la font de tout le texte du copyright doit etre en gras
 
 **Tests**
 - Frontend — `oxlint` sans nouvelle erreur ; `npm run build` OK.
+
+### 2026-11-02 13:58:27 — Copyright : texte « © Copyright SOC360 » en noir foncé
+
+**Tâche**
+```
+font noir foncé : © Copyright SOC360
+```
+
+**Implémentation**
+- Frontend — `layout/MainLayout.tsx` : le texte du pied de page passe de `text-gray-500` à
+  `text-gray-900` (noir foncé), le lien `www.eisi-consulting.fr` reste en bleu
+  (`text-brand-600`).
+
+**Tests**
+- Frontend — `oxlint` sans nouvelle erreur ; `npm run build` OK.
