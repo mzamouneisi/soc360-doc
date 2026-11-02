@@ -508,3 +508,27 @@ l'apercu des documents dans notes de frais ne fonctionne pas toujours !! a corri
 - Backend — `mvn test` : **621 tests, 0 échec, 0 erreur**.
 - Frontend — `npm test` : 41 fichiers / **378 tests OK** ; `oxlint` sans nouvelle erreur ;
   `npm run build` OK.
+
+### 2026-11-02 16:05:05 — Justificatifs de notes de frais limités aux images et PDF
+
+**Tâche**
+```
+les documents pour les notes de frais sont soit des images soit des pdf
+```
+
+**Implémentation**
+- Frontend — `lib/noteFraisDocument.ts` : validation extension + type MIME cohérents,
+  limitée à PNG/JPG/JPEG et PDF.
+- Frontend — `pages/NoteFraisList.tsx` : le champ de justificatif n'accepte plus que
+  `image/png`, `image/jpeg` et `application/pdf` ; tout autre fichier est refusé avec un
+  message explicite avant l'upload. L'extraction de texte ne gère plus que l'OCR image et
+  l'extraction PDF (suppression des branches texte/bureautique).
+- Backend — migration `V157` : clé i18n `NoteFraisList.justificatif.format.invalide`
+  (FR/EN/AR). Le backend `DocumentUploadRules` limitait déjà les justificatifs à jpg/jpeg/png/pdf.
+
+**Tests**
+- Frontend — `noteFraisDocument.test.ts` : formats acceptés/refusés, MIME incohérent.
+- Frontend — `NoteFraisList.test.tsx` : un `.txt` est refusé et n'est pas téléversé.
+  `npm test` : 42 fichiers / **382 tests OK** ; `oxlint` sans nouvelle erreur ;
+  `npm run build` OK.
+- Backend — `mvn test` : **621 tests, 0 échec, 0 erreur** (migration V157 validée).
