@@ -532,3 +532,43 @@ les documents pour les notes de frais sont soit des images soit des pdf
   `npm test` : 42 fichiers / **382 tests OK** ; `oxlint` sans nouvelle erreur ;
   `npm run build` OK.
 - Backend — `mvn test` : **621 tests, 0 échec, 0 erreur** (migration V157 validée).
+
+### 2026-11-02 16:29:12 — Stockage binaire en base (documents, logos, justificatifs)
+
+**Tâche**
+```
+mettre les fichiers binaires en base de données plutôt que sur le disque
+(documents RH, logo société, justificatif de note de frais)
+```
+
+**Implémentation**
+- Backend — migrations `V160` par vendor : `h2/V160__binary_storage_in_db.sql` et
+  `postgresql/V160__binary_storage_in_db.sql` ajoutent `hr_document.file_data`,
+  `company.logo_data`, `expense_report.document_content_type/document_size/document_data`
+  et rendent `hr_document.storage_path` nullable. `spring.flyway.locations` pointe vers
+  `classpath:db/migration` + `classpath:db/vendor/{vendor}` (les migrations par vendor ne
+  sont plus scannées en double).
+- Backend — `HrDocument.fileData`, `Soc.logoData`, `NoteFrais.documentData` : `byte[]`
+  sans `@Lob` (mappe `VARBINARY` sur H2 et `bytea` sur PostgreSQL), tous `@JsonIgnore`.
+- Backend — `DocumentController` : l'upload enregistre les octets en base (`storagePath=null`) ;
+  le download lit `fileData` sinon le fichier legacy ; suppression et nettoyage des orphelins
+  ne touchent au disque que si un chemin legacy existe.
+- Backend — `SocService` : `updateLogo`/`deleteLogo` stockent/effacent `logoData` et ne
+  suppriment l'ancien fichier que s'il existe ; `loadLogo` préfère la base puis retombe sur
+  le fichier legacy ; `toDto.hasLogo` tient compte de `logoData`. PDF CRA et notes de frais
+  utilisent `logoData` en priorité.
+- Backend — `NoteFraisService` : le justificatif temporaire est copié dans la note
+  (`documentData`, `documentId=null`) ; `document(id)` sert les octets avec migration lazy
+  du legacy ; `submit` vérifie `hasDocument`. `NoteFraisController` expose
+  `GET /api/note-frais/{id}/document?inline=true|false` avec `Content-Disposition` UTF-8.
+- Frontend — types `hasDocument/documentContentType/documentSize`, `noteFraisApi.documentUrl`
+  et `downloadDocument` ; `NoteFraisList` utilise l'endpoint de la note pour l'aperçu et le
+  téléchargement, et celui des documents pour un upload en cours.
+
+**Tests**
+- Backend — `SocServiceTest` (logo en base, repli legacy), `NoteFraisServiceTest` (octets
+  stockés, migration lazy du document legacy), `DocumentShareIntegrationTest` et
+  `DocumentUploadRulesTest` : `mvn test` : **629 tests, 0 échec, 0 erreur** (migration V160
+  et validation Hibernate OK).
+- Frontend — `npm test` : 42 fichiers / **384 tests OK** ; `oxlint` sans nouvelle erreur ;
+  `npm run build` OK.
