@@ -483,3 +483,28 @@ C’est le manager qui va changer le statut du “Validé” à “Payé”.
   appelle l'API. Test `Register` rendu plus robuste (timeout 15 s, charge de la suite).
   `npm test` : 41 fichiers / **377 tests OK** ; `oxlint` sans nouvelle erreur ;
   `npm run build` OK.
+
+### 2026-11-02 15:49:53 — Aperçu des documents de notes de frais fiabilisé
+
+**Tâche**
+```
+l'apercu des documents dans notes de frais ne fonctionne pas toujours !! a corriger svp
+```
+
+**Implémentation**
+- Backend — `DocumentController.download` : nouveau paramètre `inline` ; en-tête
+  `Content-Disposition` construit avec `ContentDisposition` et le nom de fichier encodé en
+  UTF-8 (plus de risque d'en-tête invalide avec accents/espaces), `inline` pour l'aperçu.
+- Frontend — `api/documents.ts` : `previewUrl` utilise `?inline=true`.
+- Frontend — `pages/NoteFraisList.tsx` :
+  - les URL blob d'aperçu sont gérées par une référence et révoquées proprement ;
+  - tout aperçu encore en cours est invalidé lors du retrait/du remplacement d'un document
+    (plus de risque qu'un ancien aperçu écrase le nouveau) ;
+  - relance automatique de l'aperçu après un échec transitoire.
+- Tests — `DocumentShareIntegrationTest` : l'aperçu (`inline=true`) renvoie bien un
+  `Content-Disposition: inline` ; `NoteFraisList.test.tsx` : aperçu relancé après échec.
+
+**Tests**
+- Backend — `mvn test` : **621 tests, 0 échec, 0 erreur**.
+- Frontend — `npm test` : 41 fichiers / **378 tests OK** ; `oxlint` sans nouvelle erreur ;
+  `npm run build` OK.
