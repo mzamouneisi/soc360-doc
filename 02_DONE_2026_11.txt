@@ -165,3 +165,52 @@ avec une largeur et longueur suffisant pour une signature
 - Backend — `CraServiceTest` : vérification du layout (largeur/hauteur suffisantes, écart > 0,
   largeur totale inférieure à la page) et non-régression des exports PDF existants.
   `mvn test` : **605 tests, 0 échec, 0 erreur**.
+
+### 2026-11-02 11:50:25 — soc-96 : gestion du logo de la société
+
+**Tâche**
+```
+soc-96 # Gestion du logo de la société
+
+## Objectif
+Permettre au Responsable Société d'ajouter, modifier ou supprimer le logo de sa société, lors de sa création ou depuis ses paramètres.
+
+**Règle fondamentale :** le logo SOC360 est le logo par défaut. Il doit être automatiquement affiché lorsqu'aucun logo personnalisé n'est associé à la société.
+[...]
+```
+
+**Implémentation**
+- Backend — migration `V153__soc_logo.sql` : renommage `company.logo` → `logo_path`,
+  ajout de `logo_filename` et `logo_mime_type`, clés i18n `SocLogo.*` (FR/EN/AR).
+- Backend — `Soc` : `logoPath`, `logoFilename`, `logoMimeType` (contenu jamais stocké en base).
+- Backend — `SocLogoRules` : validation extension PNG/JPG/JPEG, type MIME, taille ≤ 2 Mo et
+  signature binaire réelle (PNG/JPEG), rejet explicite (400).
+- Backend — `SocService.updateLogo/deleteLogo/loadLogo` : stockage via `StorageService`,
+  remplacement atomique (nouveau fichier validé/stocké avant mise à jour, ancien conservé en
+  cas d'échec, suppression de l'ancien après succès), suppression réservée au propriétaire /
+  admin, isolation par société.
+- Backend — `SocController` : `POST /api/socs/{id}/logo`, `DELETE /api/socs/{id}/logo`,
+  `GET /api/socs/{id}/logo` (contrôle `requireSocAccess`, rôles ADMIN/RESPONSIBLE_SOC pour
+  l'écriture).
+- Backend — `SocDto`/`SocLiteDto` : `hasLogo`, `logoFilename`, `logoMimeType`.
+- Backend — PDF CRA et notes de frais : le logo est lu depuis le stockage (`StorageService`).
+- Frontend — `AddSocModal` : logo facultatif à la création (validation, aperçu, retrait avant
+  validation, upload après création).
+- Frontend — `SocLogoField` : aperçu, ajout/remplacement immédiat, suppression avec
+  confirmation ; ancien logo conservé en cas d'échec ; logo SOC360 par défaut sinon.
+- Frontend — `Profile`, `SocAdmin` (édition société) et `Settings` (paramètres société) :
+  gestion du logo par le Responsable Société / l'admin.
+- Frontend — `MainLayout` : logo de la société courante en haut à gauche, repli automatique
+  sur `favicon.svg` (logo SOC360) ; proportions conservées (`object-contain`), sans
+  étirement ni recadrage.
+
+**Tests**
+- Backend — `SocLogoRulesTest` : PNG/JPEG valides, extension/MIME/contenu falsifié, taille et
+  fichier vide refusés.
+- Backend — `SocServiceTest` : upload/remplacement (ancien supprimé), échec conservant
+  l'ancien logo, suppression, chargement, absence de logo (404), isolation propriétaire.
+  `mvn test` : **618 tests, 0 échec, 0 erreur** (migration V153 validée).
+- Frontend — `socLogo.test.ts` et `SocLogoField.test.tsx` : validation client, logo par
+  défaut, upload valide, refus de format, suppression confirmée.
+  `npm test` : 40 fichiers / **372 tests OK** ; `oxlint` sans nouvelle erreur ;
+  `npm run build` OK.
