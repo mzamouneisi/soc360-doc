@@ -269,3 +269,25 @@ Vérifier les scénarios suivants :
   défaut, upload valide, refus de format, suppression confirmée.
   `npm test` : 40 fichiers / **372 tests OK** ; `oxlint` sans nouvelle erreur ;
   `npm run build` OK.
+
+### 2026-11-02 12:06:15 — soc-96 (suite) : logo plus grand et texte SOC360 masqué
+
+**Tâche**
+```
+lorsqu'il ya un logo, il faut enlever carrement le texte SOC360 . et bien faire apparaitre le logo de la société
+agrandir la largeur et longueur
+```
+
+**Implémentation**
+- Frontend — nouveau composant `layout/SocBrandLogo.tsx` : affiche le logo de la société dans
+  l'en-tête de la barre latérale ; le texte « SOC360 » est supprimé dès qu'un logo
+  personnalisé existe, et conservé uniquement avec le logo SOC360 par défaut.
+- Frontend — `pages/MainLayout.tsx` : zone de marque agrandie (`h-24`), logo personnalisé en
+  `h-20 w-full object-contain` (proportions conservées, sans étirement) ; le logo par défaut
+  reste en petit format à côté du texte SOC360.
+
+**Tests**
+- Frontend — `layout/SocBrandLogo.test.tsx` : sans logo, logo par défaut + texte SOC360 ;
+  avec logo, logo de la société affiché et texte SOC360 absent.
+  `npm test` : 41 fichiers / **374 tests OK** ; `oxlint` sans nouvelle erreur ;
+  `npm run build` OK.
