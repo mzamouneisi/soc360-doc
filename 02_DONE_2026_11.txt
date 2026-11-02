@@ -31,3 +31,22 @@ soc-87  lorsqu’on supprime le document joint, on dois supprimer les lignes de 
   facture est vidé.
   `npm test` : 36 fichiers / **355 tests OK** ; `oxlint` sans nouvelle erreur ;
   `npm run build` OK.
+
+### 2026-11-02 10:06:07 — soc-87 (suite) : retrait des lignes de dépense au retrait du document
+
+**Tâche**
+```
+il faut aussi retirer la ligne de depense : comme si on click sur supprimer
+```
+
+**Implémentation**
+- Frontend — `pages/NoteFraisList.tsx` : le retrait du document joint supprime désormais
+  **toutes** les lignes de dépense du formulaire (y compris celles saisies manuellement),
+  exactement comme le bouton de suppression de ligne : le formulaire repart d'une ligne vide.
+  Le texte « Infos facture » reste effacé.
+
+**Tests**
+- Frontend — `NoteFraisList.test.tsx` : une ligne ajoutée manuellement en plus de la ligne
+  issue du document disparait elle aussi après confirmation du retrait.
+  `npm test` : 36 fichiers / **356 tests OK** ; `oxlint` sans nouvelle erreur ;
+  `npm run build` OK.
