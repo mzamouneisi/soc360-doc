@@ -309,3 +309,24 @@ agrandit encore ce logo
 - Frontend — `SocBrandLogo.test.tsx` inchangé et toujours vert.
   `npm test` : 41 fichiers / **374 tests OK** ; `oxlint` sans nouvelle erreur ;
   `npm run build` OK.
+
+### 2026-11-02 12:31:54 — Copyright SOC360 en bas de page
+
+**Tâche**
+```
+copyright de l appli SOC360
+
+à mettre en bas de page de l'application 
+
+Copyright SOC360 www.eisi-consulting.fr
+```
+
+**Implémentation**
+- Frontend — `layout/MainLayout.tsx` : ajout d'un pied de page fixe en bas de l'application
+  (`app-footer`) affichant « Copyright SOC360 www.eisi-consulting.fr ».
+- Le site `www.eisi-consulting.fr` est un lien externe (`app.footer.website`, ouverture dans
+  un nouvel onglet, `rel="noreferrer"`).
+
+**Tests**
+- Frontend — `npm test` : 41 fichiers / **374 tests OK** ; `oxlint` sans nouvelle erreur ;
+  `npm run build` OK.
