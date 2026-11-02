@@ -572,3 +572,26 @@ mettre les fichiers binaires en base de données plutôt que sur le disque
   et validation Hibernate OK).
 - Frontend — `npm test` : 42 fichiers / **384 tests OK** ; `oxlint` sans nouvelle erreur ;
   `npm run build` OK.
+
+### 2026-11-02 16:58:00 — Photo du collaborateur stockée en base
+
+**Tâche**
+```
+image d'un collaborateur : dans la table collaborateur
+```
+
+**Implémentation**
+- Backend — migrations `V161` par vendor : `h2/V161__collaborator_photo.sql` et
+  `postgresql/V161__collaborator_photo.sql` ajoutent `user_account.photo_data`,
+  `photo_filename`, `photo_content_type`, `photo_size`.
+- Backend — `UserAccount` : champs `photoData` (`@JsonIgnore`, `byte[]`), `photoFilename`,
+  `photoContentType`, `photoSize`.
+- Backend — `ConsultantPhotoRules` : validation PNG/JPG/JPEG, 5 Mo max, signature binaire.
+- Backend — `ConsultantService` : `updatePhoto`, `deletePhoto`, `photo` (accès soc),
+  `toDto.hasPhoto`.
+- Backend — `ConsultantController` : `POST/DELETE/GET /api/consultants/{id}/photo`.
+- Backend — migration `V162__i18n_consultant_photo.sql` : clés FR/EN/AR.
+
+**Tests**
+- Backend — `ConsultantPhotoRulesTest`, `ConsultantServiceTest` : `mvn test` : **643 tests, 0 échec, 0 erreur**.
+
