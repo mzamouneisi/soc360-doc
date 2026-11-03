@@ -595,3 +595,375 @@ image d'un collaborateur : dans la table collaborateur
 **Tests**
 - Backend — `ConsultantPhotoRulesTest`, `ConsultantServiceTest` : `mvn test` : **643 tests, 0 échec, 0 erreur**.
 
+
+### 2026-11-03 10:08:07 — soc-89 gestion de devis factures (MVP)
+
+**Tâche**
+```
+soc-89 gestion de devis factures
+
+La gestion de la facturation se fera par consultant pour une mission en régie et par mission pour une mission en forfait.
+L’application d’une remise sera aussi possible
+La TVA devra être configurable (par défaut 20%) dans les paramètres gérée par le responsable soc.
+
+Mais avant la facturation il y a la gestion des devis des missions.
+
+Avant chaque démarrage d’une mission (régie ou forfait), le responsable_soc ou manager peut établir un devis et l’envoyer au client sous forme pdf.
+
+Une fois la mission finie, le responsable_soc ou manager établit une facture de cette mission en reprenant le dernier devis pour cette mission, et on peut ajouter modifier des elements dans cette facture, car on va facturer les travaux réels. On peut aussi générer un pdf et l’envoyer au client.
+
+Le numéro de devis sera par défaut de la forme yyyy-mm-dd-nnn
+
+avec yyyy : l’année en cours, mm : le mois en cours, dd : le numéro du jour en cours.
+
+nnn : 001, 002, etc….
+
+le numéro de facture sera formé du dernier numéro de devis de cette mission auquel on concatène la meme forme pour le jour de l’envoie de la fin de la mission.
+
+exemple : 2026-02-01-002-2026-10-30-001
+```
+
+**Implémentation**
+- Backend — migration `V163__billing.sql` : tables `billing_document` (company_id, project_id, consultant_id, parent_quote_id, doc_type, number, issue_date, status, vat_rate, discount, total_ht, total_ttc, notes + audit) et `billing_line` (description, quantity, unit_price, amount + audit).
+- Backend — package `com.soc360.billing` : entités `BillingDocument`/`BillingLine`, enums `BillingDocumentType` (QUOTE/INVOICE), `BillingDocumentStatus`, repository, service, controller ` /api/billing`, DTOs.
+- Backend — numérotation automatique : devis `yyyy-MM-dd-nnn`, facture `<dernier devis>-yyyy-MM-dd-nnn` (reprise du devis parent).
+- Backend — Feature `BILLING` ajoutée à l'enum `Feature`; accès multi-société via `effectiveSocId`/`requireSocAccess`; création/modification réservée ADMIN/RESPONSIBLE_SOC/MANAGER.
+- Frontend — `src/api/billing.ts`, types dans `src/api/types.ts`, page `src/pages/Billing.tsx` (liste filtrable, création, suppression) + route `/devis-factures` + entrée de navigation.
+- Tests — `BillingServiceTest` (2 tests) ; `mvn test` : **646 tests, 0 échec** ; frontend `npm test` : **388 tests OK**, `npm run build` OK.
+
+**Tests**
+- Backend — `BillingServiceTest` : numérotation devis et facture depuis devis, calcul des totaux HT/TTC.
+- Frontend — build TypeScript + Vite OK.
+
+### 2026-11-03 10:52:32 — devis factures : 3 champs de recherche
+
+**Tâche**
+```
+devis factures :
+
+ajouter 3 champs de recherches :
+type : liste : Devis, Facture
+mission 
+date
+```
+
+**Implémentation**
+- Frontend — `src/pages/Billing.tsx` : ajout des filtres `missionFilter` (Select sur les projets) et `dateFilter` (input date) en plus du filtre `type` existant ; filtrage côté client de la liste affichée.
+
+**Tests**
+- Frontend — `npm run build` et `npm test` (388 tests) OK.
+
+### 2026-11-03 11:04:41 — devis facture : titre + labels
+
+**Tâche**
+```
+devis facture :
+
+lorsqu'on ouvre un formulaire existant :
+on doit voir sur le titre s'il s'agit d'un devis ou facture
+
+ajouter des labels aux différents champs
+```
+
+**Implémentation**
+- Frontend — `src/pages/Billing.tsx` : titre du modal d'édition affiche le type (Devis/Facture) + numéro ; ajout d'une ligne d'en-tête labellisée (Description, Quantité, Prix unitaire) pour les lignes.
+
+**Tests**
+- Frontend — `npm run build` et `npm test` (388 tests) OK.
+
+### 2026-11-03 11:11:48 — devis facture : numéros de ligne, totaux, largeur
+
+**Tâche**
+```
+sur une ligne de devis/facture 
+on doit avoir numero de la ligne : 1, 2, 3, ....
+prix HT, total de la ligne 
+
+a la fin, on a total HT, total TTC
+```
+
+**Implémentation**
+- Frontend — `src/pages/Billing.tsx` : ajout du numéro de ligne, du prix HT et du total de ligne ; totaux HT/TTC en bas (TTC sous HT) ; modal en taille xl ; largeurs ajustées.
+
+**Tests**
+- Frontend — `npm run build` et `npm test` (388 tests) OK.
+
+### 2026-11-03 11:17:03 — devis factures : norme boutons, confirmation, ajout/suppression ligne
+
+**Tâche**
+```
+devis factures
+
+reprendre la norme des boutons : voir paramettres 
+
+la suppression doit toujours demander confirmation
+```
+
+**Implémentation**
+- Frontend — `src/pages/Billing.tsx` : boutons selon la norme (danger pour suppression, neutral pour annuler/fermer) ; confirmations via `dialog.confirm` pour document et lignes ; ajout de ligne en bas de la liste ; totaux espacés.
+
+**Tests**
+- Frontend — `npm run build` et `npm test` (388 tests) OK.
+
+### 2026-11-03 11:17:37 — homogénéité des nouvelles pages
+
+**Tâche**
+```
+pour toute implementation d'une nouvelle pas, il faut s'inspirer de la norme utilisée par les autres pages afin que tout soit homogene
+```
+
+**Implémentation**
+- Frontend — `src/pages/Billing.tsx` : page alignée sur les conventions existantes (PageHeader, Table, Modal, Button variants, dialog.confirm, ids HTML, useAsync).
+
+**Tests**
+- Frontend — `npm run build` et `npm test` (388 tests) OK.
+
+### 2026-11-03 12:14:33 — formulaire devis/facture : titre mission + client + lieu
+
+**Tâche**
+```
+formulaire devis / facture
+
+rappeler dans le titre : le nom de la mission et le client et le lieu
+```
+
+**Implémentation**
+- Backend — migration `V164__project_client_location.sql` : `project.location` (VARCHAR 200) et `client.address` (VARCHAR 500).
+- Backend — `Project.location`, `Client.address` + DTOs `ProjectDto/ProjectRequest`, `ClientDto/ClientRequest` et services `ProjectService`/`ClientService`.
+- Backend — `BillingDtos.BillingDocumentDto` expose `clientName` et `location` ; `BillingService.toDto` utilise le lieu de la mission puis, à défaut, l'adresse du client.
+- Frontend — types `ProjectDto.location`, `ClientDto.address`, `BillingDocumentDto.clientName/location` ; champ « Lieu » dans le formulaire projet et « Adresse » dans le formulaire client ; titre du modal devis/facture : type, numéro, mission, client, lieu.
+- Tests — `BillingServiceTest` : lieu de la mission prioritaire, repli sur l'adresse client.
+
+**Tests**
+- Backend — `mvn test` : **650 tests, 0 échec, 0 erreur**.
+- Frontend — `npm run build` et `npm test` : **388 tests OK**.
+
+### 2026-11-03 12:15:41 — devis facture : Description en textarea
+
+**Tâche**
+```
+devis factures
+
+le champ Description doit etre un textArea : car le texte peut etre long et donc doit etre visible
+```
+
+**Implémentation**
+- Frontend — `src/pages/Billing.tsx` : le champ Description des lignes est un `Textarea` (2 lignes) dans le formulaire de création et dans le formulaire de mise à jour.
+
+**Tests**
+- Frontend — `npm run build` et `npm test` : **388 tests OK**.
+
+### 2026-11-03 12:25:22 — formulaire nouveau devis/facture aligné sur l'édition
+
+**Tâche**
+```
+le formulaire nouveau devis/facture doit ressembler au formulaire d'edition 
+la différence :
+le nouveau :
+- n'a pas encore de numéro 
+- on ne peut creer de facture dessus 
+- on ne peut pas le supprimer : car il n'existe pas encore 
+```
+
+**Implémentation**
+- Frontend — `src/pages/Billing.tsx` : le modal de création reprend la structure du modal d'édition (Statut/TVA/Remise sur une ligne, lignes numérotées avec Prix HT et Total ligne, totaux HT/TTC). Pas de numéro, pas de conversion en facture, pas de suppression (document inexistant).
+
+**Tests**
+- Frontend — `npm run build` et `npm test` : **388 tests OK**.
+
+### 2026-11-03 12:30:10 — formulaire devis/facture : ligne d'en-tête, largeur, titre
+
+**Tâche**
+```
+mettre dans la meme ligne :
+Type, Mission, Statut, TVA, Remise 
+agrandir un peu la largeur du formulaire
+
+pour le nouveau devis/facture :
+mettre à jour le titre selon Type, Mission
+```
+
+**Implémentation**
+- Frontend — `src/pages/Billing.tsx` : Type, Mission, Statut, TVA et Remise regroupés sur une seule ligne (grid 5 colonnes) ; modales élargies via nouvelle taille `2xl` (`max-w-6xl`) ; titre dynamique « Nouveau devis / Nouvelle facture - <mission> ».
+- Frontend — `src/components/data.tsx` : ajout de la taille de modale `2xl`.
+
+**Tests**
+- Frontend — `npm run build` et `npm test` : **388 tests OK**.
+
+### 2026-11-03 15:52:03 — factures mensuelles des missions en régie + champs activité
+
+**Tâche**
+```
+/devis-factures
+
+ajouter un btn qui permet d'ajouter les factures des missions dont le cra a été validé.
+ces factures seront regroupés par mois. comme les cra.
+si ya plusieurs collaborateurs qui travaillent dans la meme mission, alors on aura une facture pour cette mission et ce mois avec plusieurs lignes. chaque ligne correspond au travail d'un collaborateur.
+ceci pour les missions de type Régie. D'ailleurs, il faut ajouter un champ boolean IS_REGIE à la table Activity. Ce champ se edité dans la form.
+Ajouter à la table activity, un champ date_fin. si non renseignée, ca sera à durée indeterminé.
+
+Pour une mission (activity) non Régie (donc forfait), date_debut et date_fin sont obligatoire. Ainsi que le prix.
+Un devis est obligatoire pour une mission forfait.
+La facture sera envoyée qu'apres la fin de la mission.
+```
+
+**Implémentation**
+- Backend — migration `V165__activity_regie_billing_activity.sql` : `activity.is_regie` (défaut TRUE) et `billing_document.activity_id`.
+- Backend — `Activity.regie` ; `ActivityDtos` + `ActivityService` : édition du champ, contrôle forfait (date début, date fin et prix obligatoires, hors congés).
+- Backend — `BillingDocument.activity` ; DTOs billing enrichis (`activityId`, `activityName`) ; `BillingService` : lien activité, contrôle forfait (facture après `endDate`, devis obligatoire via `parentQuote`), `generateMonthlyInvoices(year, month, socId)`.
+- Backend — génération : CRA validés du mois → missions en régie → une facture par mission/mois, une ligne par collaborateur (jours × prix activité), numérotation et totaux réutilisés.
+- Backend — `BillingController` : `POST /api/billing/generate-monthly?year&month&socId`.
+- Frontend — types (`ActivityDto.regie`, `activityId/activityName`), API `billingApi.generateMonthly`, page Activités : case « Régie » + validation forfait, page Devis/Factures : sélection Activité (création/édition) et bouton « Générer les factures du mois » (mois du filtre ou mois courant).
+- Tests — `BillingServiceTest` (génération groupée + rejet facture forfait avant fin), `ActivityServiceTest` (forfait sans dates/prix rejeté).
+
+**Tests**
+- Backend — `mvn test` : **653 tests, 0 échec, 0 erreur**.
+- Frontend — `npm run build` et `npm test` : **388 tests OK**.
+
+### 2026-11-03 16:04:07 — génération des factures par mois sélectionné
+
+**Tâche**
+```
+le btn "Générer les factures du mois" va être généralisé :
+
+mettre a coté un champ de type date où on selectionne un mois comme pour la rech dans la page Indispos.
+
+par défaut c'est le mois courant.
+
+il devient Générer les factures du mois selectioné.
+
+si les factures ont déjà été générés : demander confirmation de les écrases ?
+
+si aucune facture à générer dans un mois, alors ne pas faire figurer ce mois dans la selection.
+```
+
+**Implémentation**
+- Backend — `BillingService.generatableMonths(socId)` : liste des mois AAAA-MM ayant du travail régie facturable (CRA validés, hors congés) avec indicateur `alreadyGenerated`.
+- Backend — `generateMonthlyInvoices(year, month, socId, overwrite)` : écrasement optionnel des factures du mois ; `BillingController` expose `GET /api/billing/generate-months` et le paramètre `overwrite`.
+- Frontend — sélection « Mois à facturer » (mois disponibles uniquement, mois courant par défaut) à côté du bouton « Générer les factures du mois sélectionné » ; confirmation « écraser ? » si des factures existent déjà pour ce mois ; rechargement de la liste après génération.
+- Tests — `BillingServiceTest` : mois générables listés.
+
+**Tests**
+- Backend — `mvn test` : **655 tests, 0 échec, 0 erreur**.
+- Frontend — `npm run build` et `npm test` : **388 tests OK**.
+
+### 2026-11-03 16:11:35 — tableau de bord devis/factures
+
+**Tâche**
+```
+faire un dashborad sur les devis factures dans la page devis-factures , en desous de la liste des devis / facture.
+```
+
+**Implémentation**
+- Frontend — `src/pages/Billing.tsx` : section « Tableau de bord » sous la liste, avec 4 cartes (nombre + total TTC) : devis, factures, factures payées, factures en attente (brouillon/envoyé).
+
+**Tests**
+- Frontend — `npm run build` et `npm test` : **388 tests OK**.
+
+### 2026-11-03 16:14:50 — graphique CA devis/factures
+
+**Tâche**
+```
+dashborad sur les devis factures
+
+ajouter en bas, un graphique sur le CA / mois , / an des sommes totaux des factures
+```
+
+**Implémentation**
+- Frontend — `src/pages/Billing.tsx` : graphique en barres du CA facturé (somme TTC des factures) par mois de l'année sélectionnée (sélecteur d'année), avec totaux annuels rappelés sous le graphique.
+
+**Tests**
+- Frontend — `npm run build` et `npm test` : **388 tests OK**.
+
+### 2026-11-03 16:23:14 — échelle du graphique CA
+
+**Tâche**
+```
+sous le graphique en barres du CA facturé
+
+faire un param de l'echelle (slider) pour bien visualiser les barres du CA / mois.
+```
+
+**Implémentation**
+- Frontend — `src/pages/Billing.tsx` : slider « Échelle » (25 % → 200 %) sous le graphique pour ajuster le zoom vertical des barres du CA mensuel, avec valeur affichée et hauteur limitée à 100 %.
+
+**Tests**
+- Frontend — `npm run build` et `npm test` : **388 tests OK**.
+
+### 2026-11-03 16:41:09 — accès devis/factures + envoi client
+
+**Tâche**
+```
+la page devis facture : 
+access : que le role RESPONSABLE_SOC.
+
+------------
+
+autre chose : 
+
+sur chaque ligne, ajouter les champs :
+date_envoie_au_client
+nombre de fois envoyé
+historique des envoie.
+
+ajouter un btn sur chaque ligne (et aussi dans son form) qui permet d'envoyer le devis / facture par email.
+```
+
+**Implémentation**
+- Backend — migration `V166__billing_send_history.sql` : `billing_document.sent_to_client_at`, `send_count` + table `billing_send_history`.
+- Backend — `BillingSendHistory`/repository ; `BillingService.send` (envoi via `EmailService` au contact du client, mise à jour date/nombre, historique) et `sendHistory` ; DTO enrichi (`sentToClientAt`, `sendCount`).
+- Backend — `BillingController` restreint au rôle `RESPONSIBLE_SOC` (annotation de classe) ; `POST /api/billing/{id}/send`, `GET /api/billing/{id}/sends`.
+- Frontend — nouvelle garde `ResponsibleSocRoute` sur `/devis-factures` + entrée de menu limitée à RESPONSIBLE_SOC.
+- Frontend — colonnes « Envoyé le » et « Envois », bouton d'envoi par ligne et dans le formulaire, historique des envois dans le formulaire.
+- Tests — `BillingServiceTest` : envoi client + suivi du nombre d'envois.
+
+**Tests**
+- Backend — `mvn test` : **656 tests, 0 échec, 0 erreur**.
+- Frontend — `npm run build` et `npm test` : **388 tests OK**.
+
+### 2026-11-03 16:46:24 — bouton PDF devis/facture
+
+**Tâche**
+```
+pour chaque  devis / facture
+
+ajouter aussi un btn pour generer la page en pdf 
+```
+
+**Implémentation**
+- Backend — `BillingPdfService` génère le PDF du devis/facture (société, client, mission/activité, lignes, remise, TVA, totaux, notes) ; `BillingService.pdf` et `GET /api/billing/{id}/pdf`.
+- Frontend — bouton « Générer le PDF » sur chaque ligne et dans le formulaire ; `billingApi.pdfUrl`.
+
+**Tests**
+- Backend — `mvn test` : **656 tests OK** ; frontend `npm run build` + `npm test` : **388 tests OK**.
+
+### 2026-11-03 16:46:24 — ouverture du PDF dans un nouvel onglet
+
+**Tâche**
+```
+le fichier pdf s'ouvre sur un nouvel onglet comme dab
+```
+
+**Implémentation**
+- Frontend — `openPdf` ouvre un onglet immédiatement puis y charge le blob PDF (`window.open('', '_blank')` + `location.href`), avec repli `window.open(url, '_blank')`.
+
+**Tests**
+- Frontend — `npm run build` et `npm test` : **388 tests OK**.
+
+### 2026-11-03 16:46:24 — confirmation avant envoi par email
+
+**Tâche**
+```
+avant d'envoyer par mail le pdf, demander confirmation en affichant :
+le mail du client
+le sujet
+le texte du corps du mail
+et l'apercu du pdf 
+```
+
+**Implémentation**
+- Backend — `GET /api/billing/{id}/send-preview` retourne destinataire, sujet et corps ; `send` réutilise ce contenu.
+- Frontend — modale de confirmation avant envoi affichant l'email du client, le sujet, le corps du mail et l'aperçu du PDF (iframe) ; boutons Annuler / Envoyer.
+
+**Tests**
+- Backend — `mvn test` : **656 tests OK** ; frontend `npm test` : **388 tests OK**.
