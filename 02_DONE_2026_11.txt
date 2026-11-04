@@ -967,3 +967,129 @@ et l'apercu du pdf
 
 **Tests**
 - Backend — `mvn test` : **656 tests OK** ; frontend `npm test` : **388 tests OK**.
+
+### 2026-11-03 18:03:40 — soc-360 : consultation et simulation des soldes CP/RTT
+
+**Tâche**
+```
+Soc-360 : Consultation et simulation des soldes CP et RTT
+… (spécification complète : lots, FEFO, configuration ESN, absences, audit, sécurité, idempotence)
+```
+
+**Implémentation**
+- Backend — migration `V167__leave_balances.sql` : `leave_config` (paramétrable CP/RTT, date d'effet), `leave_eligibility`, `leave_lot` (périodes, crédit, expiration, restant), `leave_movement` (journal immuable, `operation_key` unique, `parent_movement_id`).
+- Backend — package `com.soc360.leave` : entités, repositories, DTOs, `LeaveService`, `LeaveController`.
+- Backend — moteur : acquisitions mensuelles/annuelles/uniques, lots distincts acquisition/utilisation, expiration, consommation **FEFO**, simulation à une date (crédits postérieurs exclus), seuil négatif configurable, idempotence par `operation_key`, journal d'audit non destructif (régularisations par contre-écriture).
+- Backend — `LeaveService.consumeForAbsence` / `regularizeForAbsence` intégrés à `UnavailabilityService.validate`, `invalidate` et `cancel` (déduction/régularisation CP/RTT, seuil négatif, RTT uniquement si éligible, aucun impact si le dispositif n'est pas configuré).
+- Backend — endpoints `/api/leave` : configs, éligibilités, balance/simulation, lots, mouvements, ajustement manuel ; isolation multi-société et restriction consultant à ses propres droits.
+- Frontend — `src/api/leave.ts`, types dédiés, page `/soldes-conges` (solde actuel/simulé, détail droits acquis/absences/expirations/ajustements, lots) et page `/parametres-conges` (configuration CP/RTT, seuils, éligibilité RTT) + navigation.
+- Tests — `LeaveServiceTest` : FEFO, blocage seuil négatif, RTT non éligible.
+
+**Tests**
+- Backend — `mvn test` : **659 tests, 0 échec, 0 erreur**.
+- Frontend — `npm run build` et `npm test` : **388 tests OK**.
+
+**Limites/choix**
+- Mapping CP/RTT d'une absence déduit du libellé/`paidLeaveAccrual` du type d'absence ; aucune déduction si aucune configuration active n'existe.
+- Reports (`carryoverMax`) stockés en configuration mais non rejoués automatiquement dans ce lot.
+
+### 2026-11-04 18:15:24 — Éligibilité RTT déplacée vers user_account
+
+**Tâche**
+```
+Éligibilité RTT
+
+a deplacer vers la table user_account :
+champs :
+is_rtt_elligible : valeur par defaut : true
+date_rtt_elligible : valeur par defaut : date d'embauche
+```
+
+**Implémentation**
+- Backend — migration `V168__rtt_eligibility_on_user.sql` : ajout de `is_rtt_elligible BOOLEAN NOT NULL DEFAULT TRUE` et `date_rtt_elligible DATE` à `user_account`, reprise des données de `leave_eligibility` (`eligible`/`start_date`, à défaut `hire_date`), puis suppression de la table `leave_eligibility`.
+- Backend — `UserAccount` : nouveaux champs `rttEligible` (défaut vrai) et `rttEligibleDate` ; `@PrePersist`/`@PreUpdate` initialise la date avec `hireDate` si elle est absente.
+- Backend — `LeaveService` : suppression de `LeaveEligibilityRepository` ; `eligibilities`/`saveEligibility` lisent et écrivent `user_account` (type RTT uniquement) ; `ensureLots`, `consumeForAbsence` et `rttEnabled` utilisent `isRttEligible` + la date d'éligibilité (défaut : date d'embauche).
+- Backend — suppression des entités/repositories `LeaveEligibility` et `LeaveEligibilityRepository`.
+- Frontend — aucun changement : les endpoints `/api/leave/eligibilities` conservent le même contrat ; la page Paramètres congés continue de fonctionner.
+- Doc — `DOC_SOLDES_CONGES.docx` mis à jour (§4.2 user_account, migration V168).
+
+**Tests**
+- Backend — `LeaveServiceTest` : 5 nouveaux cas (stockage de l'éligibilité sur le compte, date par défaut = embauche, refus d'un type non RTT, RTT non éligible, date d'éligibilité future).
+- Backend — `mvn test` : **667 tests, 0 échec, 0 erreur** (`BUILD SUCCESS`).
+
+**Limites/choix**
+- `date_rtt_elligible` reste nullable : si elle est nulle, la date d'embauche est utilisée, puis la date d'effet de la configuration.
+- Les comptes ADMIN restent exclus de la liste d'éligibilité (comme pour les collaborateurs).
+
+### 2026-11-04 18:18:33 — Synchronisation de la date RTT avec la date d'embauche
+
+**Tâche**
+```
+si on change la date d'embauche, changer la date rtt elligible = date_embauche
+```
+
+**Implémentation**
+- Backend — `ConsultantService.applyRhs` : lors d'un changement de `hireDate`, `rttEligibleDate` est alignée sur la nouvelle date d'embauche ; si la date d'embauche est inchangée, la date d'éligibilité personnalisée est conservée.
+- Doc — `DOC_SOLDES_CONGES.docx` : règle de synchronisation ajoutée au §4.2.
+
+**Tests**
+- Backend — `ConsultantServiceTest` : 2 nouveaux cas (changement de date d'embauche ⇒ date RTT alignée ; date d'embauche inchangée ⇒ date RTT conservée).
+- Backend — `mvn test` : **669 tests, 0 échec, 0 erreur** (`BUILD SUCCESS`).
+
+### 2026-11-04 18:35:56 — Photo de profil dans l'en-tête et la page profil
+
+**Tâche**
+```
+ajouter la photo de profil du collaborateur dans l'icone où c'est marqué ses initiales en haut a droite : juste avant son prenom nom.
+ajouter aussi sa photo dans la page profil afin que le user puisse la changer.
+```
+
+**Implémentation**
+- Backend — `UserDtos.UserDto` : ajout de `hasPhoto` (calculé depuis `photo_data`) pour indiquer au front s'il faut charger la photo.
+- Frontend — nouveau composant `src/components/UserAvatar.tsx` : affiche la photo si `hasPhoto`, sinon les initiales ; utilisé dans l'en-tête (`MainLayout`) à la place du cercle d'initiales, juste avant le prénom/nom.
+- Frontend — `Profile.tsx` : ajout du composant `ConsultantPhotoField` pour le compte courant (aperçu, ajout/remplacement, suppression), puis `refreshMe()` pour mettre à jour l'en-tête après modification.
+- Sécurité — réutilisation des endpoints `/api/consultants/{id}/photo` : un utilisateur peut modifier sa propre photo (`requireCanManage` autorise le self), avec contrôle multi-société (`requireSocAccess`).
+- Aucune migration DB nécessaire (`photo_data` / `photo_*` existaient déjà).
+
+**Tests**
+- Backend — `mvn test` : **670 tests, 0 échec, 0 erreur** (`BUILD SUCCESS`).
+- Frontend — `src/components/UserAvatar.test.tsx` (initiales sans photo, photo avec `hasPhoto`) ; `npm test` : **391 tests OK**, `npm run lint` et `npm run build` OK.
+
+### 2026-11-04 18:43:26 — Formulaire collaborateur : photo compacte en haut à gauche
+
+**Tâche**
+```
+form collaborateur :
+
+comme la photo prend bcp de place
+
+alors mettre la photo en haut a gauche
+
+et faire monter les autres champs afin d'oprimiser de la place
+```
+
+**Implémentation**
+- Frontend — `Consultants.tsx` : nouveau layout du haut de formulaire en deux colonnes (`sm:grid-cols-[220px_1fr]`) ; la photo est placée en haut à gauche et les champs (type/salarié, prénom/nom, e-mail/téléphone, identifiant) remontent dans la colonne de droite.
+- Frontend — `ConsultantPhotoField.tsx` : ajout d'un mode `compact` (avatar 64 px, boutons « Choisir » / « Supprimer » compacts, saisie fichier masquée, aide de format masquée) tout en conservant le mode complet utilisé dans la page Profil.
+- i18n — migration `V170__i18n_consultant_photo_choose.sql` : clé `Consultants.photo.choisir`.
+
+**Tests**
+- Backend — `mvn test` : **671 tests, 0 échec, 0 erreur** (`BUILD SUCCESS`).
+- Frontend — `npm test` : **392 tests OK** ; `npm run lint` et `npm run build` OK.
+
+### 2026-11-04 18:45:57 — Formulaire collaborateur : suppression du vide sous la photo
+
+**Tâche**
+```
+form collaborateur :
+
+il reste encore du vide sous la photo
+```
+
+**Implémentation**
+- Frontend — `Consultants.tsx` : la photo et les champs Type/Salarié + Prénom/Nom forment une ligne flex (`sm:flex-row sm:items-start`) ; la photo ne s'étire plus sur toute la hauteur. Les champs E-mail/Téléphone et Identifiant passent sous cette ligne, en pleine largeur, ce qui supprime la colonne vide sous la photo.
+- Aucun changement backend ni migration supplémentaire.
+
+**Tests**
+- Frontend — `npm test` : **392 tests OK** ; `npm run lint` et `npm run build` OK.
+- Backend — inchangé (dernier `mvn test` : **671 tests OK**).
