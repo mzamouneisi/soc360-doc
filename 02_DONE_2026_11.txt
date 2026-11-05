@@ -1093,3 +1093,165 @@ il reste encore du vide sous la photo
 **Tests**
 - Frontend — `npm test` : **392 tests OK** ; `npm run lint` et `npm run build` OK.
 - Backend — inchangé (dernier `mvn test` : **671 tests OK**).
+
+
+### 2026-11-05 11:26:45 — soc-86 : moteur générique de notifications et de relances automatiques
+
+**Tâche**
+```
+soc-86 parametrage de notification
+
+# Évolution — Module générique de notifications et de relances automatiques
+
+## 1. Objectif
+
+Faire évoluer le module de notifications pour en faire un mécanisme générique permettant de programmer, personnaliser et automatiser des rappels et des relances pour différents besoins métier de **Soc360**.
+
+Le système ne doit pas être limité à la saisie des CRA. Il doit pouvoir être réutilisé par les différents modules de l'application.
+
+## 2. Cas d'utilisation
+
+Le mécanisme doit notamment permettre :
+
+- **Relance client :** envoyer automatiquement un rappel à un client concernant une ou plusieurs factures impayées.
+- **Relance fournisseur :** rappeler à un fournisseur de livrer une commande dont la date de livraison prévue est dépassée.
+- **Rappel CRA :** envoyer une notification dans l'application et un email aux salariés, par exemple le 25 de chaque mois, pour leur demander de compléter leur CRA.
+- **Rappel d'échéance :** informer les utilisateurs d'une échéance administrative, commerciale ou financière à venir.
+- **Relance de documents :** demander à un collaborateur ou à un partenaire de fournir un document manquant.
+- **Rappel de validation :** rappeler à un Manager ou à un Responsable Société qu'une demande ou un document est en attente de validation.
+
+Cette liste est indicative et doit pouvoir être enrichie sans modifier le fonctionnement général du moteur.
+
+## 3. Principe de fonctionnement
+
+Une configuration de notification doit être indépendante du module métier qui l'utilise.
+
+Elle doit permettre de définir :
+
+- Un nom et un objet de notification.
+- Un contexte ou type métier (CRA, FACTURE, COMMANDE, DOCUMENT, VALIDATION, AUTRE...).
+- Un message personnalisable.
+- Un ou plusieurs destinataires.
+- Un ou plusieurs canaux de communication : notification dans l'application et/ou email.
+- Une planification ponctuelle ou récurrente.
+- Une date et une heure d'exécution.
+- Des paramètres de récurrence et une éventuelle date de fin.
+- Un statut : ACTIVE ou DISABLED.
+
+Le moteur doit pouvoir être déclenché de deux manières :
+
+1. **Déclenchement planifié :** exécution automatique à une date et une heure définies, selon une fréquence configurée.
+2. **Déclenchement métier :** un module de l'application demande l'envoi d'une notification à la suite d'un événement ou d'une condition métier.
+
+Exemples :
+- Une facture dépasse sa date d'échéance : déclencher une relance client.
+- Une commande dépasse sa date de livraison prévue : déclencher une relance fournisseur.
+- Le 25 du mois : déclencher un rappel de saisie du CRA.
+
+## 4. Architecture et évolutivité
+
+Le moteur doit être mutualisé et réutilisable par tous les modules de Soc360.
+
+Éviter de développer un système spécifique pour chaque type de relance.
+
+Les modules métier doivent pouvoir utiliser un service commun de notification en lui transmettant notamment :
+- Le contexte métier.
+- Le destinataire.
+- Le message ou les paramètres nécessaires à sa génération.
+- Les canaux d'envoi souhaités.
+- La référence de l'objet métier concerné (facture, commande, CRA, etc.).
+
+Prévoir la possibilité d'utiliser des variables dynamiques dans les messages, par exemple :
+- Nom du destinataire.
+- Numéro de facture.
+- Montant restant dû.
+- Date d'échéance.
+- Référence de commande.
+- Date de livraison prévue.
+- Période du CRA.
+
+Les variables doivent être remplacées par leurs valeurs réelles lors de l'envoi.
+
+## 5. Règles communes
+
+- Respecter les droits d'accès et les périmètres des sociétés.
+- Respecter les destinataires définis par chaque contexte métier.
+- Permettre la personnalisation des messages.
+- Garantir l'absence de doublons lors des exécutions planifiées ou des relances techniques.
+- Tracer chaque tentative d'envoi et son résultat.
+- Ne pas interrompre les autres envois lorsqu'un destinataire est en erreur.
+- Conserver l'historique des configurations et des exécutions.
+- Respecter la confidentialité des destinataires lors des envois collectifs par email.
+- Permettre la désactivation et la réactivation des configurations.
+
+## 6. Consigne d'implémentation
+
+Conserver les fonctionnalités de gestion des configurations, les droits Manager / Responsable Société, les règles de destinataires, les confirmations administratives et la traçabilité définies dans la spécification initiale.
+
+En revanche, généraliser le module afin qu'il puisse être utilisé par les différents domaines fonctionnels de Soc360.
+
+Le rappel CRA devient un premier cas d'utilisation du moteur générique, et non sa finalité exclusive.
+```
+
+**Implémentation**
+- Backend — migration `V171__notification_engine.sql` (commune H2/PostgreSQL) : tables
+  `notification_config` (nom, objet, contexte, message, canaux, planification, récurrence,
+  date de fin, statut, référence métier, prochaine/dernière exécution), la jointure
+  `notification_config_recipient`, `notification_execution` (déclencheur planifié/métier,
+  statut, référence, clé de déduplication unique, échéance, compteurs) et
+  `notification_delivery` (résultat par destinataire et par canal).
+- Backend — package `com.soc360.notification` : enums (`NotificationContext`, `NotificationChannel`,
+  `NotificationScheduleType`, `NotificationRecurrence`, `NotificationConfigStatus`,
+  `NotificationTriggerType`, `NotificationExecutionStatus`, `NotificationDeliveryStatus`),
+  entités, repositories, DTOs.
+- Backend — `NotificationTemplateRenderer` : remplacement des variables dynamiques
+  `{recipientName}`, `{invoiceNumber}`, `{amountDue}`, `{dueDate}`,
+  `{orderReference}`, `{deliveryDate}`, `{craPeriod}`, etc. (variables inconnues = vide).
+- Backend — `NotificationEngineService` :
+  - CRUD des configurations (nom, objet, contexte métier, message, destinataires, canaux
+    application/email, planification ponctuelle ou récurrente, date/heure, récurrence, date de
+    fin, statut ACTIVE/DISABLED) ;
+  - déclenchement **métier** `dispatch(...)` : contexte, destinataires, message/variables,
+    canaux, référence métier, clé de déduplication optionnelle ;
+  - déclenchement **planifié** `runDue(now)` + `@Scheduled` : exécution des configurations
+    actives arrivées à échéance, calcul de la prochaine occurrence, désactivation en fin de
+    récurrence, idempotence via une clé unique par configuration/échéance ;
+  - chaque destinataire est traité indépendamment : un échec n'interrompt pas les autres
+    envois ; l'email est envoyé individuellement à chaque destinataire (confidentialité des
+    envois collectifs) ;
+  - traçabilité complète (exécution + résultat par destinataire/canal + message d'erreur) ;
+  - isolation multi-société : `SecurityUtils.effectiveSocId` / `requireSocAccess`, refus des
+    destinataires n'appartenant pas à la société, accès aux configurations d'une autre société
+    interdit.
+- Backend — `NotificationConfigController` (`/api/notification-configs`, rôles ADMIN /
+  RESPONSIBLE_SOC / MANAGER) : liste, détail, enregistrement, activation/désactivation,
+  exécution immédiate, suppression, historique global et par configuration.
+- Backend — `NotificationEngineController` (`POST /api/notification-engine/dispatch`) : point
+  d'entrée du déclenchement métier réutilisable par tous les modules.
+- Backend — migration `V172__i18n_notification_engine.sql` : libellés FR/EN/AR de la page,
+  des contextes, canaux, récurrences, statuts et historiques.
+- Frontend — `src/api/notificationConfigs.ts` + types (`NotificationConfigDto`,
+  `NotificationConfigRequest`, `NotificationExecutionDto`, `NotificationDeliveryDto`, enums).
+- Frontend — page `/parametres-notifications` (`NotificationSettings.tsx`) : liste des
+  configurations, création/édition (nom, objet, contexte, message et variables, destinataires,
+  canaux, planification ponctuelle/récurrente, récurrence, date de fin, statut), activation/
+  désactivation, exécution immédiate, suppression avec confirmation et historique détaillé des
+  exécutions/livraisons. Tous les éléments visibles portent un id HTML (clé i18n ou préfixe
+  `NotificationSettings.*`).
+- Frontend — route protégée (hors consultant) et entrée de navigation « Paramètres de
+  notifications » (ADMIN / RESPONSIBLE_SOC / MANAGER).
+
+**Tests**
+- Backend — `NotificationEngineServiceTest` : rendu des variables, envoi application + email
+  multi-destinataires, échec d'un destinataire sans interruption des autres, déduplication,
+  refus d'un destinataire d'une autre société, validation des canaux/destinataires,
+  exécution planifiée récurrente (prochaine échéance calculée), planification ponctuelle
+  désactivée après exécution, non-réexécution d'une occurrence déjà traitée, respect de la date
+  de fin de récurrence, création d'une configuration et refus d'une configuration d'une autre
+  société.
+  `mvn test` : **684 tests, 0 échec, 0 erreur** (migrations V171/V172 validées).
+- Frontend — `notificationConfigs` dans `src/api/services.test.ts` (liste, détail, save,
+  statut, exécution, historiques, suppression) et `NotificationSettings.test.tsx` (affichage
+  des configurations, ouverture du formulaire de création).
+  `npm test` : 45 fichiers / **395 tests OK** ; `oxlint` ciblé sans erreur ;
+  `npm run build` OK.
