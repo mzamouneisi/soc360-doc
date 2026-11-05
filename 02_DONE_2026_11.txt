@@ -1255,3 +1255,126 @@ Le rappel CRA devient un premier cas d'utilisation du moteur générique, et non
   des configurations, ouverture du formulaire de création).
   `npm test` : 45 fichiers / **395 tests OK** ; `oxlint` ciblé sans erreur ;
   `npm run build` OK.
+
+
+### 2026-11-05 12:02:13 — soc-99 : gestion de prospects
+
+**Tâche**
+```
+soc-99 Gestion de prospects
+
+menu Prospects à mettre juste avant Client
+
+acces : Responsable_SOC, MANAGER
+
+un prospect est une personne ou société que je dois suivre avec des notes (textArea) datés dans le temps, ordonnées par date décroissant.
+
+le but est qu’il devient mon client ou fournisseur.
+
+A partir de la, il est archivé et ne devient plus prioritaire dans la liste des prospects.
+```
+
+**Implémentation**
+- Backend — migration `V173__prospects.sql` : table `prospect` (société, société de travail,
+  nom, type PERSON/COMPANY, contact, email, téléphone, adresse, statut ACTIVE/ARCHIVED,
+  conversion CLIENT/SUPPLIER, dates et liens vers le client/fournisseur créé) et table
+  `prospect_note` (date de note, contenu texte, auteur, rattachement au prospect).
+- Backend — package `com.soc360.prospect` : enums `ProspectKind`, `ProspectStatus`,
+  `ProspectTarget`, entités `Prospect`/`ProspectNote`, repositories, DTOs.
+- Backend — `ProspectService` :
+  - CRUD des prospects avec isolation multi-société (`effectiveSocId` / `requireSocAccess`) ;
+  - notes datées, triées par date décroissante (la plus récente en premier), ajout et
+    suppression de notes ;
+  - liste triée avec les prospects **actifs d'abord**, puis par dernière note décroissante ;
+    les prospects archivés/convertis passent en fin de liste ;
+  - conversion en **client** ou **fournisseur** : création de l'enregistrement correspondant
+    (reprise du nom, contacts, adresse, société), puis archivage du prospect avec la cible,
+    la date de conversion et l'identifiant créé ; refus d'une double conversion.
+- Backend — `ProspectController` (`/api/prospects`, rôles ADMIN / RESPONSIBLE_SOC / MANAGER) :
+  liste, détail, création, modification, suppression, ajout/suppression de note,
+  conversion `POST /<built-in function id>/convert?target=CLIENT|SUPPLIER`.
+- Backend — migration `V174__i18n_prospects.sql` : libellés FR/EN/AR (menu, page, types,
+  contacts, notes, statuts, conversions, confirmations).
+- Frontend — types `ProspectDto`/`ProspectRequest`/`ProspectNoteDto` et `src/api/prospects.ts`.
+- Frontend — page `/prospects` (`Prospects.tsx`) : liste avec actifs en premier puis archivés,
+  création/édition (nom, personne/société, contact, email, téléphone, adresse), notes datées
+  dans une modale dédiée (ajout avec date + zone de texte, suppression avec confirmation,
+  affichage par date décroissante), conversion en client/fournisseur avec confirmation,
+  suppression avec confirmation. Tous les éléments visibles portent un id HTML.
+- Frontend — route protégée (Responsable Société / Manager / Admin, consultant exclu) et
+  entrée de menu **Prospects** placée juste avant **Clients**.
+
+**Tests**
+- Backend — `ProspectServiceTest` : création dans la société courante, rejet d'un nom vide,
+  tri actifs d'abord puis par note la plus récente, ajout de note (date du jour par défaut,
+  ordre décroissant), rejet d'une note vide, conversion client (création + archivage),
+  conversion fournisseur, refus d'une double conversion, isolation d'un prospect d'une autre
+  société, suppression de note. `mvn test` : **694 tests, 0 échec, 0 erreur**
+  (migrations V173/V174 validées).
+- Frontend — `prospectsApi` dans `src/api/services.test.ts` (CRUD, notes, conversion) et
+  `Prospects.test.tsx` (affichage liste/statut, ouverture du formulaire).
+  `npm test` : 46 fichiers / **398 tests OK** ; `oxlint` ciblé sans erreur ;
+  `npm run build` OK.
+
+
+### 2026-11-05 12:04:47 — accès Responsable Société aux paramètres de notifications et de congés
+
+**Tâche**
+```
+paramettres de notifications, paramettres congés : 
+
+acces : RESPONSABLE_SOC
+```
+
+**Implémentation**
+- Frontend — route `/parametres-notifications` : passage de `NotConsultantRoute` à
+  `ResponsibleSocRoute` (accès réservé au Responsable Société, manager et consultant exclus).
+- Frontend — navigation : l'entrée « Paramètres de notifications » est limitée au rôle
+  `RESPONSIBLE_SOC` (l'entrée « Paramètres congés » l'était déjà).
+- Backend — `NotificationConfigController` : `@PreAuthorize` restreint au rôle
+  `RESPONSIBLE_SOC` pour toute la gestion des configurations et de l'historique.
+- Vérification — `/parametres-conges` était déjà protégé par `ResponsibleSocRoute` et une
+  entrée de menu limitée à `RESPONSIBLE_SOC` : aucun changement nécessaire.
+
+**Tests**
+- Frontend — nouveau `ResponsibleSocRoute.test.tsx` : accès autorisé pour le Responsable
+  Société, redirection du Manager vers l'accueil.
+  `npm test` : 47 fichiers / **400 tests OK** ; `oxlint` ciblé sans erreur ;
+  `npm run build` OK.
+- Backend — `mvn test` : **694 tests, 0 échec, 0 erreur**.
+
+
+### 2026-11-05 16:07:14 — note de conversion de prospect lisible (traduction + auteur)
+
+**Tâche**
+```
+voici la note qui a ete ajoutee :
+
+Prospects.note.converted.client
+mzamouneisi
+
+
+ce n'est pas tres comprehensible.
+peut etre un pbm de traduction ?
+
+mzamouneisi est son username ?
+```
+
+**Implémentation**
+- Frontend — `Prospects.tsx` : le libellé de la note de conversion n'affiche plus la clé de
+  traduction `Prospects.note.converted.client` ; il utilise le texte traduit et retombe sur le
+  contenu de la note si la traduction n'est pas encore disponible.
+- Frontend — `i18n/messages.ts` : ajout des libellés de secours FR/EN/AR
+  `Prospects.note.converted.client` et `Prospects.note.converted.supplier` (la note reste
+  lisible même si le bundle distant n'est pas rechargé).
+- Backend — `ProspectService` : l'auteur d'une note (`createdBy` = *username*) est résolu en
+  nom complet via `UserAccountRepository.findByUsername` (`Prénom Nom`), avec repli sur le
+  username si le compte n'est pas retrouvé. Le nom « mzamouneisi » est donc remplacé par le
+  nom de la personne dans l'IHM.
+
+**Tests**
+- Backend — `ProspectServiceTest` : ajout du cas « username affiché en nom complet ».
+  `mvn test` : **695 tests, 0 échec, 0 erreur**.
+- Frontend — `Prospects.test.tsx` : la note de conversion affiche bien « Prospect converti en
+  client » et conserve la couleur verte. `npm test` : 48 fichiers / **404 tests OK** ;
+  `oxlint` ciblé sans erreur ; `npm run build` OK.
