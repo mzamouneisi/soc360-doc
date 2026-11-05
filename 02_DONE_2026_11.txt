@@ -1378,3 +1378,204 @@ mzamouneisi est son username ?
 - Frontend — `Prospects.test.tsx` : la note de conversion affiche bien « Prospect converti en
   client » et conserve la couleur verte. `npm test` : 48 fichiers / **404 tests OK** ;
   `oxlint` ciblé sans erreur ; `npm run build` OK.
+
+
+### 2026-11-05 17:09:31 — soc-98 : facturation de l'abonnement Soc360
+
+**Tâche**
+```
+soc-98 Gestion de la facturation d'une société abonnée chez Soc360
+
+Une société s’inscrit gratuitement dans le SaaS Soc360 durant 1 mois max.
+
+Une semaine avant la fin du mois d’essai, le système lui envoie un rappel une fois par jour, le matin 8:00 , jusqu'à ce qu’elle paye ou fin du mois d’essai.
+
+Apres le mois d’essai, si elle n’a toujours pas payé, alors les comptes de la société en question seront tous désactivés. ils ne pourront donc pas se connecter.
+
+Si le responsable de la soc paye son abonnement pour une durée de (1 mois, 3 mois, 6 mois, 1 an)
+Alors ils peuvent se connecter et en plus on ne lui envoie plus ces rappels jusqu'à 1 semaine avant la fin de leur abonnement (s’il n’a pas payé pour la prochaine durée).
+
+Dans la page Facturation, on trace tous ses paiements, avec les factures envoyés. Ainsi que le total payé depuis son début avec Soc360.
+
+On lui donne la possibilité de payer par CB, PayPal.
+
+Chaque paiement est tracé par mail et dans une table dédiée.
+
+La configuration de paiement ne se fera que par le user dont le username est admin.
+
+Chaque modification de cette config est tracée par mail : envoie un mail aux responsables de Soc360.
+
+Acces : RESPONSABLE_SOC
+```
+
+**Implémentation**
+- Backend — migration `V177__subscription_billing.sql` : colonnes `payment.period_months`,
+  `invoice_number` (unique), `invoice_sent_at`, `user_account.subscription_disabled`, tables
+  `payment_config`, `payment_config_history` et `subscription_reminder` (unicité
+  abonnement/date/type).
+- Backend — `PaymentMethod.PAYPAL` ajouté ; `Payment` expose période, numéro de facture et date
+  d'envoi.
+- Backend — nouveau package `com.soc360.subscription` : `PaymentConfig`, `PaymentConfigHistory`,
+  `SubscriptionReminder`, repositories, DTOs et `SubscriptionBillingService`.
+- Backend — `SubscriptionBillingService.pay` : durées 1/3/6/12 mois, CB ou PayPal selon la
+  configuration, montant = prix mensuel × durée, prolongation depuis la fin d'essai/abonnement
+  en cours, numéro de facture `ABO-AAAAMMJJ-soc-séquence`, passage `ACTIVE`, réactivation des
+  comptes désactivés, envoi d'un email de traçabilité de paiement.
+- Backend — rappels automatiques `@Scheduled` (8h00 par défaut) : essai et abonnement, une fois
+  par jour à partir de J-7 jusqu'à l'échéance, email + notification in-app, déduplication par
+  table `subscription_reminder`.
+- Backend — expiration : après la fin d'essai (si non payé) ou la fin d'abonnement, statut
+  `EXPIRED` et désactivation de tous les comptes de la société (`subscription_disabled`), sans
+  toucher aux comptes jamais activés ; réactivation au paiement.
+- Backend — configuration de paiement : lecture pour RESPONSIBLE_SOC, modification réservée au
+  rôle ADMIN **et au username `admin`**, historique des modifications et email à tous les
+  administrateurs Soc360.
+- Backend — `SubscriptionBillingController` : `GET/PUT /api/subscription-billing/config`,
+  `GET /config/history`, `POST /pay`, `GET /payments/{id}/invoice` (PDF de facture).
+  `SocDtos.PaymentDto` expose `periodMonths`, `invoiceNumber`, `invoiceSentAt`.
+- Backend — `AuthService.login` : message dédié « Abonnement expiré… » pour un compte désactivé
+  par non-paiement.
+- Migration `V178__i18n_subscription_billing.sql` : libellés FR/EN/AR paiement, facture,
+  échéance et configuration.
+- Frontend — `Facturation` : accès restreint à RESPONSIBLE_SOC (route + menu), carte de paiement
+  (durée 1/3/6/12 mois, boutons CB/PayPal selon la configuration), prochaine échéance, liste des
+  paiements avec numéro de facture et téléchargement PDF, total réglé.
+- Frontend — nouvelle page admin `/parametres-paiement` : activation CB/PayPal, identifiant
+  PayPal, devise, prix mensuel, historique des modifications ; entrée de menu ADMIN.
+- Frontend — `api/subscriptionBilling.ts` et types associés.
+
+**Tests**
+- Backend — `SubscriptionBillingServiceTest` : paiement CB avec prolongation, facture, email et
+  réactivation ; refus d'un moyen désactivé ou d'une durée invalide ; paiement PayPal ; rappel
+  d'essai unique et fenêtre J-7 ; désactivation après expiration et conservation pendant
+  l'essai/abonnement valides ; refus de modification de config par un non-admin ; sauvegarde de
+  l'historique + email admin ; génération du PDF de facture.
+  `mvn test` : **705 tests, 0 échec, 0 erreur** (migrations V177/V178 validées).
+- Frontend — `subscriptionBillingApi` dans `src/api/services.test.ts` et
+  `PaymentSettings.test.tsx` (chargement/enregistrement de la configuration).
+  `npm test` : 49 fichiers / **406 tests OK** ; `oxlint` ciblé sans erreur ;
+  `npm run build` OK.
+
+
+### 2026-11-05 17:38:03 — facturation : chevauchements d'abonnements et pagination des paiements
+
+**Tâche**
+```
+facturation :
+
+une societe ne peut pas faire plusieurs abonnements qui se chevauchent. il ne faut laisser que la plus large, en demandant confirmation.
+
+liste des paiements : ordonnée avec date desc. avec  pagination
+```
+
+**Implémentation**
+- Backend — `SubscriptionBillingService` : détection des abonnements qui se chevauchent
+  (statuts non annulés, période = dates de début/fin ou fin d'essai), regroupement et choix de
+  l'abonnement **le plus large** (durée la plus longue, puis échéance la plus lointaine).
+- Backend — endpoints `GET /api/subscription-billing/overlaps` et
+  `POST /api/subscription-billing/overlaps/resolve` : résolution des chevauchements pour la
+  société courante, suppression des abonnements plus étroits et **réaffectation de leurs
+  paiements** à l'abonnement conservé (aucun historique perdu), avec isolation multi-société.
+- Backend — le paiement résout automatiquement les chevauchements en conservant
+  prioritairement l'abonnement qui vient d'être payé.
+- Backend — `SocController.findById` : les paiements de toutes les souscriptions sont désormais
+  triés globalement par date décroissante.
+- Migration `V179__i18n_subscription_overlaps.sql` : libellés FR/EN/AR de confirmation,
+  d'erreur et de total des paiements.
+- Frontend — `Facturation` : au chargement, si des abonnements se chevauchent, une confirmation
+  est demandée pour ne conserver que la période la plus large ; en cas d'accord, appel de la
+  résolution puis rechargement des données.
+- Frontend — liste des paiements paginée (taille de page utilisateur) avec navigation
+  Précédent/Suivant et ids dédiés `Facturation.payments.*`, tout en conservant l'ordre date
+  décroissante.
+
+**Tests**
+- Backend — `SubscriptionBillingServiceTest` : détection d'un chevauchement et choix du plus
+  large, absence de chevauchement, résolution avec réaffectation des paiements et suppression
+  du plus étroit. `mvn test` : **708 tests, 0 échec, 0 erreur**.
+- Frontend — `subscriptionBillingApi` (overlaps/resolve) dans `src/api/services.test.ts`.
+  `npm test` : 49 fichiers / **407 tests OK** ; `oxlint` ciblé sans erreur ;
+  `npm run build` OK.
+
+
+### 2026-11-05 22:50:46 — abonnements : chevauchement au mois et remplacement par une durée plus grande
+
+**Tâche**
+```
+facturation :
+
+une societe ne peut pas faire plusieurs abonnements qui se chevauchent le meme mois. 
+sauf si le user ajoute un abonnement de duree plus grande : 
+dans ce cas, on demande confirmation : si oui, on supprime l'ancien abonnement et l'ancienne facture et on met la nouvelle.
+```
+
+**Implémentation**
+- Backend — détection des chevauchements désormais au **mois** : deux abonnements non annulés
+  qui partagent le même mois calendaire sont considérés en conflit, même si leurs jours ne se
+  chevauchent pas.
+- Backend — résolution : conservation de l'abonnement de **durée la plus grande** (période la
+  plus longue, puis échéance la plus lointaine) ; suppression des anciens abonnements plus
+  courts **et de leurs anciennes factures/paiements** (`deleteAllBySubscriptionId`), au lieu de
+  réaffecter les paiements.
+- Backend — le paiement résout les chevauchements en conservant l'abonnement payé (la nouvelle
+  durée remplace l'ancienne).
+- Migration `V180__i18n_subscription_overlap_replace.sql` : mise à jour du texte de confirmation
+  FR/EN/AR précisant la suppression de l'ancien abonnement et de son ancienne facture.
+- Frontend — libellé de confirmation aligné en FR/EN/AR (bundle statique + base), toujours
+  affiché avant la résolution.
+
+**Tests**
+- Backend — `SubscriptionBillingServiceTest` : ajout du cas « même mois sans chevauchement de
+  jours » ; résolution vérifiant la suppression de l'ancien abonnement et de ses factures.
+  `mvn test` : **709 tests, 0 échec, 0 erreur**.
+- Frontend — `npm test` : 49 fichiers / **407 tests OK** ; `oxlint` ciblé sans erreur ;
+  `npm run build` OK.
+
+
+### 2026-11-05 23:04:20 — paiement : blocage du doublon mensuel et remplacement par une durée plus longue
+
+**Tâche**
+```
+facturation :
+
+actuellement :
+j'ai clické "payer par cb" 1 mois : il m'a généré une facture de 49 €.
+j'ai clické encore "payer par cb" 1 mois : il m'a généré une 2eme facture de 49 €.
+
+or ce que je veux :
+le 2eme click : il doit afficher une boite de dialogue d'info : Vous ne pouvez pas faire plusieurs abonnements de meme durée le meme mois. et il ne genere ni un 2eme abonnement ni une 2eme facture.
+
+mais si lors du 2eme click "payer par cb" avec un choix de 3 mois ou plus, alors le systeme doit me demander confirmation pour remplacer l'ancien abonnement et donc aussi remplacer l'ancienne facture par la nouvelle ?
+
+etc....
+```
+
+**Implémentation**
+- Backend — `SubscriptionBillingService.pay` : contrôle des paiements du mois courant pour la
+  société. Si un paiement existe déjà ce mois-ci :
+  - durée demandée **inférieure ou égale** à la durée déjà payée → refus métier
+    « Vous ne pouvez pas faire plusieurs abonnements de même durée le même mois. », sans
+    création d'abonnement ni de facture ;
+  - durée demandée **plus longue** → remplacement uniquement après confirmation
+    (`confirmReplace=true`) : suppression de l'ancienne facture du mois et recalcul de la
+    période à partir de la date de base (sans empiler l'ancienne période), puis création de la
+    nouvelle facture.
+- Backend — `PaymentRepository` : recherche des paiements de la société sur une période
+  (`findBySubscriptionSocIdAndPaymentDateBetweenOrderByPaymentDateDesc`).
+- Backend — `POST /api/subscription-billing/pay` : paramètre `confirmReplace` (défaut `false`).
+- Migration `V181__i18n_subscription_same_month.sql` : messages FR/EN/AR de refus et de
+  confirmation de remplacement.
+- Frontend — `Facturation.handlePay` : analyse du dernier paiement du mois ; affichage d'une
+  boîte d'info pour une durée identique/inférieure, confirmation pour une durée plus longue,
+  puis appel de l'API avec `confirmReplace`.
+- Frontend — `subscriptionBillingApi.pay` accepte `confirmReplace` ; libellés de secours
+  FR/EN/AR ajoutés au bundle statique.
+
+**Tests**
+- Backend — `SubscriptionBillingServiceTest` : refus d'un second paiement de même durée le même
+  mois (aucune facture créée) ; refus sans confirmation puis remplacement effectif d'une durée
+  plus longue avec suppression de l'ancienne facture.
+  `mvn test` : **711 tests, 0 échec, 0 erreur**.
+- Frontend — `subscriptionBillingApi.pay` avec et sans `confirmReplace` dans
+  `src/api/services.test.ts`. `npm test` : 49 fichiers / **407 tests OK** ; `oxlint` ciblé
+  sans erreur ; `npm run build` OK.
