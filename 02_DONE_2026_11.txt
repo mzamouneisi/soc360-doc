@@ -1579,3 +1579,268 @@ etc....
 - Frontend — `subscriptionBillingApi.pay` avec et sans `confirmReplace` dans
   `src/api/services.test.ts`. `npm test` : 49 fichiers / **407 tests OK** ; `oxlint` ciblé
   sans erreur ; `npm run build` OK.
+
+
+### 2026-11-05 23:29:09 — soc-100 : vraie configuration de paiement et audit du mot de passe admin
+
+**Tâche**
+```
+soc-100 facturation
+
+ajouter une vraie configuration de paiement.
+
+il n y a que le username admin qui fait cette opération.
+
+cette opération est historisée. en plus d’une notification par mail à tous les user de role ADMIN.
+
+toute modification de mot de passe du username admin via formulaire ou bdd , doit etre historisee et informée par mail à  tous les user de role ADMIN.
+
+Acces : user of username admin.
+```
+
+**Implémentation**
+- Backend — migration `V182__payment_config_provider.sql` : ajout de la configuration réelle du
+  prestataire de paiement (`card_provider`, `card_public_key`, `card_secret_key`,
+  `card_webhook_secret`, `paypal_secret`, `paypal_mode`).
+- Backend — `PaymentConfig` et DTOs enrichis : les secrets ne sont jamais renvoyés en clair
+  (indicateurs `cardSecretConfigured`, `cardWebhookConfigured`, `paypalSecretConfigured`) ;
+  les mises à jour ne remplacent un secret que s'il est fourni.
+- Backend — accès configuration (`GET/PUT /config`, `GET /config/history`) réservé au rôle
+  ADMIN **et au username `admin`** ; endpoint séparé `GET /payment-options` (CB/PayPal/devise)
+  pour la page Facturation du Responsable Société.
+- Backend — l'historisation des modifications de configuration et l'email à tous les ADMIN
+  existaient déjà et sont conservés ; le snapshot d'historique inclut les nouveaux champs sans
+  exposer les secrets.
+- Backend — migration `V183__admin_password_history.sql` : table `admin_password_history`
+  (utilisateur admin, empreinte du mot de passe, date, source).
+- Backend — `AdminPasswordHistoryService` : enregistrement des changements via formulaire
+  (`changePassword`, `resetPassword`, vérification) et **détection des modifications faites
+  directement en base** par un contrôle planifié (comparaison de l'empreinte du mot de passe) ;
+  chaque modification est historisée et notifiée par email à tous les utilisateurs de rôle
+  ADMIN. Le premier contrôle enregistre une base de référence sans notification.
+- Backend — `GET /api/admin/password-history` (rôle ADMIN + username admin) pour consulter
+  l'historique.
+- Backend — migration `V184__i18n_payment_provider_admin_password.sql` : libellés FR/EN/AR des
+  champs prestataire, secrets, modes et historique du mot de passe admin.
+- Frontend — page admin `/parametres-paiement` enrichie (prestataire carte, clé publique,
+  secret carte, secret webhook, client/secret PayPal, mode Sandbox/Live) avec indications
+  « Configuré / Non configuré » pour les secrets.
+- Frontend — accès à la page et au menu réservé au **username `admin`** via
+  `AdminAccountRoute` ; la page Facturation utilise uniquement `payment-options`.
+- Frontend — types/API mis à jour (`PaymentConfigDto`, `PaymentConfigRequest`,
+  `PaymentOptionsDto`).
+
+**Tests**
+- Backend — nouveau `AdminPasswordHistoryServiceTest` : base initiale sans email, changement en
+  base historisé + notifié, changement de formulaire administrateur, autre utilisateur ignoré,
+  historique interdit hors username admin, lecture de l'historique.
+  `SubscriptionBillingServiceTest` adapté aux nouveaux champs. `mvn test` :
+  **717 tests, 0 échec, 0 erreur** (migrations V182/V183/V184 validées).
+- Frontend — nouveau `AdminAccountRoute.test.tsx` ; `PaymentSettings.test.tsx` et
+  `subscriptionBillingApi` adaptés. `npm test` : 50 fichiers / **409 tests OK** ; `oxlint`
+  ciblé sans erreur ; `npm run build` OK.
+
+
+### 2026-11-05 23:38:11 — facturation réservée au Responsable Société et coordonnées bancaires admin
+
+**Tâche**
+```
+la page Facturation n'est accédée que par le responsable_soc
+
+mais la configuration des paiements (rib ou iban destination des paiements) ne sera faite que par le user dont le username est admin.
+```
+
+**Implémentation**
+- Vérification — page Facturation (`/facturation`) déjà protégée par `ResponsibleSocRoute` et son
+  entrée de menu est limitée à `RESPONSIBLE_SOC` ; les opérations de paiement côté backend
+  restent réservées à `RESPONSIBLE_SOC`.
+- Backend — migration `V185__payment_config_bank_details.sql` : ajout des coordonnées bancaires
+  de destination dans `payment_config` (`bank_account_holder`, `bank_rib`, `bank_iban`,
+  `bank_bic`).
+- Backend — `PaymentConfig`/DTOs enrichis ; la lecture et la modification de la configuration
+  restent réservées au rôle ADMIN **et au username `admin`**. Le RIB/IBAN n'est jamais exposé
+  en clair dans l'historique (masquage des 4 derniers caractères).
+- Backend — migration `V186__i18n_payment_bank_details.sql` : libellés FR/EN/AR des coordonnées
+  bancaires.
+- Frontend — page admin `/parametres-paiement` : section « Coordonnées bancaires de destination
+  des paiements » (titulaire, RIB, IBAN, BIC) enregistrée avec le reste de la configuration,
+  accessible uniquement au username `admin` (`AdminAccountRoute`).
+
+**Tests**
+- Backend — `SubscriptionBillingServiceTest` : enregistrement du titulaire/RIB/IBAN/BIC et
+  exposition dans le DTO. `mvn test` : **717 tests, 0 échec, 0 erreur**
+  (migrations V185/V186 validées).
+- Frontend — `PaymentSettings.test.tsx` et `subscriptionBillingApi` adaptés aux nouveaux champs.
+  `npm test` : 50 fichiers / **409 tests OK** ; `oxlint` ciblé sans erreur ;
+  `npm run build` OK.
+
+
+### 2026-11-05 23:47:40 — connexion du compte admin uniquement via Google
+
+**Tâche**
+```
+aucune connexion n'est possible avec le username admin que si l'authentification google avec les mails : 
+mourad.zamoun@eisi-consulting.fr
+ou
+mourad.zamoun@gmail.com
+```
+
+**Implémentation**
+- Backend — `AuthService.login` : toute tentative de connexion par mot de passe avec le compte
+  dont le username est **admin** est refusée (message : connexion uniquement via Google).
+- Backend — nouvel endpoint `POST /api/auth/google` + `GoogleLoginRequest` : vérification du
+  jeton d'identité Google via `GoogleTokenVerifier` (tokeninfo Google, email vérifié, audience
+  contrôlée si `app.google.client-id` est configuré).
+- Backend — `AuthService.loginWithGoogle` : seules les adresses
+  `mourad.zamoun@eisi-consulting.fr` et `mourad.zamoun@gmail.com` sont autorisées
+  (`app.admin.allowed-google-emails`, surchargeable par `ADMIN_ALLOWED_GOOGLE_EMAILS`) ; le
+  compte `admin` est authentifié, la connexion est journalisée et un JWT est émis.
+- Backend — `application.yml` : clés `app.google.client-id` et `app.admin.allowed-google-emails`.
+- Frontend — `src/lib/google.ts` : chargement de Google Identity Services, `VITE_GOOGLE_CLIENT_ID`.
+- Frontend — page Login : bouton/Google Sign-In affiché lorsque `VITE_GOOGLE_CLIENT_ID` est
+  défini, callback vers `authApi.googleLogin` puis navigation ; message d'erreur si le compte
+  admin tente une connexion par mot de passe.
+- Frontend — `authApi.googleLogin`, `AuthContext.googleLogin` ; migration
+  `V187__i18n_admin_google_login.sql` + libellés FR/EN/AR.
+- Tests — `SecurityIntegrationTest` adapté : les scénarios de sécurité utilisent un compte
+  administrateur secondaire (`admin_test`) afin que le compte `admin` reste réservé à Google.
+
+**Tests**
+- Backend — `AuthServiceTest` : refus de la connexion mot de passe admin, connexion Google avec
+  email autorisé, refus d'un email Google non autorisé. `mvn test` : **720 tests, 0 échec,
+  0 erreur**.
+- Frontend — `authApi.googleLogin` dans `src/api/services.test.ts`.
+  `npm test` : 50 fichiers / **410 tests OK** ; `oxlint` ciblé sans avertissement bloquant ;
+  `npm run build` OK.
+
+**Configuration requise**
+- Backend : `GOOGLE_CLIENT_ID` (audience du jeton) et éventuellement
+  `ADMIN_ALLOWED_GOOGLE_EMAILS`.
+- Frontend : `VITE_GOOGLE_CLIENT_ID` pour afficher le bouton Google.
+
+
+### 2026-11-06 00:01:23 — coordonnées bancaires des paiements lues depuis Google Sheets
+
+**Tâche**
+```
+la config de l'IBAN destination des paiements des abonnements sera dans une feuille google sheet :
+https://docs.google.com/spreadsheets/d/1D79cXIhsxJhnQNIIdsofWBd5kS4eZApqhNTitpYNgQg
+
+j'ai mis dans la cellule A1 : le label IBAN
+la cellule B1 aura la valeur de cet IBAN
+
+s'il faut d'autres params à rajouter, vous pouvez les rajouter dans cette feuille : elle est actuellement en mode write pour tout le monde.
+```
+
+**Implémentation**
+- Backend — nouveau `BankDetailsSheetService` : lecture de la feuille Google (`export?format=csv`),
+  cache 5 minutes, parsing CSV (valeurs entre guillemets inclues) et reconnaissance des
+  libellés `IBAN`, `BIC`, `RIB`, `TITULAIRE`/`TITULAIRE DU COMPTE`/`ACCOUNT HOLDER`,
+  `BANQUE`/`BANK`. D'autres lignes peuvent être ajoutées dans la feuille sans impact.
+- Backend — URL configurable `app.payment.bank-sheet-url` /
+  `PAYMENT_BANK_SHEET_URL`, valeur par défaut :
+  `https://docs.google.com/spreadsheets/d/1D79cXIhsxJhnQNIIdsofWBd5kS4eZApqhNTitpYNgQg`.
+- Backend — `SubscriptionBillingService.config()` fusionne les valeurs de la feuille avec les
+  anciennes colonnes de la base (repli si la feuille est indisponible) et expose
+  `bankSheetUrl` dans le DTO.
+- Backend — migration `V188__i18n_bank_sheet_source.sql` : libellés FR/EN/AR de la source
+  Google Sheet.
+- Frontend — page admin `/parametres-paiement` : les champs bancaires (titulaire, RIB, IBAN,
+  BIC) sont désormais **en lecture seule** et alimentés par la feuille ; lien « Ouvrir la
+  feuille Google » et mention de la source. La configuration des moyens de paiement
+  (CB/PayPal, secrets, prix) reste modifiable par le username `admin`.
+
+**Tests**
+- Backend — nouveau `BankDetailsSheetServiceTest` : conversion du lien Google Sheets en export
+  CSV, conservation d'une URL déjà exportable, lecture des champs bancaires, valeurs entre
+  guillemets et lignes vides. `SubscriptionBillingServiceTest` adapté.
+  `mvn test` : **724 tests, 0 échec, 0 erreur** (migration V188 validée).
+- Frontend — `PaymentSettings.test.tsx` et `subscriptionBillingApi` adaptés.
+  `npm test` : 50 fichiers / **410 tests OK** ; `oxlint` ciblé sans erreur ;
+  `npm run build` OK.
+
+
+### 2026-11-06 00:10:05 — connexion admin : Google autorisé + username admin obligatoire
+
+**Tâche**
+```
+aucune connexion n'est possible avec le username admin que si l'authentification google avec les mails :
+mourad.zamoun@eisi-consulting.fr
+ou
+mourad.zamoun@gmail.com
+
+
+cela veut dire que je dois etre connecté à l'un de ces gmail dans le navigateur 
+en plus de cela, il faut que je soit bien authentifié avec le username admin.
+```
+
+**Implémentation**
+- Backend — `GoogleLoginRequest` contient désormais `username` et `credential`.
+  `AuthService.loginWithGoogle` exige explicitement le username **admin** en plus de la
+  vérification Google : un autre username est refusé même avec un email Google autorisé.
+- Backend — la double condition est donc appliquée : être connecté à un compte Google dont
+  l'email est `mourad.zamoun@eisi-consulting.fr` ou `mourad.zamoun@gmail.com` **et** demander
+  l'authentification du compte username `admin` ; le JWT émis correspond bien au compte admin.
+- Frontend — `authApi.googleLogin(username, credential)` et `AuthContext.googleLogin` transmettent
+  le username saisi dans le formulaire ; aide affichée si le username n'est pas `admin`.
+- Frontend — migration `V189__i18n_admin_google_username.sql` + libellé FR/EN/AR pour indiquer
+  la nécessité du username admin.
+
+**Tests**
+- Backend — `AuthServiceTest` : ajout du cas « username admin obligatoire » ; connexion Google
+  autorisée avec username admin et email autorisé ; email non autorisé refusé.
+  `mvn test` : **725 tests, 0 échec, 0 erreur** (migration V189 validée).
+- Frontend — `authApi.googleLogin` vérifie l'envoi de `username` + `credential`.
+  `npm test` : 50 fichiers / **410 tests OK** ; `oxlint` ciblé sans erreur ;
+  `npm run build` OK.
+
+
+### 2026-11-06 00:15:31 — admin : plus de 403 quand Google n'est pas encore configuré
+
+**Tâche**
+```
+erreur de connexion avec admin : 
+
+
+XHR POST
+http://localhost:5173/api/auth/login
+[HTTP/1.1 403 Forbidden 10ms]
+
+
+POST
+	http://localhost:5173/api/auth/login
+État
+403
+Forbidden
+VersionHTTP/1.1
+Transfert628 o (taille 170 o)
+Politique de référentstrict-origin-when-cross-origin
+Priorité de la requêteHighest
+Résolution DNSSystème
+```
+
+**Implémentation**
+- Cause — le username `admin` était systématiquement bloqué en connexion mot de passe, même lorsque
+  Google n'était pas configuré (`GOOGLE_CLIENT_ID` vide), rendant toute connexion admin impossible
+  (403 sur `POST /api/auth/login`).
+- Backend — le blocage de la connexion mot de passe admin est conditionné à la présence d'une
+  configuration Google : si `app.google.client-id` est renseigné, Google est obligatoire ; sinon
+  le mot de passe reste accepté pour permettre l'accès initial.
+- Backend — nouvel endpoint public `GET /api/auth/google-config` retournant `enabled` et le
+  `clientId` configuré côté serveur.
+- Frontend — la page Login récupère cette configuration : le bouton Google s'affiche dès que le
+  backend est configuré (sans dépendre uniquement de `VITE_GOOGLE_CLIENT_ID`) ; le libellé du
+  username admin reste requis pour Google.
+
+**Tests**
+- Backend — `AuthServiceTest` : connexion mot de passe admin autorisée si Google n'est pas
+  configuré, refusée si Google est configuré, connexion Google avec username admin + email
+  autorisé. `mvn test` : **726 tests, 0 échec, 0 erreur**.
+- Frontend — `authApi.googleConfig` dans `src/api/services.test.ts`, mock de configuration dans
+  `Login.test.tsx`. `npm test` : 50 fichiers / **410 tests OK** ; `oxlint` ciblé sans erreur ;
+  `npm run build` OK.
+
+**Configuration**
+- Sans `GOOGLE_CLIENT_ID` : connexion admin par mot de passe possible (amorçage).
+- Avec `GOOGLE_CLIENT_ID` : connexion admin uniquement via Google (emails autorisés + username
+  admin), et bouton Google visible automatiquement.
