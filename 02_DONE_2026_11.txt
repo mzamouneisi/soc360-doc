@@ -2023,3 +2023,36 @@ il est inactif !!
   (désactivé avant l'import, actif juste après l'upload).
 - `npm test` : **411 tests OK** (2 échecs pré-existants date-dépendants dans
   `Unavailability.test.tsx`), `tsc -b` OK, `oxlint` exit 0.
+
+### 2026-11-09 16:50:07 — Paramètres congés : suppression conditionnelle d'une configuration
+
+**Tâche**
+```
+Paramètres congés
+
+Configurations existantes :
+
+si une config peut etre supprimée (car pas de reference sur elle), afficher un btn "Supprimer" (avec confirmation comme dab) avant le btn Activ/desactiv
+```
+
+**Implémentation**
+- Backend — `LeaveService.deleteConfig(id)` : contrôle d'accès société
+  (`SecurityUtils.requireSocAccess`), refus (409) si un `leave_lot` ou un `leave_movement`
+  référence la configuration (`config_id`), sinon supprime l'historique d'activation puis la
+  configuration. Aucune migration (schéma inchangé).
+- Backend — `LeaveConfigDto` : nouveau champ `deletable` calculé sans accès base supplémentaire
+  côté client (`!existsByConfigId` sur lots et mouvements). Les repositories exposent
+  `existsByConfigId` ; `LeaveConfigActivationRepository.deleteByConfigId`.
+- Backend — `LeaveController` : `DELETE /api/leave/configs/{id}` réservé à `RESPONSIBLE_SOC`.
+- Frontend — `LeaveSettings` : bouton **Supprimer** (variant danger) affiché **avant**
+  Activer/Désactiver, uniquement quand `config.deletable`; confirmation via `dialog.confirm`
+  puis `leaveApi.deleteConfig(id)` et rechargement.
+- Frontend — `api/leave.ts` : `deleteConfig` ; `types.ts` : champ `deletable`.
+- Doc — `DOC_PARAM_CONGES.md` : API `DELETE` et règle de suppression conditionnelle.
+
+**Tests**
+- Backend — `LeaveServiceTest` : `deleteConfig_whenNotReferenced_deletesHistoryAndConfig`,
+  `deleteConfig_whenReferenced_throwsConflict`. `mvn test` : **741 tests, 0 échec**.
+- Frontend — `LeaveSettings.test.tsx` : suppression confirmée, bouton masqué si configuration
+  référencée. `npm test` : **419 tests OK** (2 échecs pré-existants date-dépendants dans
+  `Unavailability.test.tsx`), `tsc -b` OK, `oxlint` exit 0.
