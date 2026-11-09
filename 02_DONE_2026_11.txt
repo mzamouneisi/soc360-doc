@@ -1898,3 +1898,128 @@ ne sont pas traduis
 **Tests**
 - Frontend — test de parité des clés FR/EN (`i18n.test.tsx`) vert ; `npm test` :
   50 fichiers / **410 tests OK** ; `oxlint` ciblé sans erreur ; `npm run build` OK.
+
+
+### 2026-11-06 11:41:17 — soc-101 : projet Playwright de tests fonctionnels complets
+
+**Tâche**
+```
+soc-101 tests fonctionnels complet
+
+ajouter un nouveau projet de tests fonctionnels à la racine afin de tester l’url public de soc360.
+
+on pourra utiliser le meme projet pour tester d’autres url.
+
+nom du projet : eisi-tests-fonc-playwright
+
+pour le projet soc360, l’url publique est https://mzamouneisi.github.io/soc360-front-react/ 
+
+on veut faire un test complet : 
+
+inscription d’une nouvelle societe
+
+ajouter des collaborateurs de role MANAGER et CONSULTANT 
+
+ajouter des prospects, clients et fournisseurs 
+
+ajouter des projets, activités de type mission, congé, …
+
+faire les tests sur les CRA, reject, validation, …  entre le consultant et son manager 
+
+de meme pour les indisponibilites , les abscences dans les cra
+
+les notes de frais 
+
+ajouter un devis, facture
+
+envoyer une facture au client
+
+ajouter un document, partager avec son manager
+
+etc …
+```
+
+**Implémentation**
+- Création du projet autonome `eisi-tests-fonc-playwright/` à la racine du workspace :
+  `package.json`, `playwright.config.ts`, `tsconfig.json`, `.env.example`, `.gitignore`, `README.md`.
+- Configuration multi-URL : `SOC360_BASE_URL` (défaut
+  `https://mzamouneisi.github.io/soc360-front-react/`) et `SOC360_API_URL` (backend Azure dev),
+  réutilisable pour d'autres applications EISI.
+- Helpers : `env.ts` (variables/URLs), `auth.ts` (connexion API, injection du JWT et du
+  `X-SOC-Id` dans `localStorage`, connexion UI), `api.ts` (client API Soc360 avec token/société),
+  `unique.ts` (données uniques datées).
+- Page Objects : Login, Register, Navigation.
+- Tests :
+  - `smoke.spec.ts` : fumée publique connexion/inscription (exécutée avec succès contre l'URL
+    publique) ;
+  - `auth.spec.ts` : connexion par rôle responsable/manager/consultant et refus d'un mauvais
+    mot de passe (comptes configurables, sinon ignorés) ;
+  - `registration.spec.ts` : inscription d'une nouvelle société et écran de vérification email,
+    validation optionnelle par jeton (`E2E_VERIFICATION_TOKEN`) ;
+  - `full-journey.spec.ts` : parcours complet — collaborateurs MANAGER/CONSULTANT, prospects +
+    note + conversion, clients, fournisseurs, projets, activités de type mission, CRA
+    (soumission/rejet/resoumission/validation), indisponibilité/absence (validation manager),
+    note de frais (soumission/validation/paiement), devis/facture/envoi client, document partagé
+    avec le manager, puis vérifications IHM des pages clés.
+- Sécurité des données : les tests qui écrivent sont conditionnés par `E2E_ALLOW_WRITES=true`
+  et des comptes dédiés ; nettoyage best-effort des objets créés en fin de parcours.
+- `npm install`, `tsc --noEmit` OK, `playwright test --list` : **8 tests**, `npm run test:smoke`
+  contre l'URL publique : **2 tests OK**.
+
+**Tests**
+- `npm run test:smoke` : **2/2 OK** (connexion et inscription publiques accessibles).
+- `npm test` sans comptes/écritures configurés : 2 tests OK, 6 tests ignorés proprement.
+- `./node_modules/.bin/tsc --noEmit -p tsconfig.json` : OK.
+- Le parcours complet et l'inscription sont prêts à être exécutés avec
+  `E2E_ALLOW_WRITES=true` et les comptes/éventuel jeton de validation renseignés.
+
+### 2026-11-09 09:54:36 — Logo de la société réservé au responsable SOC
+
+**Tâche**
+```
+logo de la societe
+
+seul le responsable_soc peut le gerer
+```
+
+**Implémentation**
+- Backend — `SocController` : `POST /api/socs/{id}/logo` et `DELETE /api/socs/{id}/logo`
+  réservés à `hasRole('RESPONSIBLE_SOC')` ; le rôle ADMIN n'est plus autorisé à gérer le logo.
+- Backend — `SocService.ensureResponsibleSocManager` : contrôle supplémentaire (403) si le
+  rôle n'est pas RESPONSIBLE_SOC ou si l'utilisateur n'est pas rattaché à la société (créateur
+  ou lien `user_soc`), utilisé par `updateLogo`/`deleteLogo`. `loadLogo` reste consultable par
+  les membres autorisés via `requireSocAccess` (isolation multi-société conservée).
+- Frontend — `SocAdmin` : le champ logo n'est rendu que pour `RESPONSIBLE_SOC` (plus pour
+  ADMIN, MANAGER ou CONSULTANT).
+- Frontend — `AddSocModal` : sélection et upload du logo uniquement pour `RESPONSIBLE_SOC` ;
+  l'administrateur qui crée une société ne gère donc pas son logo.
+- `Profile` et `Settings` étaient déjà conditionnés au rôle RESPONSIBLE_SOC.
+
+**Tests**
+- Backend — `SocServiceTest` : ajout de `updateLogo_asAdmin_forbidden`,
+  `updateLogo_responsibleNotLinked_forbidden` et `deleteLogo_asAdmin_forbidden`.
+  `mvn test` : **736 tests, 0 échec, 0 erreur**.
+- Frontend — `SocAdmin.test.tsx` : logo absent pour un ADMIN, présent pour un
+  RESPONSIBLE_SOC. `npm test` : **411 tests OK** (hors 2 échecs pré-existants sensibles à la
+  date dans `Unavailability.test.tsx`), `tsc -b` OK, `oxlint` exit 0.
+
+### 2026-11-09 09:54:37 — Bouton Enregistrer inactif après import d'un logo
+
+**Tâche**
+```
+lorsque je upload un logo de la societe, le btn Enregistrer ne fonctionne pas !
+il est inactif !!
+*
+```
+
+**Implémentation**
+- Frontend — `Settings` : ajout de l'état `logoChanged`, activé par le `onChange` de
+  `SocLogoField` (import ou suppression du logo) et intégré au calcul `changed`. Le bouton
+  `common.save.button` n'est donc plus désactivé après l'import d'un logo. `handleSave` remet
+  `logoChanged` à `false` après succès et l'état est réinitialisé au changement de société.
+
+**Tests**
+- Frontend — `Settings.test.tsx` : « active le bouton Enregistrer après l'import d'un logo »
+  (désactivé avant l'import, actif juste après l'upload).
+- `npm test` : **411 tests OK** (2 échecs pré-existants date-dépendants dans
+  `Unavailability.test.tsx`), `tsc -b` OK, `oxlint` exit 0.
