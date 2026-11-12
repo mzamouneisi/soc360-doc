@@ -2056,3 +2056,188 @@ si une config peut etre supprimée (car pas de reference sur elle), afficher un 
 - Frontend — `LeaveSettings.test.tsx` : suppression confirmée, bouton masqué si configuration
   référencée. `npm test` : **419 tests OK** (2 échecs pré-existants date-dépendants dans
   `Unavailability.test.tsx`), `tsc -b` OK, `oxlint` exit 0.
+
+### 2026-11-10 10:50:03 — opencode sous MobaXterm : erreur « EUNKNOWN: unknown error, read » au lancement
+
+**Tâche**
+```
+sous mobaxterm :
+
+quand je lance opencode :
+
+erreur :
+
+mza@DESKTOP-52VM751:~/github/eisi/soc360 10:14:52 $ opencode
+Error: Unexpected error
+
+EUNKNOWN: unknown error, read
+```
+
+**Diagnostic**
+- Reproduit de façon déterministe dans un onglet MobaXterm : `opencode` (TUI) échoue,
+  alors que `opencode --version`, `--help`, `models` fonctionnent. Aucune ligne n'est
+  écrite dans `~/.local/share/opencode/log/opencode.log` (échec avant l'init des logs).
+- Cause : le TUI natif (binaire Bun) lit stdin comme une console Win32 ; dans le terminal
+  local MobaXterm (pty PuTTY/winpty via `conin.exe`), cette lecture échoue avec
+  `EUNKNOWN: unknown error, read`. Même classe de bug que les TUI Windows lancées dans
+  tmux / un pty (issues #10129, #24358). Lancer `opencode </dev/null` fonctionne, ce qui
+  confirme que c'est la lecture de stdin qui casse.
+- Ce n'est donc PAS le bug y18n/B: (`EUNKNOWN ... open 'B:\~BUN\locales\en_US.json'`) :
+  testé avec `subst B:` + fichier de locale, le problème persiste.
+
+**Implémentation (hors dépôts, environnement MobaXterm)**
+- `C:\Users\mza\Documents\home\.bashrc` : ajout d'une fonction `opencode()` qui lance le TUI
+  dans une vraie console Win32 via `winpty -Xallow-non-tty` (winpty livré par Git for
+  Windows) avec le chemin Windows `C:/nvm4w/nodejs/node_modules/opencode-ai/bin/opencode.exe`.
+  Les sous-commandes non interactives (`run`, `serve`, `models`, `db`, `stats`, `upgrade`,
+  etc.) ne passent pas par winpty et restent inchangées (`command opencode "$@"`).
+- Sauvegarde : `C:\Users\mza\Documents\home\.bashrc.bak-opencode-winpty` (restauration :
+  recopier ce fichier sur `.bashrc` puis rouvrir un terminal).
+- Aucun fichier des dépôts `soc360-back-java` / `soc360-front-react` /
+  `soc360-front-react-prod` modifié ; schéma DB et isolation multi-société inchangés.
+
+**Vérification**
+- Repro initiale (onglet MobaXterm) : `Error: Unexpected error / EUNKNOWN: unknown error, read`.
+- `winpty -Xallow-non-tty <chemin exe> opencode` : le TUI démarre complètement (log
+  `creating instance`, `bootstrapping`, `watcher backend`, `booting location services`,
+  run `697c9572`) et tourne jusqu'au timeout, sans erreur.
+- `--version` via winpty hors TTY affiche une assertion winpty (0 ligne/0 colonne) puis
+  s'arrête ; c'est sans effet dans un onglet interactif (taille > 0).
+- Solution de repli confirmée par l'utilisateur : lancer `opencode` depuis une fenêtre `cmd`
+  (vraie console Windows). Les tests automatisés backend/frontend ne sont pas concernés
+  (aucun code applicatif modifié).
+
+### 2026-11-10 11:18:29 — Paramètres congés : contrôles de saisie et champs conditionnés à la fréquence
+
+**Tâche**
+```
+Paramètres congés :
+
+Rajouter le contrôle sur les champs de configuration des congés et rtt. Les valeurs saisie ne peuvent pas être négatives
+
+Rendre l’affichage des champs conditionnés à la sélection de la fréquence d’acquisition des droits . Exemple si on choisi annuelle il faut choisir une date qui se répète chaque année (jours et mois). Si on choisi trimestriel alors on  choisi un jours et un mois qui sera incrémenté de 3 mois calendaire. Si on choisi mensuelle on choisi qu’un jour du mois ( il faut gérer le cas des mois de 30, 31 et 28 jours )
+
+Il faut prendre en considération la date d’embauche du salarié.
+```
+
+**Implémentation**
+- Backend — `LeaveAccrualFrequency` : ajout de `QUARTERLY` (trimestriel).
+- Backend — `LeaveService.validateConfigFields` : refus (400) de toute valeur négative
+  (`accrualAmount`, `carryoverMax`, `negativeLimit`, `expirationMonths`,
+  `carryoverExpirationMonths`) et bornes mois 1..12 / jour 1..31 ; `creditDay` accepté jusqu'à 31.
+- Backend — `ensureLots` : branche `QUARTERLY` (crédit tous les 3 mois calendaires à partir de
+  `creditMonth`/`creditDay`, aligné sur `max(effectiveDate, hireDate)`) ; `MONTHLY` ramène le
+  jour au dernier jour du mois (28/29/30/31) ; `YEARLY`/`MONTHLY`/`QUARTERLY` partent de la date
+  d'embauche. Aucune migration : `accrual_frequency` est déjà un `VARCHAR(20)`.
+- Frontend — `api/types.ts` : `LeaveAccrualFrequency` + `QUARTERLY`.
+- Frontend — `LeaveSettings.tsx` : option « Trimestrielle », affichage conditionnel (`MONTHLY`
+  → « Jour du mois » seul ; `QUARTERLY`/`YEARLY` → mois + jour ; `ONCE` → aucun), `min`/`max`
+  sur les champs, validation client (valeurs négatives, mois 1..12, jour 1..31), note sur la
+  date d'embauche, libellés de fréquence dans la liste des configurations.
+- Doc — `DOC_PARAM_CONGES.md` : fréquences, contrôles de saisie, génération trimestrielle et
+  longueur des mois.
+
+**Tests**
+- Backend — `LeaveServiceTest` : refus montant/expiration/seuil négatifs, mois/jour invalides,
+  acceptation du jour 31, trimestriel tous les 3 mois à partir de l'embauche, mensuel ramené à
+  28/30/31, annuel après l'embauche. `mvn test` : **752 tests, 0 échec, 0 erreur**.
+- Frontend — `LeaveSettings.test.tsx` : champs conditionnels par fréquence, refus des valeurs
+  négatives, envoi trimestriel mois/jour. `npm test src/pages/LeaveSettings.test.tsx` :
+  **10 tests OK** ; `npm run lint` : OK (warnings pré-existants sur `docs/assets`) ;
+  `npm run build` : OK.
+
+### 2026-11-12 10:51:50 — Suppression d'un utilisateur : objets liés et confirmation
+
+**Tâche**
+```
+bdd 
+table user_account
+
+en tant qu'admin : username admin
+je veux supprimer un user 
+si des objets referencent ce user, afficher leur liste avec des btn supprimer (avec confirmation) 
+si tous les objets sont supprimes , on peut demander confirmation si on supprime ce user 
+```
+
+**Implémentation**
+- Backend — nouveau `UserDependencyService` / `UserDependencyDtos` : inventaire des objets
+  métier liés à un compte `user_account` (CRA/timesheets, notes de frais, fiches de paie,
+  activités, indisponibilités, documents RH, soldes et mouvements de congés, documents de
+  facturation) avec libellés lisibles, suppression unitaire (contrôle d'appartenance à
+  l'utilisateur, cascade des mouvements d'un solde) et nettoyage des références techniques
+  (messages, notifications, tickets/support, audits, sociétés créées, subordonnés).
+- Backend — `ConsultantService` : `delete` refuse (409) tant que la liste des dépendances
+  n'est pas vide, puis nettoie les références et supprime le compte ; ajout de
+  `dependencies(id)` et `deleteDependency(id, type, objectId)`. `UserController.delete`
+  délègue à ce service (plus de suppression implicite de la société).
+- Backend — `ConsultantController` : `GET /api/consultants/{id}/dependencies` et
+  `DELETE /api/consultants/{id}/dependencies/{type}/{objectId}` ; finders ajoutés aux
+  repositories notes de frais, soldes/mouvements de congés et facturation.
+- Frontend — `Consultants.tsx` : au clic sur Supprimer, chargement des dépendances ; si la
+  liste est vide, confirmation puis suppression ; sinon modale « Objets liés » avec un
+  bouton Supprimer (confirmation) par objet, bouton de suppression du compte désactivé tant
+  qu'il reste des objets. `api/consultants.ts` : `dependencies` / `deleteDependency`.
+- i18n — clés FR/EN/AR (`Consultants.dependances.*`, `Consultants.dep.*`,
+  `Consultants.supprimer.*`) dans `messages.generated.ts` et migration Flyway
+  `V195__i18n_user_deletion_dependencies.sql`.
+
+**Tests**
+- Backend — `UserDependencyServiceTest` (6 tests : inventaire, propriétaire, suppression
+  CRA/solde, type inconnu, nettoyage), `ConsultantServiceTest` (refus si dépendances,
+  suppression sinon), `SecurityIntegrationTest` (suppression d'un utilisateur actif sans
+  dépendance). `mvn test` : **759 tests, 0 échec, 0 erreur**.
+- Frontend — `Consultants.test.tsx` (liste des objets liés, bouton désactivé, suppression
+  après nettoyage, confirmation directe sans objet) et `services.test.ts` (endpoints
+  dépendances) : **37 tests OK** ; `npm run lint` : OK ; `npm run build` : OK.
+
+### 2026-11-12 10:55:31 — Suppression d'un utilisateur : dépendances en arborescence récursive
+
+**Tâche**
+```
+bdd
+table user_account
+
+en tant que role ADMIN
+je veux supprimer un user
+si des objets referencent ce user, afficher leur liste de facon recusrive (arborescence, avec ascenceur) avec des btn supprimer (avec confirmation)
+si tous les objets sont supprimes , on peut demander confirmation si on supprime ce user
+```
+
+**Implémentation**
+- Frontend — `Consultants.tsx` : composant récursif `DependencyTreeNode` (nœud groupe
+  « type d'objet » → nœuds objets, profondeur visuelle par indentation), repli/dépliage de
+  chaque branche (`aria-expanded`, libellés Développer/Réduire) et conteneur avec
+  ascenseur vertical (`max-h-72 overflow-y-auto`, `role="tree"`).
+- Chaque objet conserve son bouton Supprimer avec confirmation ; le bouton de suppression
+  du compte reste désactivé tant que l'arbre n'est pas vide. Aucun changement backend
+  (l'API renvoie déjà la liste typée).
+- i18n — clés `Consultants.dependances.developper` / `Consultants.dependances.reduire`
+  (FR/EN/AR) dans `messages.generated.ts` et `V195__i18n_user_deletion_dependencies.sql`.
+
+**Tests**
+- Frontend — `Consultants.test.tsx` : l'arborescence affiche le groupe « CRA » et l'objet
+  « CRA 11/2026 », bouton de suppression du compte désactivé, suppression d'un objet puis
+  du compte. `npm test -- Consultants.test.tsx services.test.ts` : **38 tests OK** ;
+  `npm run lint` : OK ; `npm run build` : OK.
+- Backend — migration V195 rejouée par `SecurityIntegrationTest` :
+  **19 tests OK** ; `mvn test` complet déjà vert.
+
+### 2026-11-12 10:55:31 — Bouton Supprimer dans le formulaire d'édition d'un utilisateur
+
+**Tâche**
+```
+ajouter un btn supprimer dans la form user qui s'affiche lorsqu'on edit un user sur user_account dans bdd 
+```
+
+**Implémentation**
+- Frontend — `Consultants.tsx` : dans le pied de la modale d'édition, ajout d'un bouton
+  Supprimer (`id="Consultants.form.supprimer"`) visible pour un compte modifiable (jamais
+  pour soi-même ni pour un compte ADMIN). Le clic ferme le formulaire et déclenche le même
+  parcours de suppression que la liste : chargement des dépendances, arborescence avec
+  suppressions unitaires, puis confirmation de suppression du compte lorsque la liste est
+  vide.
+
+**Tests**
+- Frontend — `Consultants.test.tsx` : le bouton est présent dans le formulaire d'édition et
+  ouvre la modale des objets liés. `npm test -- Consultants.test.tsx services.test.ts` :
+  **38 tests OK** ; `npm run lint` : OK ; `npm run build` : OK.
