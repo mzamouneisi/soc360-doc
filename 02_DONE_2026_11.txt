@@ -2395,3 +2395,68 @@ mettre cette analyser dans test_fonc_soc360.ana.md
   3 réussis, 5 échecs, 2 ignorés** ; échecs détaillés (`auth.spec`, `env-collaborators`
   timeout API, `full-journey` 500 indisponibilité, `registration`) avec captures, vidéos et
   traces. Fichier produit : `test_fonc_soc360.ana.md`.
+
+### 2026-11-12 16:56:46 — Playwright : structure `tests-proj/soc360` et scénario `test_001`
+
+**Tâche**
+```
+pour les tests fonc du projet soc360 avec playright :
+projet ~/github/eisi/soc360/eisi-tests-fonc-playwright
+faire un dossier tests-proj
+	sous ce repertoire, faire un dossier soc360
+		sous soc360, faire plusieurs scenarios :
+			test_001
+			test_002
+			...
+
+
+commencant par le fichier ou dossier test_001 :
+se connecter avec le user (responsable_soc) : 
+E2E_RESP_USERNAME=resp_demo1
+E2E_RESP_PASSWORD=Resp.Demo1.2020
+
+si on ne peut pas se connecter avec ce user, alors arreter le test en affichant le bon message d'erreur.
+
+sinon, ce resp_soc va ajouter deux users :
+test_manager_<date_debut_test> : son manager est resp_demo1
+test_consultant_<date_debut_test> : son manager est test_manager_<date_debut_test>
+
+le mot de passe de ces users sera toujours le meme : Test.Demo.2020
+
+A la fin du test, on supprime ces users test_*_<date_debut_test>
+de facon cascade 
+
+-----------
+
+on completera plus tard le test_001
+```
+
+**Implémentation**
+- Nouvelle arborescence `eisi-tests-fonc-playwright/tests-proj/soc360/test_001/` et
+  adaptation de `playwright.config.ts` (`testDir: '.'`, `testMatch`
+  `tests/**/*.spec.ts` + `tests-proj/**/*.spec.ts`) : les scénarios projet coexistent avec
+  les tests existants. `tsconfig.json` inclut aussi `tests-proj/**/*.ts`.
+- `test_001/test_001.spec.ts` :
+  - connexion du responsable `resp_demo1` via `Soc360Api` (Bearer + `X-SOC-Id`) ; en cas
+    d'échec, erreur explicite avec le username et les variables `.env` à vérifier ;
+  - génération d'un horodatage unique `date_debut_test` (milliseconde incluse) ;
+  - création du `test_manager_<date>` (rôle MANAGER, manager = responsable) puis du
+    `test_consultant_<date>` (rôle CONSULTANT, manager = le manager créé), mot de passe
+    `Test.Demo.2020` ;
+  - vérification de leur présence dans la liste des collaborateurs, des rôles et de la
+    hiérarchie, puis connexion API des deux comptes ;
+  - nettoyage final : suppression en cascade via
+    `DELETE /api/consultants/{id}/dependencies` puis `DELETE /api/consultants/{id}`, avec
+    repli compatible backend ancien (suppression des activités générées avant le compte) ;
+  - vérification que les deux usernames ne figurent plus dans la liste.
+- `tests/helpers/api.ts` : ajout de `deleteOptional(path)` (statut HTTP sans assertion)
+  pour tester la disponibilité de l'endpoint de cascade.
+- `README.md` : documentation de `tests-proj/soc360/` et de l'analyseur.
+
+**Tests**
+- `tsc --noEmit -p tsconfig.json` : OK.
+- `./test_fonc_soc360.sh --grep "test_001"` : **1 test OK** ; users créés, connexions
+  manager/consultant OK, suppression en cascade effectuée, aucune trace résiduelle dans la
+  liste. Le journal et `test_fonc_soc360.ana.md` sont générés automatiquement.
+- Nettoyage des comptes de test créés lors des essais sur l'environnement Azure dev effectué
+  (activités puis comptes supprimés).
