@@ -2264,3 +2264,57 @@ ajouter un btn supprimer dans la form user qui s'affiche lorsqu'on edit un user 
   `npm test -- Consultants.test.tsx Tables.test.tsx services.test.ts` : **44 tests OK** ;
   `npm run lint` : OK ; `npm run build` : OK.
 - Backend — `mvn test` : **759 tests OK** (aucun changement de service).
+
+### 2026-11-12 11:33:48 — Playwright : collaborateurs du `.env` (existence, création, connexion)
+
+**Tâche**
+```
+projet ~/github/eisi/soc360/eisi-tests-fonc-playwright
+
+scenarion de tests :
+
+se connecter avec le responsable_soc qui se trouve dans .env : 
+
+# Comptes utilisés pour le parcours complet (société existante)
+E2E_RESP_USERNAME=resp_demo1
+E2E_RESP_PASSWORD=Resp.Demo1.2020
+
+ensuite lister ses collaborateurs 
+voir si les users suivants cités dans .env existe dans cette liste :
+
+# Optionnels : si absents, le parcours crée un manager et un consultant dédiés
+E2E_MANAGER_USERNAME=_manager_soc
+E2E_MANAGER_PASSWORD=_manager_soc_pass.2020
+E2E_CONSULTANT_USERNAME=_consultant_soc
+E2E_CONSULTANT_PASSWORD=_consultant_soc_pass.2020
+
+s'ils existent dans la liste, alors essayer de se connecter avec et afficher le resultat de la connexion
+sinon, creeer ces users avec ces mots de passes 
+```
+
+**Implémentation**
+- `eisi-tests-fonc-playwright/tests/helpers/collaborators.ts` :
+  - `listEnvCollaborators(api, socId)` expose la liste (`GET /api/consultants?socId=…&size=1000`)
+    via le client `Soc360Api` (Bearer + `X-SOC-Id`, isolation multi-société).
+  - `ensureEnvCollaborators(request)` connecte le responsable du `.env`, liste ses
+    collaborateurs, puis pour le MANAGER et le CONSULTANT attendus :
+    vérifie présence/rôle ; s'ils existent, tente une connexion API et journalise le
+    résultat (succès/échec, statut HTTP, `mustChangePassword`) ; sinon les crée avec le
+    username/mot de passe du `.env` (manager rattaché au responsable, consultant au
+    manager) puis tente également la connexion.
+  - La création reste soumise à `E2E_ALLOW_WRITES=true` ; la consultation et les tests de
+    connexion fonctionnent sans écriture.
+- `eisi-tests-fonc-playwright/tests/env-collaborators.spec.ts` (nouveau scénario) :
+  connexion responsable, listing affiché (console + pièce jointe Playwright), vérification
+  ou création des deux comptes, assertion des rôles et du succès de connexion, annotations
+  de résultat (`existant`/`créé`, HTTP, changement de mot de passe requis).
+
+**Tests**
+- `tsc --noEmit -p tsconfig.json` : OK.
+- `playwright test tests/env-collaborators.spec.ts --project=soc360-chromium` : **1 test OK**
+  (14 collaborateurs listés, `_manager_soc` et `_consultant_soc` existants, connexions API
+  OK, `mustChangePassword=true`).
+- Remarque : le lancement complet de la suite conserve des échecs pré-existants sans lien
+  (`auth.spec` redirection changement de mot de passe, `full-journey` indisponibilité 500,
+  `registration` écran de vérification) ; aucune modification n'a été faite sur ces
+  scénarios.
