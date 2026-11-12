@@ -2241,3 +2241,26 @@ ajouter un btn supprimer dans la form user qui s'affiche lorsqu'on edit un user 
 - Frontend — `Consultants.test.tsx` : le bouton est présent dans le formulaire d'édition et
   ouvre la modale des objets liés. `npm test -- Consultants.test.tsx services.test.ts` :
   **38 tests OK** ; `npm run lint` : OK ; `npm run build` : OK.
+
+### 2026-11-12 11:11:04 — Correction : suppression d'un utilisateur depuis la table `user_account`
+
+**Constat**
+- L'écran d'administration `Tables` permettait de supprimer n'importe quelle ligne par un
+  `DELETE` SQL brut. Sur `user_account`, cela provoquait une erreur d'intégrité
+  (`fk_unavailability_consultant`) au lieu d'afficher les objets liés.
+
+**Implémentation**
+- Frontend — nouveau composant partagé `UserDependenciesModal` : chargement des dépendances,
+  arborescence récursive repliable avec ascenseur, suppression unitaire avec confirmation,
+  puis suppression du compte lorsque la liste est vide.
+- Frontend — `Tables.tsx` : le bouton Supprimer d'une ligne `user_account` ouvre cette modale
+  (plus de `DELETE` brut) ; le formulaire d'édition d'une ligne `user_account` expose aussi un
+  bouton Supprimer (`Tables.supprimer.utilisateur`) qui ferme le formulaire et ouvre la modale.
+- Frontend — `Consultants.tsx` réutilise le même composant partagé (pas de duplication).
+
+**Tests**
+- Frontend — `Tables.test.tsx` : suppression d'un utilisateur depuis la liste (objets liés
+  affichés, bouton de suppression du compte désactivé) et bouton Supprimer du formulaire.
+  `npm test -- Consultants.test.tsx Tables.test.tsx services.test.ts` : **44 tests OK** ;
+  `npm run lint` : OK ; `npm run build` : OK.
+- Backend — `mvn test` : **759 tests OK** (aucun changement de service).
