@@ -2363,3 +2363,35 @@ il faut que ça logue aussi dans test_fonc_soc360.log
   commandes Playwright, `console.log` applicatifs et bilan final présents.
 - Aucun changement backend/frontend ; pas d'impact sur le schéma ni sur l'isolation
   multi-société.
+
+### 2026-11-12 11:54:22 — Playwright : analyse automatique dans `test_fonc_soc360.ana.md`
+
+**Tâche**
+```
+projet : ~/github/eisi/soc360/eisi-tests-fonc-playwright
+apres execution des tests fonc via : test_fonc_soc360.sh
+analyser le fichier test_fonc_soc360.log ainsi que d'autres fichiers dans playwright-report et test-results
+mettre cette analyser dans test_fonc_soc360.ana.md 
+```
+
+**Implémentation**
+- `eisi-tests-fonc-playwright/analyze_test_results.mjs` (nouveau) :
+  - isole le dernier run dans `test_fonc_soc360.log` (date, tests lancés, réussis, échecs,
+    ignorés, flaky, résultat global) ;
+  - lit `test-results/.last-run.json`, les dossiers `test-results/*` et leurs
+    `error-context.md` (nom du test, emplacement, message d'erreur, extrait de page) ;
+  - inventorie `playwright-report/index.html` et `playwright-report/data/` (captures,
+    vidéos, traces, contextes) ;
+  - génère `test_fonc_soc360.ana.md` : synthèse, détail des échecs, artefacts associés,
+    pistes de correction (API lente/5xx, connexion UI, message de login, inscription) et
+    dernières lignes du journal.
+- `eisi-tests-fonc-playwright/test_fonc_soc360.sh` : après l'exécution Playwright (succès
+  ou échec), lance l'analyseur et indique le chemin du fichier d'analyse. Le script reste
+  prioritaire sur le code de sortie des tests.
+
+**Tests**
+- `node --check analyze_test_results.mjs` et `bash -n test_fonc_soc360.sh` : OK.
+- Analyse générée sur le dernier run complet (2026-11-12 11:45:25) : **10 tests lancés,
+  3 réussis, 5 échecs, 2 ignorés** ; échecs détaillés (`auth.spec`, `env-collaborators`
+  timeout API, `full-journey` 500 indisponibilité, `registration`) avec captures, vidéos et
+  traces. Fichier produit : `test_fonc_soc360.ana.md`.
