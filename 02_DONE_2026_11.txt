@@ -2318,3 +2318,48 @@ sinon, creeer ces users avec ces mots de passes
   (`auth.spec` redirection changement de mot de passe, `full-journey` indisponibilité 500,
   `registration` écran de vérification) ; aucune modification n'a été faite sur ces
   scénarios.
+
+### 2026-11-12 11:41:33 — Playwright : journalisation de `test_fonc_soc360.sh` dans `test_fonc_soc360.log`
+
+**Tâche**
+```
+fichier test_fonc_soc360.sh dans ~/github/eisi/soc360/eisi-tests-fonc-playwright
+
+il faut que ses logs console soient aussi dans test_fonc_soc360.log
+```
+
+**Implémentation**
+- `eisi-tests-fonc-playwright/test_fonc_soc360.sh` : après la résolution du projet et la
+  définition des helpers, ajout d'un journal `LOG_FILE="$PROJECT_DIR/test_fonc_soc360.log"`.
+  Un en-tête horodaté est ajouté à chaque exécution, puis toute la sortie du script
+  (stdout, stderr et `console.log` des tests Playwright) est dupliquée vers ce fichier via
+  `exec > >(tee -a "$LOG_FILE") 2>&1`. La console reste affichée normalement ; le journal
+  est en mode ajout pour conserver l'historique des runs.
+
+**Tests**
+- `./test_fonc_soc360.sh --list` : liste affichée **et** écrite dans le journal.
+- `./test_fonc_soc360.sh --grep "collaborateurs du"` : **1 test OK** ; les lignes
+  `[collaborateurs] …` (liste, existant/créé, résultat de connexion) sont présentes dans
+  `test_fonc_soc360.log`.
+
+### 2026-11-12 11:41:34 — Playwright : tous les logs console dans `test_fonc_soc360.log`
+
+**Tâche**
+```
+projet ~/github/eisi/soc360/eisi-tests-fonc-playwright
+
+lorsque j'execute le script test_fonc_soc360.sh
+il faut que ça logue aussi dans test_fonc_soc360.log 
+```
+
+**Implémentation**
+- Même correction que la tâche précédente (les deux TODO portaient sur le même besoin) :
+  le script duplique désormais l'intégralité de sa sortie console vers
+  `test_fonc_soc360.log`, y compris les logs des exécutions Playwright (`--list`, tests
+  ciblés, suite complète) et les messages d'erreur.
+
+**Tests**
+- Vérification du contenu du journal après `--list` et après un test ciblé : en-tête daté,
+  commandes Playwright, `console.log` applicatifs et bilan final présents.
+- Aucun changement backend/frontend ; pas d'impact sur le schéma ni sur l'isolation
+  multi-société.
