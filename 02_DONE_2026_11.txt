@@ -2460,3 +2460,121 @@ on completera plus tard le test_001
   liste. Le journal et `test_fonc_soc360.ana.md` sont générés automatiquement.
 - Nettoyage des comptes de test créés lors des essais sur l'environnement Azure dev effectué
   (activités puis comptes supprimés).
+
+### 2026-11-16 16:44:53 — tables : recherche libre d'une ligne + pagination première/dernière page
+
+**Tâche**
+```
+chaque tableau qui affiche une liste d'objets
+s'il n'a pas de champ de recherche libre d'une ligne, ajoute le
+
+et pour la pagination :
+ajouter deux btns sous forme d'icones :
+. Aller au début
+. Aller à la fin
+```
+
+**Implémentation**
+- Frontend — `lib/tableSearch.ts` : ajout de `searchableText` (extraction récursive du texte
+  d'une ligne), `rowSearchText`, `filterRows` (recherche insensible à la casse/espaces) et du
+  hook `useTableSearch` (état + lignes filtrées mémorisées).
+- Frontend — `components/data.tsx` :
+  - `Table` affiche par défaut un champ de recherche libre (`type="search"`, id
+    `table.search` ou `<paginationId>.search`), filtre localement les lignes, remet la page
+    à 0 à la saisie et affiche un état « Aucun résultat » ; nouvelles props `searchable`,
+    `searchableText`, `searchId`.
+  - `Pagination` ajoute deux boutons icônes « Première page » (`<prefix>.first`) et
+    « Dernière page » (`<prefix>.last`), désactivés aux extrémités.
+- Frontend — `components/icons.tsx` : ajout des icônes `firstPage` et `lastPage`
+  (double chevron avec barre).
+- Frontend — i18n (`messages.ts`, fr/en/ar) : clés `common.firstPage`, `common.lastPage`,
+  `common.searchPlaceholder`, `common.noResults`, `common.noResultsHint`.
+- Frontend — tableaux hors composant `Table` :
+  - `DemoSoc`, `Profile` (historique des connexions), `CraHistoryModal`,
+    `NoteFraisList` (historique), `Unavailability` (historique), `LeaveSettings`
+    (historique par configuration), `CraDetail` (jours + indispos à valider) et `Tables`
+    (lignes de table + résultat SQL) reçoivent un champ de recherche une ligne avec état vide
+    « Aucun résultat ».
+  - `CraDetail` : pagination sur des entrées `{day,index}` pour conserver l'index d'origine
+    utilisé par les mises à jour (la recherche ne décale plus les indices).
+  - `CraList` et `IndispoList` (pagination personnalisée) reçoivent aussi les boutons
+    première/dernière page.
+- Tableaux possédant déjà une recherche libre (`ActivityTypes`, `Consultants`) : ajout de
+  `searchable={false}` pour éviter un second champ redondant.
+
+**Tests**
+- Frontend — `components/data.test.tsx` : recherche libre (filtrage, message vide,
+  `searchable={false}`), boutons première/dernière page (navigation, désactivation,
+  ids préfixés).
+- Frontend — `lib/tableSearch.test.ts` : extraction du texte (valeurs imbriquées/nulles),
+  filtrage insensible à la casse/espaces, recherche vide.
+- Frontend — `npm.cmd run build` (tsc + vite) : OK · `npx oxlint src` : 0 erreur.
+- Frontend — `npm.cmd test` : 441 tests OK ; 2 échecs **pré-existants** dans
+  `Unavailability.test.tsx` (durée/demi-journées, dépendants de la date), vérifiés comme
+  identiques sans les modifications de cette tâche (stash de `Unavailability.tsx`).
+
+### 2026-11-16 16:47:24 — prospects : un admin voit tous les prospects
+
+**Tâche**
+```
+en tant qu'admin, je dois pouvoir voir tous les prospects
+```
+
+**Implémentation**
+- Backend — `ProspectService.findAll` : pour un `ADMIN`, retourne
+  `prospectRepository.findAll()` (toutes sociétés, tri actif/archive + dernière note + nom
+  conservé) ; les autres rôles restent filtrés par `SecurityUtils.effectiveSocId(socId)` /
+  `findBySocParentId`, avec « Société requise » si aucune société effective.
+- Frontend — `pages/Prospects.tsx` : pour un admin, chargement via
+  `prospectsApi.findAll(undefined)` (pas de filtre société) ; ajout d'une colonne « Société »
+  (id `Prospects.row.<id>.soc`) visible uniquement pour l'admin, affichant
+  `socParent.name` (repli `soc.name` puis « — »). Les créations/mises à jour conservent la
+  société courante inchangée.
+- Frontend — i18n (`messages.ts`, fr/en/ar) : clé `Prospects.societe`.
+
+**Tests**
+- Backend — `ProspectServiceTest.findAll_asAdminReturnsProspectsOfAllCompanies` : admin sans
+  société → `findAll()`, prospects de deux sociétés retournés, `findBySocParentId` jamais
+  appelé. `mvn -q test -Dtest=ProspectServiceTest` : **12 tests OK**.
+- Frontend — `Prospects.test.tsx` : admin → `findAll(undefined)` et colonne société affichée
+  (`SOC`). Mock `useAuth` rendu paramétrable (MANAGER par défaut).
+  `npm.cmd test -- src/pages/Prospects.test.tsx src/components/data.test.tsx src/lib/tableSearch.test.ts`
+  : **34 tests OK** · `npm.cmd run build` (tsc + vite) : OK.
+
+### 2026-11-16 16:49:45 — pagination CRA identique aux autres pages (unification des paginations)
+
+**Tâche**
+```
+la pagination de la page CRA doit etre comme les autres pages.
+verif pour que toutes les paginations soient pareil
+```
+
+**Implémentation**
+- Frontend — `pages/CraList.tsx` : suppression de la pagination personnalisée
+  (`précédent/suivant` + icônes dupliquées) et utilisation du composant partagé
+  `Pagination` (`idPrefix="CraList"`, total de lignes inclus).
+- Frontend — `pages/IndispoList.tsx` : idem (`idPrefix="IndispoList"`).
+- Frontend — `pages/Unavailability.tsx` : la liste principale utilise désormais
+  `Pagination` (`idPrefix="Unavailability"`, total = lignes filtrées) au lieu des boutons
+  personnalisés.
+- Frontend — `pages/Facturation.tsx` : pagination des paiements remplacée par `Pagination`
+  (`idPrefix="Facturation.payments"`), import `Button` inutile retiré.
+- Frontend — `pages/Prospects.tsx` : pagination des notes remplacée par `Pagination`
+  (`idPrefix="Prospects.notes"`), import `Button` inutile retiré.
+- Résultat : toutes les paginations utilisent le même rendu (total d'éléments, boutons
+  « Première page / Précédent / Suivant / Dernière page » et texte « Page X / Y »), avec des
+  ids préfixés pour éviter les doublons. La navigation mensuelle CRA/indispos (mois
+  précédent/suivant) est conservée : ce n'est pas une pagination de liste.
+- Contrôle : plus aucun bloc `totalPages > 1` personnalisé hors du composant `Pagination` ;
+  `grep common.previous/common.next` ne renvoie plus que du code de pagination historique
+  sans markup dédié.
+
+**Tests**
+- Frontend — `data.test.tsx` couvre déjà le rendu partagé (page courante, total, première /
+  dernière page, ids préfixés) ; les pages migrées sont couvertes par leurs tests existants
+  (`Prospects.test.tsx` vérifie toujours `Prospects.notes.next`, `Prospects.notes.page`).
+- Frontend — `npm.cmd test -- src/pages/CraList.test.tsx src/pages/IndispoList.test.tsx
+  src/pages/Prospects.test.tsx src/pages/Unavailability.test.tsx src/components/data.test.tsx`
+  : **97 tests OK** ; seuls les 2 échecs **pré-existants** de `Unavailability.test.tsx`
+  (durée/demi-journées, dépendants de la date) subsistent, déjà constatés avant cette tâche.
+- Frontend — `npm.cmd run build` (tsc + vite) : OK · `npx oxlint src` : 0 erreur.

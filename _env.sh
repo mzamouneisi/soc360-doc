@@ -191,6 +191,11 @@ soc360_start_front() {
   ./run_dev.sh
 }
 
+cd_proj_tests() {
+	cd ~/bitbucket/eisi-tests-fonc-playwright
+	ls -al
+}
+
 echo "
     soc360_start_back
 
@@ -199,5 +204,6 @@ echo "
     cd_soc360
     todoSoc360
     sdsoc360  
+    cd_proj_tests
 
 "
