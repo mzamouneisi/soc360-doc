@@ -2578,3 +2578,46 @@ verif pour que toutes les paginations soient pareil
   : **97 tests OK** ; seuls les 2 échecs **pré-existants** de `Unavailability.test.tsx`
   (durée/demi-journées, dépendants de la date) subsistent, déjà constatés avant cette tâche.
 - Frontend — `npm.cmd run build` (tsc + vite) : OK · `npx oxlint src` : 0 erreur.
+
+### 2026-11-17 11:16:18 — note de frais : suppression physique du justificatif annulé ou retiré
+
+**Tâche**
+```
+En tant que consultant je clique sur le bouton “+” pour ajouter une note de frais ,
+Je sélectionne le fichier de la note de frais , puis j’annule la note de frais en cliquant
+sur le bouton “X” c’est a dire sans enregistrer
+
+Je consulte les document, je constate que le fichier de la note de frais existe dans les documents
+Comportement attendu : lorsque j’annule la création de la note de frais le fichier est supprimé
+
+Autre scénario : dans un brouillon de note frais je sélectionne un fichier de note de frais
+puis je le retire , Je constate que le document a été ajouté a mes documents même si je l’ai
+retiré dans le brouillon de la note de frais
+Comportement attendu en le retirant de la note de frais il est supprimé physiquement
+```
+
+**Implémentation**
+- Frontend — `pages/NoteFraisList.tsx` : nouveau `closeModal()` appelé par la croix, le clic
+  sur l'overlay, Échap et le bouton « Annuler ». Il supprime via
+  `documentsApi.delete(...)` le justificatif téléversé dans la session mais pas encore
+  enregistré dans la note (`attachmentDocumentId` non nul), puis réinitialise l'aperçu.
+- Frontend — `pages/NoteFraisList.tsx` : `removeAttachment()` supprime aussi physiquement le
+  justificatif en attente après confirmation (le document n'est plus laissé dans Documents).
+- Frontend — `pages/NoteFraisList.tsx` : après un enregistrement réussi, l'identifiant du
+  justificatif est détaché avant la fermeture pour qu'il ne soit pas supprimé (il est
+  désormais rattaché à la note) ; les actions de statut (soumettre/valider/rejeter/payer)
+  passent aussi par `closeModal()`.
+- Comportement inchangé pour une note existante : son justificatif est stocké dans la note
+  (pas de ligne `HrDocument` dédiée), donc le retirer n'appelle aucun `delete` de document.
+- Backend : aucun changement (la suppression s'appuie sur `DELETE /api/documents/{id}` qui
+  contrôle l'isolation multi-société et les droits du téléverseur).
+
+**Tests**
+- Frontend — `pages/NoteFraisList.test.tsx` : ajout de `documentsApi.delete` au mock et de
+  3 tests : suppression du justificatif à l'annulation (croix), suppression à l'action
+  « Retirer » du brouillon, et non-suppression après création réussie.
+- Frontend — `npm.cmd test -- NoteFraisList.test.tsx` : **42 tests OK**.
+- Frontend — `npx oxlint src/pages/NoteFraisList.tsx src/pages/NoteFraisList.test.tsx` :
+  0 erreur (3 avertissements `exhaustive-deps` pré-existants sur `now`).
+- Frontend — suite complète `npm.cmd test` : 445 OK / 2 échecs **pré-existants** de
+  `Unavailability.test.tsx` (dépendants de la date), sans lien avec cette tâche.
