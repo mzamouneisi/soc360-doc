@@ -2644,3 +2644,54 @@ soc-77 Paramètres congés : Vider les champs après enregistrement d un paramé
   champ mois de crédit masqué).
 - Frontend — `npm.cmd test -- LeaveSettings.test.tsx` : **11 tests OK**.
 - Frontend — `npx oxlint src/pages/LeaveSettings.tsx src/pages/LeaveSettings.test.tsx` : 0 erreur.
+
+### 2026-11-17 12:07:39 — congés : solde daté à la date de l'absence + exclusion des non-salariés
+
+**Tâche**
+```
+En tant que consultant je soumets pour validation un conges durant le mois en cours et un autre
+jour durant le mois suivant
+Les deux jours de conges sont validé par manager
+Je consulte mon solde conges et je constate que les deux jours de conges sont déduit de mon solde
+Comportement attendu le solde ne prendra en compte les les jours de conges que lorsque je simule a
+une date supérieur à la date du conges validé
+
+Un consultant non-salarié ne devrai pas avoir de rubrique solde de congés ni d’acquisition de
+droits (cp et rtt)
+```
+
+**Implémentation**
+- Backend — `leave/LeaveService.java` :
+  - `consumeForAbsence(...)` reçoit désormais la date de début de l'absence
+    (`LocalDate absenceDate`). Le mouvement de consommation est enregistré en fin de journée de
+    cette date (`endOfDay`) au lieu de `Instant.now()` : `balance(id, dateSimulation)` ne le
+    compte que lorsque la date simulée atteint le jour de l'absence, une absence future n'est plus
+    déduite d'un solde simulé avant son début.
+  - La régularisation après annulation d'absence reprend la date du mouvement de consommation
+    (au lieu de `Instant.now()`) pour rester cohérente sur les soldes historisés.
+  - Les lots/mouvements d'acquisition (`ensureLots`), l'ajustement manuel et la consommation
+    d'absence sont ignorés pour un collaborateur non salarié (`is_employee = false`) ; `balance()`
+    et `lots()` renvoient une liste vide pour ce cas.
+- Backend — `unavailability/UnavailabilityService.java` : transmet `unavailability.getStartDate()`
+  à `consumeForAbsence`.
+- Backend — `user/UserDtos.java` + `user/AuthService.java` : ajout de `employee` au DTO utilisateur
+  (issu de `user_account.is_employee`) pour que l'IHM connaisse le statut salarié.
+- Frontend — `api/types.ts` : `UserDto.employee?: boolean`.
+- Frontend — `layout/navVisibility.ts` (nouveau) : `isNavItemVisible(...)` centralise les règles de
+  visibilité du menu ; propriété `employeeOnly` pour les rubriques réservées aux salariés.
+  `MainLayout.tsx` masque « Soldes de congés » à un consultant `employee === false` (les managers,
+  responsables et admins conservent l'accès).
+- Frontend — `pages/LeaveBalances.tsx` : un consultant non salarié voit un message d'information
+  (`id="LeaveBalances.non.salarie"`) au lieu des soldes/lots/droits acquis, sans appel à l'API.
+- Aucune migration Flyway (le champ `is_employee` existe déjà).
+
+**Tests**
+- Backend — `LeaveServiceTest` : 4 nouveaux tests (mouvement de consommation daté de l'absence ;
+  solde inchangé avant la date de l'absence puis déduit ce jour-là ; aucun solde pour un
+  non-salarié ; aucune consommation pour un non-salarié).
+- Backend — `mvn test` : **765 tests OK** (inclut `UnavailabilityServiceTest` et `AuthServiceTest`).
+- Frontend — `LeaveBalances.test.tsx` : masquage des soldes pour un consultant non salarié, affichage
+  pour un consultant salarié ; `layout/navVisibility.test.ts` : règles de visibilité (soldes
+  masqués ou non selon le statut salarié, autres rôles inchangés).
+- Frontend — `npm.cmd test -- LeaveBalances.test.tsx navVisibility.test.ts` : **8 tests OK** ·
+  `npx oxlint` sur les fichiers modifiés : 0 erreur · `npm.cmd run build` : OK.
