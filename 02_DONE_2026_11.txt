@@ -2621,3 +2621,26 @@ Comportement attendu en le retirant de la note de frais il est supprimé physiqu
   0 erreur (3 avertissements `exhaustive-deps` pré-existants sur `now`).
 - Frontend — suite complète `npm.cmd test` : 445 OK / 2 échecs **pré-existants** de
   `Unavailability.test.tsx` (dépendants de la date), sans lien avec cette tâche.
+
+### 2026-11-17 11:57:21 — soc-77 paramètres congés : réinitialisation du formulaire après enregistrement
+
+**Tâche**
+```
+soc-77 Paramètres congés : Vider les champs après enregistrement d un paramétrage de conges ou RTT
+```
+
+**Implémentation**
+- Frontend — `pages/LeaveSettings.tsx` : extraction d'un `emptyForm()` (type CP, date d'effet du
+  jour, quantité 0, fréquence mensuelle, mois/jour de crédit 1, expiration vide, seuil négatif 0,
+  actif) utilisé comme état initial et après un enregistrement réussi.
+- `handleSubmit` réinitialise le formulaire dès que `leaveApi.saveConfig` réussit (avant le
+  `reload()` et le message de succès), avec les mêmes ids HTML conservés.
+- Backend : aucun changement.
+
+**Tests**
+- Frontend — `pages/LeaveSettings.test.tsx` : nouveau test « réinitialise les champs après
+  l'enregistrement d'un paramétrage » (RTT, date, quantité 5, trimestrielle, mois 4, jour 10,
+  expiration 12, seuil 2, inactif → retour à CP/0/MONTHLY/jour 1/expiration vide/seuil 0/actif,
+  champ mois de crédit masqué).
+- Frontend — `npm.cmd test -- LeaveSettings.test.tsx` : **11 tests OK**.
+- Frontend — `npx oxlint src/pages/LeaveSettings.tsx src/pages/LeaveSettings.test.tsx` : 0 erreur.
