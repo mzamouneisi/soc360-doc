@@ -2763,3 +2763,24 @@ Expiration (mois) : default value : 12
   `npm.cmd run build` : OK.
 - Backend — `LeaveServiceTest` : ajout quantité nulle, expiration 0/32, bornes 1/31 acceptées.
   `mvn test` : **768 tests, 0 échec, 0 erreur**.
+
+### 2026-11-18 12:12:34 — Paramètres congés : borne expiration corrigée en 1..12
+
+**Tâche**
+```
+Expiration (mois) : 1<=J<=12
+```
+Correction de la borne précédemment implémentée en 1..31.
+
+**Implémentation**
+- Frontend — `pages/LeaveSettings.tsx` : « Expiration (mois) » validée entre 1 et 12
+  (message « doit être comprise entre 1 et 12 »), attribut HTML `max=12`.
+- Backend — `leave/LeaveService.validateConfigFields` : `requireRange(expirationMonths, 1, 12, ...)`.
+- Doc — `DOC_PARAM_CONGES.md` : borne mise à jour en [1..12].
+
+**Tests**
+- Frontend — `LeaveSettings.test.tsx` : expiration refusée pour 0 et 13, acceptée pour 12
+  (soumission trimestrielle) ; **15 tests OK** · suite complète **461 tests OK** ·
+  lint OK · build OK.
+- Backend — `LeaveServiceTest` : bornes 1/12 acceptées, 0/13 refusées ;
+  `mvn test` : **768 tests, 0 échec, 0 erreur**.
