@@ -2826,3 +2826,35 @@ valeur par défaut configurée dans les paramètres.
   `Billing.test.tsx` : pré-remplissage du nouveau devis avec 5,5 ; `lib/vat.test.ts`.
 - Frontend — `npm.cmd test` : **54 fichiers / 467 tests OK** · `npm.cmd run lint` : OK ·
   `npm.cmd run build` : OK.
+
+### 2026-11-18 15:15:34 — soc-104 : paramètres organisés en onglets
+
+**Tâche**
+```
+soc-104 Organiser les paramètre en onglet selon leurs type
+```
+
+**Implémentation**
+- Frontend — `pages/Settings.tsx` : ajout d'une barre d'onglets (`settings.tabs`, rôles
+  `tablist`/`tab`/`tabpanel`, ids `settings.tab.<onglet>`) et rendu conditionnel du contenu
+  via un composant `TabPanel` :
+  - **Général** : langue de l'application ;
+  - **Apparence** : taille de police, formulaires, thème, taille de page, couleurs et taille
+    d'en-tête des tableaux, arrière-plan ;
+  - **Boutons** : largeurs et couleurs des boutons + aperçu ;
+  - **Société** (responsable SOC) : logo, couleurs CRA, TVA par défaut ;
+  - **Traductions** (admin/responsable) : traductions de la société ;
+  - **E-mails** (admin/responsable) : modèles d'e-mails.
+  Les onglets Société/Traductions/E-mails sont masqués selon le rôle ; le bouton
+  « Enregistrer » reste visible sous les onglets.
+- i18n — clés `settings.tab.*` dans `messages.ts` (FR/EN/AR) et migration Flyway
+  `V200__i18n_settings_tabs.sql`.
+- Aucun changement de schéma métier (uniquement la migration i18n).
+
+**Tests**
+- Frontend — `Settings.test.tsx` adapté : activation de l'onglet Société/Apparence avant
+  interaction ; vérification qu'un consultant ne voit ni Société ni Traductions ni E-mails.
+  `npm.cmd test -- src/pages/Settings.test.tsx` : **8 tests OK**.
+- Frontend — `npm.cmd test` : **54 fichiers / 467 tests OK** · `npm.cmd run lint` : OK ·
+  `npm.cmd run build` : OK.
+- Backend — `mvn test` : **772 tests, 0 échec, 0 erreur** (migrations Flyway V198→V200 OK).
