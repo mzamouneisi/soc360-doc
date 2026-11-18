@@ -2784,3 +2784,45 @@ Correction de la borne précédemment implémentée en 1..31.
   lint OK · build OK.
 - Backend — `LeaveServiceTest` : bornes 1/12 acceptées, 0/13 refusées ;
   `mvn test` : **768 tests, 0 échec, 0 erreur**.
+
+### 2026-11-18 14:26:35 — Gestion des devis/factures : TVA par défaut configurable
+
+**Tâche**
+```
+Gestion des devis factures
+
+La TVA devra être configurable (par défaut 20%) dans les paramètres gérée par le responsable soc.
+```
+Complément : à l'ouverture d'un nouveau devis/facture, le champ TVA est pré-rempli avec la
+valeur par défaut configurée dans les paramètres.
+
+**Implémentation**
+- DB — migration Flyway `V198__company_vat_rate.sql` : colonne `company.vat_rate`
+  `NUMERIC(5,2) NOT NULL DEFAULT 20.00` + contrainte [0..100] ;
+  `V199__i18n_company_vat_rate.sql` : clés i18n FR/EN/AR des paramètres de facturation.
+- Backend — `Soc` : champ `vatRate` (défaut 20.00). `SocDtos.SocDto` expose `vatRate` ;
+  `UserDtos.SocLiteDto` (liste `mySocs`) expose aussi `vatRate` pour que le front connaisse
+  la valeur par défaut.
+- Backend — `SocService.updateVatRate` + `PUT /api/socs/{id}/vat-rate` (ADMIN/RESPONSIBLE_SOC,
+  contrôle d'accès société) : taux 0..100, arrondi 2 décimales.
+- Backend — `BillingService` : les nouveaux devis/factures et les factures mensuelles générées
+  utilisent `company.vat_rate` (20 % si non configuré) ; un taux explicite hors [0..100] est
+  refusé.
+- Frontend — `Settings.tsx` : section « Facturation » réservée au responsable de société,
+  champ « TVA par défaut (%) » (défaut 20), chargement/enregistrement via `updateVatRate`,
+  validation 0..100 et rafraîchissement du contexte sociétés.
+- Frontend — `Billing.tsx` : le formulaire « Nouveau devis/facture » pré-remplit la TVA avec
+  `selectedSoc.vatRate` (fallback 20) ; `lib/vat.ts` centralise le défaut et la normalisation
+  (0 conservé).
+- i18n — clés `settings.billing.*` dans `messages.ts` (FR/EN/AR).
+
+**Tests**
+- Backend — `SocServiceTest` : taux enregistré/arrondi, refus -1 et 101, `vatRate` exposé.
+- Backend — `BillingServiceTest` : devis avec TVA société (5,50 %) → TTC 105,50 ; facture
+  mensuelle générée à 10 % → TTC 220,00 ; TVA hors bornes refusée ; `AuthServiceTest` vérifie
+  `vatRate` dans `mySocs`.
+- Backend — `mvn test` : **772 tests, 0 échec, 0 erreur**.
+- Frontend — `Settings.test.tsx` : chargement/enregistrement de la TVA société, refus 101 ;
+  `Billing.test.tsx` : pré-remplissage du nouveau devis avec 5,5 ; `lib/vat.test.ts`.
+- Frontend — `npm.cmd test` : **54 fichiers / 467 tests OK** · `npm.cmd run lint` : OK ·
+  `npm.cmd run build` : OK.
