@@ -2886,3 +2886,50 @@ a corriger
 - Frontend — `npm.cmd test` : **54 fichiers / 468 tests OK** · `npm.cmd run lint` : OK ·
   `npm.cmd run build` : OK.
 - Backend — aucun changement.
+
+### 2026-11-18 16:05:29 — soc-103 : langage simple de scénarios de tests fonctionnels
+
+**Tâche**
+```
+soc-103 Ecrire les tests via un langage simple
+
+Description des scenarios de tests de soc360 :
+
+generer une doc du projet soc360
+
+a partir de la, generer un langage simple de description des tests fonctionnels
+
+ensuite generer le max de scenarios de tests fonctionnels pour soc360 avec ce langage
+
+lorsqu’on ajoute ou modifie une description d’un scenario de tests, controler la syntaxe,
+proposer des mots cles, … comme un editeur de code
+
+faire une doc_langage_desc_scenarios_tests.docx
+```
+
+**Implémentation** (projet `~/bitbucket/eisi-tests-fonc-playwright`)
+- Doc — `DOC_PROJET_SOC360.md` : synthèse fonctionnelle SOC360 (architecture, rôles,
+  modules, règles transverses, périmètre des tests) servant de base aux scénarios.
+- Langage — `LANGAGE_SCENARIOS_TESTS.md` : spécification du **LSS v1.0**
+  (`SCÉNARIO`, `RÔLE`, `ÉTANT DONNÉ`, `QUAND`, `ET`, `ALORS`, `MAIS`, directives,
+  attributs `clé=valeur`, actions reconnues, règles de validation).
+- Éditeur — `web/src/scenarioLanguage.js` : liste des mots-clés, normalisation,
+  validation ligne par ligne (rôle, guillemets, mois, lignes inconnues, absence
+  d'action) et suggestions de mots-clés.
+- Éditeur — `web/src/components/ScenarioConfigForm.jsx` : panneau « Validation de la
+  syntaxe » (erreurs/avertissements avec numéro de ligne), suggestions cliquables,
+  insertion au curseur et raccourci `Ctrl+Espace` ; bouton « Implémenter » désactivé
+  si la syntaxe est invalide.
+- Scénarios — 27 nouveaux scénarios SOC360 (`test_004` à `test_030`) dans
+  `tests-proj/soc360/`, couvrant clients, fournisseurs, prospects, projets/activités,
+  collaborateurs, CRA, indisponibilités, congés/soldes, notes de frais, documents,
+  devis/factures/TVA, paramètres, isolation multi-société et habilitations.
+- Docx — `doc_langage_desc_scenarios_tests.docx` généré (langage + doc projet +
+  annexe des scénarios), copié dans `soc360-doc/`.
+- Aucun changement backend/frontend SOC360 (schéma DB inchangé).
+
+**Tests**
+- `npm run web:test` : **63 tests OK** (dont `scenarioLanguage.test.mjs`).
+- Validation du langage sur les 30 scénarios SOC360 : **30/30 valides**.
+- `npm run web:build` : OK · `npm run test:list` : **36 tests / 34 fichiers**.
+- Aucun impact sur les tests backend/frontend SOC360.
