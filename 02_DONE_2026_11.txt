@@ -2858,3 +2858,31 @@ soc-104 Organiser les paramètre en onglet selon leurs type
 - Frontend — `npm.cmd test` : **54 fichiers / 467 tests OK** · `npm.cmd run lint` : OK ·
   `npm.cmd run build` : OK.
 - Backend — `mvn test` : **772 tests, 0 échec, 0 erreur** (migrations Flyway V198→V200 OK).
+
+### 2026-11-18 15:36:47 — Nouveau devis : ajout d'une ligne sans fermer la popup
+
+**Tâche**
+```
+form Nouveau Devis :
+
+si je remplit une ligne
+et si je veux ajouter une nouvelle ligne, la popup se ferme !!
+
+a corriger
+```
+
+**Implémentation**
+- Frontend — `pages/Billing.tsx` : les boutons `IconButton` « Ajouter une ligne » et
+  « Supprimer la ligne » des formulaires de création et d'édition sont désormais
+  `type="button"`. Sans cela, le bouton (dans le `<form>`) déclenchait la soumission
+  implicite, enregistrait le devis et fermait la popup.
+- Comportement : l'ajout/suppression de ligne ne soumet plus le formulaire ; la popup reste
+  ouverte et la nouvelle ligne est ajoutée.
+
+**Tests**
+- Frontend — `Billing.test.tsx` : nouveau test « ajoute une ligne sans fermer la popup du
+  nouveau devis » (saisie d'une ligne puis clic sur Ajouter → 2e ligne présente,
+  `billingApi.create` non appelé) ; **2 tests OK**.
+- Frontend — `npm.cmd test` : **54 fichiers / 468 tests OK** · `npm.cmd run lint` : OK ·
+  `npm.cmd run build` : OK.
+- Backend — aucun changement.
