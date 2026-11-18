@@ -2724,3 +2724,42 @@ corriger :
 - Frontend — `npm.cmd run lint` : OK (0 erreur ; warnings sur l'ancien bundle `docs/assets`).
 - Frontend — `npm.cmd test` : **53 fichiers / 457 tests OK**.
 - Frontend — `npm.cmd run build` : OK · `bash -n deploy_front_to_gh_pages.sh` : OK.
+
+### 2026-11-18 12:06:44 — Paramètres congés : validation du formulaire et valeurs par défaut
+
+**Tâche**
+```
+Paramètres congés
+
+validation du form :
+
+Quantité acquise : >0
+Jour du mois : 1<=j<=31
+Expiration (mois) : 1<=j<=31
+Seuil négatif : >= 0
+
+Quantité acquise : default value : 1
+Expiration (mois) : default value : 12
+```
+
+**Implémentation**
+- Frontend — `pages/LeaveSettings.tsx` :
+  - « Quantité acquise » doit être strictement supérieure à 0 (message dédié) ;
+  - « Expiration (mois) », si renseignée, doit être un entier compris entre 1 et 31 ;
+  - « Jour du mois » / « Jour de crédit » contrôlé entre 1 et 31 ; « Seuil négatif » ≥ 0 ;
+  - valeurs par défaut du formulaire : quantité acquise `1`, expiration `12` ;
+  - attributs HTML : quantité `min=0.01 step=any`, expiration `min=1 max=31 step=1`.
+- Backend — `leave/LeaveService.validateConfigFields` : `accrualAmount` strictement > 0
+  (`requirePositive`) et `expirationMonths` dans [1..31] (`requireRange`) ; les autres contrôles
+  (seuil ≥ 0, mois 1..12, jour 1..31) sont conservés.
+- Doc — `DOC_PARAM_CONGES.md` : mise à jour des contrôles de saisie et des valeurs par défaut.
+
+**Tests**
+- Frontend — `LeaveSettings.test.tsx` : défauts 1/12, refus quantité nulle ou négative,
+  seuil négatif, expiration 0/32, jour 0/32, acceptation expiration 31 ; mise à jour du test
+  de réinitialisation (retour à 1/12) et des soumissions (quantité renseignée).
+  `npm.cmd test -- src/pages/LeaveSettings.test.tsx` : **15 tests OK**.
+- Frontend — `npm.cmd test` : **53 fichiers / 461 tests OK** · `npm.cmd run lint` : OK ·
+  `npm.cmd run build` : OK.
+- Backend — `LeaveServiceTest` : ajout quantité nulle, expiration 0/32, bornes 1/31 acceptées.
+  `mvn test` : **768 tests, 0 échec, 0 erreur**.
