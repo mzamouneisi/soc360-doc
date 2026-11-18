@@ -2695,3 +2695,32 @@ droits (cp et rtt)
   masqués ou non selon le statut salarié, autres rôles inchangés).
 - Frontend — `npm.cmd test -- LeaveBalances.test.tsx navVisibility.test.ts` : **8 tests OK** ·
   `npx oxlint` sur les fichiers modifiés : 0 erreur · `npm.cmd run build` : OK.
+
+### 2026-11-18 11:23:25 — déploiement GitHub Pages : échec `oxlint` sur une copie sans `node_modules`
+
+**Tâche**
+```
+corriger :
+./deploy_front_to_gh_pages.sh
+...
+> oxlint
+'oxlint' n'est pas reconnu en tant que commande interne
+```
+Échec observé dans `~/github/mza/soc360/soc360-front-react` (copie de sauvegarde sans
+`node_modules`) : `npm run lint` s'arrête avant le build et le push de `docs/`.
+
+**Implémentation**
+- Frontend — `soc360-front-react/deploy_front_to_gh_pages.sh` : avant lint/tests/build,
+  détection de `node_modules/.bin/oxlint` ; s'il est absent (copie de sauvegarde, clone
+  frais), exécution de `npm ci` puis arrêt avec un message clair si l'installation échoue.
+- Frontend — `src/pages/Unavailability.test.tsx` : les deux tests de durée/demi-journées
+  utilisaient des dates codées en dur (`2026-11-06` → `2026-11-09`), devenues passées et
+  donc refusées par le formulaire (`formStart >= today`), ce qui bloquait aussi `npm test`
+  pendant le déploiement. Les dates sont désormais calculées à partir du prochain lundi
+  futur (helpers `nextWeekdayInputValue` / `addDaysInputValue`), donc stables dans le temps.
+
+**Tests**
+- Frontend — `npm.cmd test -- src/pages/Unavailability.test.tsx` : **41 tests OK**.
+- Frontend — `npm.cmd run lint` : OK (0 erreur ; warnings sur l'ancien bundle `docs/assets`).
+- Frontend — `npm.cmd test` : **53 fichiers / 457 tests OK**.
+- Frontend — `npm.cmd run build` : OK · `bash -n deploy_front_to_gh_pages.sh` : OK.
