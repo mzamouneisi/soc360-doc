@@ -3022,3 +3022,1023 @@ d'autres part, a l'execution mensuelle, si "Jour du mois" >= max num jour (mois 
 - Frontend — `LeaveSettings.test.tsx` : « refuse un jour de crédit invalide pour le mois
   choisi ».
 - Backend — `mvn test` : **779 tests, 0 échec, 0 erreur** ; frontend **469 tests OK**.
+
+### 2026-11-19 16:44:18 — Paramètres congés : vérification de conformité aux spécifications CP/RTT
+
+**Tâche**
+```
+Paramètres congés
+
+verifier que c'est conforme à ces specs :
+
+Consultation et simulation des soldes de congés payés et de RTT
+
+
+Description
+
+Module : Gestion des absences et des congés
+Acteur principal : Consultant (Consultant, manager) salarié
+Acteur de configuration : SOC
+
+1. User Story
+En tant que consultant,
+
+Je souhaite consulter mon solde actuel de congés payés (CP) et, si j’y suis éligible, de RTT, ainsi que simuler mon solde à une date future,
+
+Afin de connaître mes droits disponibles, anticiper mes absences et planifier mes congés en tenant compte des droits acquis, des absences validées et des règles de gestion définies par mon SOC.
+
+L’SOC doit pouvoir configurer les règles d’acquisition, d’utilisation, de consommation, de report et d’expiration des droits, ainsi que les paramètres spécifiques aux RTT et les limites de solde négatif.
+
+2. Objectifs fonctionnels
+La fonctionnalité doit permettre de :
+
+Consulter le solde actuel des CP.
+
+Consulter le solde actuel des RTT lorsque le dispositif est activé par l’SOC et que le consultant est éligible.
+
+Simuler le solde des CP et, le cas échéant, des RTT à une date future.
+
+Prendre en compte les droits acquis à la date de référence.
+
+Déduire les jours correspondant aux absences validées jusqu’à la date de référence.
+
+Gérer les périodes d’acquisition et d’utilisation des droits.
+
+Gérer les droits expirés et les règles de report.
+
+Consommer en priorité les droits dont la date d’expiration est la plus proche.
+
+Configurer les paramètres de calcul au niveau de l’SOC.
+
+Gérer des seuils de solde négatif distincts pour les CP et les RTT.
+
+Garantir la traçabilité et la cohérence des soldes calculés.
+
+3. Règles fonctionnelles
+RF01 — Consultation du solde actuel
+Le consultant peut consulter son solde de CP à la date du jour.
+
+Le solde doit tenir compte :
+
+Des droits acquis et disponibles à cette date.
+
+Des absences validées et déduites.
+
+Des droits expirés qui ne sont plus utilisables.
+
+Des éventuels ajustements ou régularisations autorisés.
+
+Le solde RTT est affiché uniquement si le dispositif RTT est activé par l’SOC et si le consultant est individuellement éligible.
+
+RF02 — Simulation du solde à une date future
+Le consultant peut sélectionner une date future et consulter son solde prévisionnel à cette date.
+
+Le calcul doit prendre en compte :
+
+Les droits déjà acquis à la date de simulation.
+
+Les droits qui seront acquis au plus tard à cette date, conformément aux paramètres de l’SN.
+
+Les absences validées ayant lieu jusqu’à cette date.
+
+Les droits qui auront expiré et ne seront plus utilisables à cette date.
+
+Les reports et ajustements applicables.
+
+Les droits dont la date d’acquisition est postérieure à la date de simulation ne doivent pas être inclus.
+
+Les demandes en attente de validation ne sont pas intégrées au calcul.
+
+RF03 — Formule de calcul du solde
+Le solde doit être calculé à partir des droits disponibles et des événements applicables à la date de référence.
+
+Principe de calcul :
+
+Solde à la date de référence = droits disponibles à l’ouverture + droits acquis jusqu’à cette date − jours consommés au titre des absences validées + ajustements applicables − droits expirés non utilisables.
+
+Le calcul doit :
+
+Éviter tout double comptage des droits acquis, reportés ou consommés.
+
+Identifier les droits par période ou lot d’acquisition.
+
+Tenir compte des dates d’acquisition et d’expiration.
+
+Appliquer les règles de consommation configurées.
+
+Distinguer les CP des RTT.
+
+RF04 — Configuration de l’acquisition des droits par l’SOC
+L’SOC doit pouvoir configurer les modalités d’acquisition des CP et des RTT.
+
+Les paramètres doivent permettre de définir, pour chaque type de droit :
+
+Le nombre de jours acquis.
+
+La fréquence d’acquisition : mensuelle, annuelle ou autre périodicité paramétrable.
+
+La date de crédit des droits, définie par l’SOC.
+
+La période d’acquisition concernée.
+
+La date d’effet de la configuration.
+
+Les paramètres d’acquisition des CP et des RTT doivent être indépendants.
+
+Exemple : si l’SOC configure une acquisition mensuelle de 2,5 jours de CP, le système crédite 2,5 jours à chaque échéance prévue.
+
+La valeur de 2,5 jours est un exemple et ne doit pas être codée en dur.
+
+RF05 — Périodes d’acquisition et d’utilisation
+L’SOC doit pouvoir définir séparément :
+
+La période pendant laquelle les droits sont acquis.
+
+La période pendant laquelle les droits peuvent être utilisés.
+
+La date limite d’utilisation.
+
+Les règles de report éventuelles.
+
+Exemple de configuration :
+
+Période d’acquisition : du 1er juin 2025 au 31 mai 2026.
+
+Période d’utilisation : du 1er mai 2026 au 30 avril 2027.
+
+Ces dates sont données à titre d’exemple. Les périodes réellement appliquées dépendent de la configuration de l’SOC.
+
+Le système doit distinguer la période d’acquisition de la période d’utilisation afin de calculer correctement les droits disponibles à une date donnée.
+
+RF06 — Prise en compte des absences validées
+Seules les absences validées doivent être déduites du solde.
+
+Le système doit prendre en compte les absences validées dont les jours sont compris dans la période allant jusqu’à la date de référence.
+
+Le nombre de jours consommés doit respecter les règles de décompte applicables au type d’absence :
+
+Jours calendaires.
+
+Jours ouvrables.
+
+Jours ouvrés.
+
+Le calendrier des jours fériés et les règles métier associées doivent être pris en compte.
+
+RF07 — Demandes en attente de validation
+Les demandes de congés ou d’absence en attente de validation ne doivent pas être déduites du solde actuel ou prévisionnel.
+
+Aucune simulation spécifique intégrant les demandes en attente n’est prévue dans le périmètre.
+
+Les demandes refusées ou annulées ne doivent pas être déduites du solde.
+
+RF08 — Recalcul du solde
+Le solde doit être recalculé lorsqu’un événement affecte les droits ou leur consommation, notamment :
+
+La validation d’une demande d’absence.
+
+La modification ou l’annulation d’une absence validée, selon les droits de gestion applicables.
+
+L’acquisition de nouveaux droits.
+
+L’expiration de droits.
+
+Un ajustement ou une régularisation autorisés.
+
+Après validation d’une demande d’absence, le calcul doit intégrer les jours concernés.
+
+Le solde actuel et le solde prévisionnel doivent rester cohérents entre eux.
+
+RF09 — Expiration des droits
+L’SOC doit pouvoir configurer les règles d’expiration des droits, notamment :
+
+La date d’expiration.
+
+Les règles de report éventuelles.
+
+Les conditions spécifiques applicables à certaines catégories de droits.
+
+À la date de référence, les droits expirés qui ne sont plus utilisables doivent être exclus du solde disponible.
+
+L’historique des droits expirés doit être conservé afin de garantir la traçabilité des calculs.
+
+RF10 — Ordre de consommation des droits
+Le système doit appliquer la règle FEFO (First Expired, First Out) : les droits dont la date d’expiration est la plus proche sont consommés en priorité.
+
+Cette règle s’applique aux lots de droits concernés.
+
+Lorsque plusieurs lots possèdent la même date d’expiration, aucune priorité métier supplémentaire n’est définie.
+
+Le système peut appliquer un ordre technique déterministe, sans signification métier particulière, tout en conservant la traçabilité des consommations par lot.
+
+RF11 — Activation du dispositif RTT
+L’SOC doit pouvoir activer ou désactiver le dispositif RTT.
+
+Si le dispositif RTT est désactivé, aucun droit RTT ne doit être attribué et aucun solde RTT ne doit être affiché.
+
+Si le dispositif RTT est activé, les règles RTT configurées par l’SOC s’appliquent.
+
+L’activation du dispositif RTT ne rend pas automatiquement tous les consultants éligibles.
+
+RF12 — Éligibilité individuelle aux RTT
+L’SOC doit pouvoir définir individuellement l’éligibilité de chaque consultant aux RTT.
+
+La configuration doit permettre de déterminer :
+
+Si le consultant est éligible.
+
+La date de début d’éligibilité, si nécessaire.
+
+Si le consultant n’est pas éligible :
+
+Aucun droit RTT ne doit lui être attribué.
+
+Le solde RTT ne doit pas être affiché.
+
+Aucun calcul de consommation RTT ne doit être effectué pour lui.
+
+Cette règle s’applique même lorsque le dispositif RTT est activé au niveau de l’SOC.
+
+RF13 — Configuration des droits RTT
+Lorsque le dispositif RTT est activé et que le consultant est éligible, l’SOC doit pouvoir configurer :
+
+Le nombre de jours RTT attribués.
+
+La fréquence d’attribution.
+
+La date de crédit des droits.
+
+La période d’acquisition.
+
+La période d’utilisation.
+
+Les règles de report et d’expiration.
+
+Les modalités de consommation.
+
+Le seuil de solde négatif applicable aux RTT.
+
+Les règles RTT doivent être indépendantes des règles CP.
+
+RF14 — Gestion du solde négatif
+L’SOC doit pouvoir définir deux seuils de solde négatif distincts :
+
+Un seuil maximal de solde négatif pour les CP.
+
+Un seuil maximal de solde négatif pour les RTT.
+
+Chaque seuil est configurable indépendamment.
+
+Exemple :
+
+Seuil CP : -5 jours.
+
+Seuil RTT : -3 jours.
+
+Le système doit appliquer le seuil correspondant au type de droit concerné.
+
+Lorsqu’une demande entraîne un solde inférieur à la limite autorisée, elle doit être bloquée ou signalée conformément au processus de gestion configuré.
+
+Le contrôle doit être effectué au moment défini dans le processus métier, lors de la soumission ou de la validation de la demande.
+
+RF15 — Modification de la configuration
+Toute modification des paramètres d’acquisition doit être associée à une date d’effet.
+
+La nouvelle configuration doit s’appliquer uniquement aux acquisitions futures à compter de cette date d’effet.
+
+Les droits déjà acquis ne doivent pas être recalculés rétroactivement du seul fait d’une modification de configuration.
+
+L’historique des droits acquis doit être conservé.
+
+RF16 — Affichage du solde et détail du calcul
+L’écran doit afficher :
+
+Le solde actuel de CP.
+
+Le solde prévisionnel de CP à la date sélectionnée.
+
+Le solde actuel et prévisionnel de RTT, si le dispositif est activé et si le consultant est éligible.
+
+Les droits acquis jusqu’à la date de référence.
+
+Les jours déduits au titre des absences validées.
+
+Les droits expirés ou arrivant prochainement à expiration.
+
+Les lots de droits, leurs périodes d’acquisition et leurs dates d’expiration.
+
+Les éventuels ajustements pris en compte.
+
+Le consultant doit pouvoir comprendre les éléments qui expliquent le solde affiché.
+
+RF17 — Gestion des accès
+Le consultant ne peut consulter que ses propres soldes et le détail associé à ses droits.
+
+Il ne doit pas pouvoir consulter les soldes d’autres consultants.
+
+Toute fonctionnalité permettant à un manager de consulter ou de simuler les soldes d’un consultant relève d’un périmètre d’autorisation distinct.
+
+
+RF18 — Journal d’audit des acquisitions et des mouvements de droits
+Objectif
+Le système doit conserver un journal d’audit permettant de tracer les opérations affectant les droits à congés payés (CP) et les RTT, afin de garantir la traçabilité des acquisitions, des consommations, des expirations, des reports et des ajustements de solde.
+
+Le journal doit permettre de reconstituer l’historique des droits et de justifier le solde actuel ou prévisionnel d’un consultant.
+
+RF18.1 — Événements à historiser
+Le système doit enregistrer une entrée dans le journal d’audit pour chaque opération effective concernant les droits, notamment :
+
+L’acquisition de nouveaux droits CP ou RTT.
+
+La consommation de droits à la suite de la validation d’une absence.
+
+L’annulation ou la modification d’une absence validée entraînant une régularisation des droits.
+
+L’expiration de droits.
+
+Le report de droits d’une période à une autre.
+
+Les ajustements ou régularisations manuels autorisés.
+
+Les opérations de correction liées à une erreur de calcul ou de crédit.
+
+Les modifications de configuration susceptibles d’affecter les acquisitions futures.
+
+Les demandes d’absence en attente, refusées ou annulées sans incidence sur les droits ne doivent pas générer d’opération de mouvement de droits. Les éventuelles modifications de ces demandes peuvent être historisées séparément si nécessaire.
+
+RF18.2 — Informations enregistrées
+Chaque entrée du journal d’audit relative à un mouvement de droits doit contenir au minimum :
+
+Un identifiant unique de l’opération.
+
+L’identifiant du consultant concerné.
+
+Le type de droit : CP ou RTT.
+
+La nature de l’opération : acquisition, consommation, expiration, report, ajustement ou correction.
+
+Le nombre de jours crédités ou débités.
+
+Le solde avant l’opération.
+
+Le solde après l’opération.
+
+La date et l’heure de l’opération.
+
+La période d’acquisition concernée et l’identifiant du lot de droits, lorsqu’ils sont applicables.
+
+La date d’expiration du lot, lorsqu’elle est applicable.
+
+L’origine de l’opération : traitement automatique, validation d’absence ou action manuelle.
+
+L’identifiant de l’utilisateur ou du processus à l’origine de l’opération.
+
+Le motif de l’opération, notamment pour les ajustements et les corrections.
+
+Lorsqu’une opération résulte d’une règle de configuration, le journal doit permettre d’identifier la configuration appliquée et sa date d’effet.
+
+RF18.3 — Traçabilité des acquisitions
+Chaque acquisition de CP ou de RTT doit faire l’objet d’une entrée distincte dans le journal d’audit.
+
+Cette entrée doit notamment permettre d’identifier :
+
+La quantité de droits acquise.
+
+La date effective d’acquisition.
+
+La période d’acquisition concernée.
+
+La règle et les paramètres ayant déterminé la quantité créditée.
+
+Le solde avant et après le crédit.
+
+Le traitement automatique ou l’action à l’origine du crédit.
+
+Les acquisitions de CP et de RTT doivent être tracées indépendamment, conformément à leurs règles de gestion respectives.
+
+RF18.4 — Conservation de l’historique et intégrité du journal
+Les entrées du journal d’audit doivent être conservées selon les règles de conservation définies par l’SOC et les obligations applicables.
+
+Une entrée enregistrée ne doit pas pouvoir être modifiée ou supprimée par les utilisateurs fonctionnels. En cas d’erreur, une opération de correction doit être enregistrée, avec une référence à l’opération initiale et un motif explicatif.
+
+Le journal doit préserver l’ordre chronologique des opérations et permettre de distinguer les mouvements initiaux des corrections ultérieures.
+
+RF18.5 — Consultation du journal d’audit
+Le système doit permettre aux utilisateurs autorisés de consulter le journal d’audit selon leurs habilitations.
+
+Le journal doit pouvoir être filtré au minimum par :
+
+Consultant.
+
+Type de droit : CP ou RTT.
+
+Nature de l’opération.
+
+Période de réalisation de l’opération.
+
+Période d’acquisition.
+
+Utilisateur ou processus à l’origine de l’opération.
+
+Le consultant ne peut consulter que l’historique de ses propres droits, selon les règles d’accès applicables. L’accès des managers et des administrateurs doit respecter leurs habilitations respectives.
+
+RF18.6 — Cohérence avec le calcul des soldes
+Le journal d’audit doit permettre de justifier les mouvements ayant contribué à la constitution du solde d’un consultant.
+
+Les opérations historisées doivent rester cohérentes avec les droits acquis, consommés, reportés, expirés et ajustés.
+
+Le recalcul d’un solde ne doit pas entraîner la création de doublons dans le journal pour une même opération métier. Toute correction ayant une incidence sur les droits doit être tracée.
+
+4. Critères d’acceptation
+CA01 — Consultation du solde actuel
+Étant donné un consultant disposant de droits à congés,
+
+Quand il accède à l’écran de consultation,
+
+Alors le système affiche son solde de CP à la date du jour, en tenant compte des droits acquis, des absences validées, des expirations et des ajustements applicables.
+
+CA02 — Simulation à une date future
+Étant donné un consultant et une date future sélectionnée,
+
+Quand il demande la simulation de son solde,
+
+Alors le système calcule le solde à cette date en intégrant les droits acquis et les absences validées jusqu’à cette date.
+
+CA03 — Acquisition mensuelle
+Étant donné une configuration prévoyant une acquisition de 2,5 jours par mois,
+
+Quand une échéance d’acquisition est atteinte,
+
+Alors le système crédite les droits conformément à la date et à la fréquence configurées.
+
+CA04 — Acquisition annuelle
+Étant donné une configuration prévoyant une acquisition annuelle,
+
+Quand la date annuelle d’attribution est atteinte,
+
+Alors le système crédite les droits prévus pour cette échéance, sans appliquer une acquisition mensuelle non configurée.
+
+CA05 — Droits non encore acquis
+Étant donné une prochaine échéance d’acquisition postérieure à la date de simulation,
+
+Quand le solde prévisionnel est calculé,
+
+Alors les droits concernés ne sont pas inclus dans le solde.
+
+CA06 — Déduction des absences validées
+Étant donné une absence validée comprise dans la période considérée,
+
+Quand le solde est calculé,
+
+Alors les jours correspondants sont déduits selon les règles de décompte applicables.
+
+CA07 — Exclusion des demandes en attente
+Étant donné une demande d’absence en attente de validation,
+
+Quand le solde actuel ou prévisionnel est calculé,
+
+Alors cette demande n’est pas déduite du solde.
+
+CA08 — Recalcul après validation
+Étant donné une demande initialement en attente,
+
+Quand cette demande est validée,
+
+Alors le solde est recalculé en tenant compte des jours validés.
+
+CA09 — Exclusion des demandes refusées ou annulées
+Étant donné une demande refusée ou annulée,
+
+Quand le solde est calculé,
+
+Alors aucun jour n’est déduit au titre de cette demande.
+
+CA10 — Expiration des droits
+Étant donné un lot de droits expiré à la date de référence,
+
+Quand ces droits ne sont plus utilisables,
+
+Alors ils sont exclus du solde disponible et leur historique est conservé.
+
+CA11 — Consommation selon FEFO
+Étant donné plusieurs lots de droits dont les dates d’expiration diffèrent,
+
+Quand une absence validée consomme des droits,
+
+Alors les droits dont la date d’expiration est la plus proche sont consommés en priorité.
+
+CA12 — Lots ayant la même date d’expiration
+Étant donné plusieurs lots ayant la même date d’expiration,
+
+Quand le système détermine les lots consommés,
+
+Alors aucune priorité métier supplémentaire n’est appliquée et la consommation reste traçable.
+
+CA13 — Dispositif RTT désactivé
+Étant donné que le dispositif RTT est désactivé par l’SOC,
+
+Quand le consultant consulte son solde,
+
+Alors aucun solde RTT n’est affiché et aucun droit RTT n’est attribué.
+
+CA14 — Consultant non éligible aux RTT
+Étant donné que le dispositif RTT est activé mais que le consultant n’est pas éligible,
+
+Quand le consultant consulte son solde,
+
+Alors aucun solde RTT n’est affiché et aucun droit RTT ne lui est attribué.
+
+CA15 — Consultant éligible aux RTT
+Étant donné que le dispositif RTT est activé et que le consultant est éligible,
+
+Quand il consulte ou simule son solde,
+
+Alors le système affiche et calcule son solde RTT selon les paramètres RTT configurés.
+
+CA16 — Indépendance des règles CP et RTT
+Étant donné des règles d’acquisition, de consommation ou d’expiration différentes pour les CP et les RTT,
+
+Quand les soldes sont calculés,
+
+Alors chaque type de droit est calculé selon ses propres paramètres.
+
+CA17 — Respect du seuil négatif CP
+Étant donné un seuil CP configuré à -5 jours,
+
+Quand une demande entraîne un solde CP de -3 jours,
+
+Alors le solde respecte la limite configurée et la demande peut poursuivre le processus prévu.
+
+CA18 — Dépassement du seuil négatif CP
+Étant donné un seuil CP configuré à -5 jours,
+
+Quand une demande entraîne un solde CP inférieur à -5 jours,
+
+Alors la demande est bloquée ou signalée conformément au processus configuré.
+
+CA19 — Respect du seuil négatif RTT
+Étant donné un seuil RTT configuré à -3 jours,
+
+Quand une demande entraîne un solde RTT de -2 jours,
+
+Alors le solde respecte la limite configurée et la demande peut poursuivre le processus prévu.
+
+CA20 — Dépassement du seuil négatif RTT
+Étant donné un seuil RTT configuré à -3 jours,
+
+Quand une demande entraîne un solde RTT inférieur à -3 jours,
+
+Alors la demande est bloquée ou signalée conformément au processus configuré.
+
+CA21 — Cohérence du solde actuel et prévisionnel
+Étant donné les mêmes droits, événements et règles applicables,
+
+Quand le consultant consulte son solde actuel puis simule la même date comme date de référence,
+
+Alors les deux soldes sont identiques.
+
+CA22 — Modification de la configuration
+Étant donné une modification des paramètres d’acquisition avec une date d’effet définie,
+
+Quand le système applique la nouvelle configuration,
+
+Alors celle-ci s’applique uniquement aux acquisitions futures et les droits déjà acquis ne sont pas recalculés rétroactivement.
+
+CA23 — Respect des règles de décompte
+Étant donné une absence soumise à une règle de décompte particulière,
+
+Quand le nombre de jours consommés est calculé,
+
+Alors le système applique la règle configurée : jours calendaires, ouvrables ou ouvrés, ainsi que le calendrier des jours fériés applicable.
+
+CA24 — Consultation limitée au consultant connecté
+Étant donné un consultant connecté,
+
+Quand il accède à la fonctionnalité,
+
+Alors il ne peut consulter que ses propres soldes et les détails associés.
+
+CA25 — Explication du calcul
+Étant donné un solde actuel ou prévisionnel affiché,
+
+Quand le consultant consulte son détail,
+
+Alors il peut identifier les droits acquis, les jours déduits, les expirations et les ajustements qui expliquent le résultat.
+
+CA26 — Date d’acquisition définie par l’SOC
+Étant donné une date de crédit configurée par l’SOC,
+
+Quand cette date est atteinte,
+
+Alors le système crédite les droits conformément aux paramètres applicables.
+
+CA27 — Absence de crédit prématuré
+Étant donné des droits devant être crédités à une échéance future,
+
+Quand le consultant simule son solde à une date antérieure à cette échéance,
+
+Alors ces droits ne sont pas inclus dans le solde simulé.
+
+CA28 — Seuils CP et RTT indépendants
+Étant donné que l’SOC a défini deux seuils distincts,
+
+Quand une demande est contrôlée,
+
+Alors le système applique le seuil correspondant au type de droit concerné, sans utiliser le seuil de l’autre type de droit.
+
+CA29 — Absence de recalcul rétroactif
+Étant donné une modification des paramètres d’acquisition avec une date d’effet,
+
+Quand le système applique la nouvelle configuration,
+
+Alors seuls les droits acquis à partir de cette date d’effet sont soumis aux nouveaux paramètres. Les droits déjà acquis sont préservés.
+
+CA30 — Absence de simulation des demandes en attente
+Étant donné une demande d’absence en attente de validation,
+
+Quand le consultant consulte ou simule son solde,
+
+Alors cette demande n’est pas déduite du calcul.
+
+
+CA31 — Historisation d’une acquisition de CP
+Étant donné un consultant disposant d’une configuration d’acquisition de CP,
+
+Quand une échéance d’acquisition est atteinte et que les droits sont crédités,
+
+Alors le système enregistre une entrée d’audit indiquant la quantité acquise, la date d’acquisition, le lot concerné, le solde avant et après l’opération ainsi que la règle appliquée.
+
+CA32 — Historisation d’une acquisition de RTT
+Étant donné un consultant éligible aux RTT et un dispositif activé,
+
+Quand une attribution de RTT est effectuée,
+
+Alors le système enregistre le mouvement dans le journal d’audit indépendamment des acquisitions de CP.
+
+CA33 — Historisation d’une consommation de droits
+Étant donné une absence validée entraînant une consommation de droits,
+
+Quand le solde est mis à jour,
+
+Alors le journal conserve la nature du mouvement, le nombre de jours consommés, le type de droit concerné et les soldes avant et après l’opération.
+
+CA34 — Historisation d’un ajustement manuel
+Étant donné qu’un utilisateur autorisé effectue un ajustement de droits,
+
+Quand l’ajustement est enregistré,
+
+Alors le journal conserve l’identité de l’utilisateur, la date et l’heure, la quantité ajustée, les soldes avant et après l’opération et le motif renseigné.
+
+CA35 — Traçabilité d’une correction
+Étant donné qu’une opération enregistrée comporte une erreur,
+
+Quand une correction est effectuée,
+
+Alors le système conserve l’opération initiale, enregistre la correction séparément et permet de relier les deux opérations.
+
+CA36 — Absence de doublons lors d’un recalcul
+Étant donné qu’un solde est recalculé à la suite d’un événement déjà traité,
+
+Quand le traitement est exécuté de nouveau,
+
+Alors le système ne crée pas de doublon pour le même mouvement métier.
+
+CA37 — Protection du journal d’audit
+Étant donné une entrée déjà enregistrée dans le journal,
+
+Quand un utilisateur fonctionnel tente de la modifier ou de la supprimer,
+
+Alors l’opération est interdite et l’historique initial est préservé.
+
+CA38 — Consultation selon les habilitations
+Étant donné un utilisateur connecté,
+
+Quand il consulte le journal d’audit,
+
+Alors seules les données correspondant à ses autorisations lui sont accessibles.
+
+CA39 — Justification du solde
+Étant donné un solde actuel ou prévisionnel,
+
+Quand un utilisateur autorisé consulte l’historique des mouvements,
+
+Alors il peut identifier les acquisitions, consommations, expirations, reports et ajustements expliquant les variations du solde.
+
+5. Configuration attendue pour l’SOC
+5.1 Congés payés
+L’SOC doit pouvoir configurer :
+
+Le nombre de jours acquis.
+
+La fréquence d’acquisition.
+
+La date de crédit.
+
+La période d’acquisition.
+
+La période d’utilisation.
+
+La date d’expiration.
+
+Les règles de report.
+
+Les règles de consommation.
+
+Le seuil maximal de solde négatif CP.
+
+La date d’effet des paramètres.
+
+5.2 RTT
+L’SOC doit pouvoir configurer :
+
+L’activation ou la désactivation du dispositif RTT.
+
+Le nombre de jours RTT attribués.
+
+La fréquence d’attribution.
+
+La date de crédit.
+
+La période d’acquisition.
+
+La période d’utilisation.
+
+Les règles de report et d’expiration.
+
+L’éligibilité individuelle de chaque consultant.
+
+La date de début d’éligibilité, si nécessaire.
+
+Le seuil maximal de solde négatif RTT.
+
+La date d’effet des paramètres.
+
+5.3 Paramètres communs
+L’SOC doit pouvoir gérer :
+
+Le calendrier des jours fériés.
+
+Les règles de décompte des jours.
+
+Les dates d’effet des paramètres.
+
+L’historique des modifications de configuration.
+
+6. Tableau récapitulatif des règles de gestion
+Sujet
+
+Règle retenue
+
+Consultation
+
+Solde actuel et solde simulé à une date future
+
+Acquisition des CP
+
+Quantité, fréquence et date de crédit configurables par l’SOC
+
+Acquisition des RTT
+
+Paramètres indépendants des CP
+
+Périodes
+
+Acquisition et utilisation configurables séparément
+
+Modification des paramètres
+
+Application aux acquisitions futures uniquement
+
+Droits déjà acquis
+
+Pas de recalcul rétroactif lié à une modification de configuration
+
+Absences validées
+
+Déduites du solde
+
+Demandes en attente
+
+Non déduites ; aucune simulation spécifique prévue
+
+Demandes refusées ou annulées
+
+Non déduites
+
+Expiration
+
+Selon les dates et règles configurées
+
+Report
+
+Selon les règles configurées
+
+Ordre de consommation
+
+FEFO : expiration la plus proche en premier
+
+Lots à expiration identique
+
+Aucune priorité métier supplémentaire
+
+Activation RTT
+
+Configurable par l’SOC
+
+Éligibilité RTT
+
+Définie individuellement par consultant
+
+Seuil négatif CP
+
+Configurable indépendamment
+
+Seuil négatif RTT
+
+Configurable indépendamment
+
+Traçabilité
+
+Historique des acquisitions, consommations, expirations et ajustements
+
+Accès consultant
+
+Consultation de ses propres soldes uniquement
+
+7. Résultat attendu
+Le consultant dispose d’une vision fiable, cohérente et explicable de son solde actuel et de son solde prévisionnel de congés payés et, lorsqu’il y est éligible, de RTT.
+
+Le calcul tient compte des droits acquis, des absences validées, des dates de crédit, des périodes d’utilisation, des règles de consommation, des expirations et des paramètres définis par l’SOC.
+
+L’SOC conserve la maîtrise des règles applicables aux CP et aux RTT, y compris les seuils négatifs distincts, sans dépendre de valeurs codées en dur.
+
+Les droits déjà acquis restent préservés lors d’une modification de configuration, et toutes les opérations de calcul doivent être suffisamment traçables pour expliquer le solde affiché.
+
+
+
+
+Pièces jointes
+3
+
+
+
+image-20261119-091844.png
+19 nov. 2026, 10:21 AM
+
+
+
+image-20261118-082106.png
+18 nov. 2026, 09:21 AM
+
+
+
+image-20261110-112920.png
+10 nov. 2026, 12:29 PM
+
+
+Sous-tâches
+
+Ajouter une sous-tâche
+Tickets associés
+
+Ajouter un ticket lié
+
+Activité
+
+Tout
+
+Commentaires
+
+Historique
+
+Journal du travail
+
+
+Ajouter un commentaire...
+
+Suggérer une réponse…
+
+Mise à jour d'état…
+
+Merci…
+Conseil de pro :  appuyez sur
+M
+ pour commenter
+
+Nizar KHELIL
+
+il y a 6 heures
+Mourad zamoun
+
+Il faut vérifier la cohérence des données saisie
+Exemple Fréquence Annuelle,   Mois février , Jours 31
+
+Il faut vérifier après la sélection du mois si le numéro du jours sélectionné est cohérent ou pas
+pour le mois de février on vas supposer que c’est 28 jours
+
+Que se passe t-il actuellement si on choisit une fréquence mensuelle le 31 du mois et que le mois a 30 jours uniquement ?
+
+image-20261119-091844.png
+
+
+
+
+
+
+Nizar KHELIL
+
+il y a 1 jour
+Mourad zamoun
+
+
+image-20261118-082106.png
+
+
+
+
+
+
+Nizar KHELIL
+
+il y a 1 semaine
+(modifié)
+Rajouter le contrôle sur les champs de configuration des congés et rtt. Les valeurs saisie ne peuvent pas être négatives
+
+Rendre l’affichage des champs conditionnés à la sélection de la fréquence d’acquisition des droits . Exemple si on choisi annuelle il faut choisir une date qui se répète chaque année (jours et mois). Si on choisi trimestriel alors on  choisi un jours et un mois qui sera incrémenté de 3 mois calendaire. Si on choisi mensuelle on choisi qu’un jour du mois ( il faut gérer le cas des mois de 30, 31 et 28 jours )
+
+Il faut prendre en considération la date d’embauche du salarié.*
+
+Vider les champs après enregistrement d’un paramétrage de conges ou RTT
+
+
+image-20261110-112920.png
+
+
+En tant que consultant je soumets pour validation un conges durant le mois en cours et un autre jour durant le mois suivant
+Les deux jours de conges sont validé par manager
+Je consulte mon solde conges et je constate que les deux jours de conges sont déduit de mon solde de conges
+Comportement attendu le solde ne prendra en compte les les jours de conges que lorsque je simule a une date supérieur à la date du conges validé
+
+
+Un consultant non-salarié ne devrai pas avoir de rubrique solde de congés ni d’acquisition de droits (cp et rtt)
+
+
+
+
+
+
+
+Mourad zamoun
+
+il y a 1 semaine
+Nizar KHELIL  “Rendre l’affichage des champs conditionnés à la sélection de la fréquence d’acquisition des droits“ :  ce n’est pas tres clair. A expliciter . au moins avec des exemples.
+
+
+
+
+
+
+
+```
+
+**Audit / implémentation**
+- Audit complet des règles RF01→RF18 et CA01→CA39 : le moteur existant couvre déjà la
+  consultation/simulation, les lots, les absences validées, FEFO, les expirations, les seuils
+  négatifs CP/RTT distincts, l'éligibilité RTT (activation + éligibilité + date), les
+  non-salariés, la date d'embauche, l'exclusion des crédits postérieurs à la simulation et
+  l'exclusion des demandes en attente/refusées/annulées (consommation uniquement à la
+  validation, régularisation à l'annulation/invalidation).
+- Backend — `LeaveService.ensureLots` : une configuration ne s'applique plus rétroactivement.
+  Les versions actives sont chargées par ordre de date d'effet
+  (`LeaveConfigRepository.findBySocIdAndLeaveTypeAndActiveTrueAndEffectiveDateLessThanEqualOrderByEffectiveDateAscIdAsc`)
+  et chaque version ne crédite que la période allant de sa date d'effet à la version suivante.
+  Les droits déjà acquis sous l'ancienne version sont conservés (CA22/CA29/RF15).
+- Backend — `LeaveService.balanceAt(reference)` remplace le solde « tous mouvements » dans les
+  contrôles et l'audit : un mouvement futur (créé par une simulation) ne fausse plus le seuil
+  négatif ni les soldes avant/après des mouvements (CA17/CA18/CA31→CA36).
+- Backend — journal d'audit : `LeaveMovementDto` expose `actorId`/`actorName` ; l'endpoint
+  `GET /api/leave/movements` filtre désormais par nature (`movementType`), origine (`origin`)
+  et auteur (`actorId`), en plus du consultant, du type de droit et de la période
+  (RF18.2/RF18.5). Les entrées restent non modifiables (aucun endpoint d'édition/suppression),
+  les corrections passant par des mouvements séparés (RF18.4).
+- Frontend — `pages/LeaveBalances.tsx` : le détail affiche en plus les périodes d'acquisition et
+  d'utilisation des lots, et un « Journal des mouvements CP/RTT » par type (date, nature,
+  jours, origine, auteur, motif, solde après) avec pagination et ids HTML dédiés
+  (`LeaveBalances.<type>.movement.<id>.*`) (RF16/RF18.5).
+- Contrôles déjà en place vérifiés : validation jour/mois (février 28, mois de 30/31 jours),
+  crédit mensuel ramené au dernier jour du mois, valeurs négatives refusées, affichage des
+  champs conditionné à la fréquence (mois pour trimestriel/annuel, jour seul pour mensuel),
+  date d'embauche prise en compte, réinitialisation du formulaire après enregistrement.
+- Limites connues conservées (déjà documentées) : `carryoverMax` / `carryoverExpirationMonths`
+  sont stockés mais les reports ne sont pas rejoués automatiquement ; les périodes
+  d'utilisation sont historisées/affichées, la consommation FEFO restant bornée par la date
+  d'expiration du lot.
+
+**Tests**
+- Backend — `LeaveServiceTest` : nouvelle version de configuration sans recalcul rétroactif
+  (janvier/février à 1 j, mars→mai à 2 j), prise en compte des mouvements futurs ignorée dans
+  le contrôle du seuil négatif, filtres/auteur du journal d'audit.
+  `mvn test` : **782 tests, 0 échec, 0 erreur**.
+- Frontend — `LeaveBalances.test.tsx` : journal des mouvements (nature, auteur, motif).
+  `npm.cmd test` : 55 fichiers / **470 tests OK** ; `npm.cmd run lint` OK (avertissements
+  pré-existants) ; `npm.cmd run build` OK.
