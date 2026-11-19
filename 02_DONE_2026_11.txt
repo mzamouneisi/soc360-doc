@@ -2933,3 +2933,92 @@ faire une doc_langage_desc_scenarios_tests.docx
 - Validation du langage sur les 30 scénarios SOC360 : **30/30 valides**.
 - `npm run web:build` : OK · `npm run test:list` : **36 tests / 34 fichiers**.
 - Aucun impact sur les tests backend/frontend SOC360.
+
+### 2026-11-19 15:49:33 — notes de frais : justificatif unique, lié à la note, et suppression cohérente
+
+**Tâche**
+```
+gestion notes de frais 
+
+Bug 1
+En tant que consultant j’ajoute une note de frais en brouillon,
+je constate que le document justificatif est en double dans Mes document
+-----------------
+
+Bug 2
+En tant que consultant je supprime la note de frais en brouillon le document justificatif de ma note de frais n’est pas supprimé de mes documents
+---------
+A implementer si je suis d'accord : 
+
+valid form : on ne peut pas ajouter le meme document pour deux notes de frais differentes :
+doit on stocker le texte extrait en bdd ?
+
+------------
+
+A implementer :
+On ne doit pas supprimer un document dans "Mes Documents" qui est lié à une note de frais.
+```
+
+**Implémentation**
+- Bug 1 — `DocumentController.accessibleDocuments` : déduplication par identifiant
+  (`LinkedHashMap`) des documents retournés à la fois par la visibilité, les partages, le
+  téléversement et le rattachement au consultant. Le justificatif n'apparaît plus en double
+  dans « Mes documents ».
+- Cause racine — `NoteFraisService.applyDocument` ne met plus `documentId` à `null` après
+  copie : la note reste liée au document d'origine (le texte extrait reste stocké en base
+  dans `expense_report.invoice_info`, colonne `invoice_info` TEXT).
+- Bug 2 — `NoteFraisService.delete` supprime désormais le justificatif rattaché (partages,
+  fichier de stockage éventuel, ligne `hr_document`) en même temps que la note.
+- Justificatif unique — `NoteFraisRepository.existsByDocumentIdAndIdNot` et
+  `countByDocumentHashExcluding` : un document (même identifiant ou même contenu) ne peut
+  plus être rattaché à deux notes de frais. Empreinte SHA-256 calculée à la
+  téléversement (`hr_document.content_hash`, migration `V201__hr_document_content_hash.sql`).
+- Suppression protégée — `DocumentController.delete` refuse (400) la suppression d'un
+  document lié à une note de frais ; seule la suppression de la note le supprime.
+- Remplacement — `NoteFraisService.update` supprime l'ancien justificatif quand un nouveau
+  document remplace le précédent.
+
+**Tests**
+- Backend — `NoteFraisServiceTest` : document conservé sur la note, refus d'un document déjà
+  lié (id et empreinte), suppression du justificatif avec la note, remplacement du
+  justificatif. `LeaveServiceTest` : validation jour/mois.
+- Backend — `DocumentShareIntegrationTest` : liste sans doublon, suppression d'un document
+  lié refusée (400), suppression du brouillon qui supprime son justificatif.
+- Backend — `mvn test` : **779 tests, 0 échec, 0 erreur**.
+- Frontend — `LeaveSettings.test.tsx` : refus d'un jour invalide pour le mois choisi.
+  `npm.cmd test` : 55 fichiers / **469 tests OK** ; `npm.cmd run lint` OK (avertissements
+  pré-existants sur `docs/` généré) ; `npm.cmd run build` non exécuté (pas nécessaire ici).
+
+### 2026-11-19 15:49:33 — paramètres congés : jour du mois cohérent avec le mois
+
+**Tâche**
+```
+parametres conges 
+
+validation form : verifier le "Jour du mois" par rapport au mois : 
+1 31
+2 28
+3 31
+4 30 
+...
+
+d'autres part, a l'execution mensuelle, si "Jour du mois" >= max num jour (mois courant), alors c'est le dernier jour a executer 
+```
+
+**Implémentation**
+- Backend — `LeaveService.requireDayForMonth` : le jour de crédit (et les jours
+  d'acquisition/utilisation) doit exister dans le mois saisi (février 28, avril/juin/
+  septembre/novembre 30, autres 31). Messages 400 explicites.
+- Backend — exécution mensuelle déjà couverte par `LeaveService.date` : le jour est borné à
+  `YearMonth.lengthOfMonth()`, donc 31 devient le dernier jour de février/avril… (test
+  existant `ensureLots_monthlyClampsCreditDayToMonthLength`).
+- Frontend — `LeaveSettings.tsx` : contrôle du jour de crédit par rapport au mois de crédit
+  saisi (trimestriel/annuel) avant l'enregistrement ; le crédit mensuel reste borné à 1..31
+  et ramené au dernier jour du mois à l'exécution.
+
+**Tests**
+- Backend — `LeaveServiceTest.saveConfig_rejectsCreditDayInvalidForCreditMonth` et
+  `saveConfig_acceptsValidCreditDayForCreditMonth`.
+- Frontend — `LeaveSettings.test.tsx` : « refuse un jour de crédit invalide pour le mois
+  choisi ».
+- Backend — `mvn test` : **779 tests, 0 échec, 0 erreur** ; frontend **469 tests OK**.
