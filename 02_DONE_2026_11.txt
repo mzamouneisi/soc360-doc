@@ -4072,3 +4072,36 @@ rappeler tous les params de chaque config
   `npm.cmd test -- src/pages/LeaveSettings.test.tsx` : **17 tests OK**.
 - `npm.cmd test` : 55 fichiers / **471 tests OK** ; `npm.cmd run lint` OK (avertissements
   pré-existants) ; `npm.cmd run build` OK.
+
+### 2026-11-19 17:07:48 — Paramètres congés : configurations existantes sous forme de tableau paginé
+
+**Tâche**
+```
+Paramètres congés
+
+Configurations existantes
+
+rappeler tous les params de chaque config sous forme de liste <table> ... avec pagination ... comme les autres tableaux 
+```
+
+**Implémentation**
+- Frontend — `pages/LeaveSettings.tsx` : les configurations existantes sont désormais
+  présentées dans un tableau paginé et recherchable (`Table` partagée, comme les autres
+  écrans) avec une colonne par paramètre : type, date d'effet, quantité acquise, fréquence,
+  mois/jour de crédit, début/fin d'acquisition, début/fin d'utilisation, expiration (mois),
+  report maximum, expiration du report, seuil négatif et statut.
+- Colonne « Actions » : suppression (si autorisée), activation/désactivation et ouverture de
+  l'historique, avec les ids existants (`...supprimer`, `...toggle`, `...historique.toggle`).
+- L'historique d'activation reste disponible sous le tableau via un panneau dédié (mêmes ids
+  et pagination/recherche que précédemment).
+- La phrase « Configurations existantes » est affichée sous forme de titre de section
+  (`h2`, id `LeaveSettings.configs.title`).
+- Valeurs manquantes affichées `—` ; périodes au format `JJ/MM`. Aucun changement backend.
+
+**Tests**
+- Frontend — `LeaveSettings.test.tsx` : test du rappel de tous les paramètres (ids
+  `LeaveSettings.configs.<id>.param.<clé>`) et test de pagination du tableau
+  (`LeaveSettings.configs.page`, passage de la page 1 à la page 2).
+  `npm.cmd test -- src/pages/LeaveSettings.test.tsx` : **18 tests OK**.
+- `npm.cmd test` : 55 fichiers / **472 tests OK** ; `npm.cmd run lint` OK (avertissements
+  pré-existants) ; `npm.cmd run build` OK.
