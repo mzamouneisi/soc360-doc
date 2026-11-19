@@ -4042,3 +4042,33 @@ Nizar KHELIL  “Rendre l’affichage des champs conditionnés à la sélection 
 - Frontend — `LeaveBalances.test.tsx` : journal des mouvements (nature, auteur, motif).
   `npm.cmd test` : 55 fichiers / **470 tests OK** ; `npm.cmd run lint` OK (avertissements
   pré-existants) ; `npm.cmd run build` OK.
+
+### 2026-11-19 16:51:28 — Paramètres congés : rappel de tous les paramètres des configurations existantes
+
+**Tâche**
+```
+Paramètres congés
+
+Configurations existantes
+
+rappeler tous les params de chaque config 
+```
+
+**Implémentation**
+- Frontend — `pages/LeaveSettings.tsx` : chaque configuration existante affiche désormais une
+  fiche détaillée de tous ses paramètres sous l'en-tête (type, date d'effet, quantité acquise,
+  fréquence, mois et jour de crédit, début/fin d'acquisition, début/fin d'utilisation,
+  expiration en mois, report maximum, expiration du report, seuil négatif, statut actif).
+- Les périodes d'acquisition/utilisation sont affichées au format `JJ/MM` et valent `—`
+  lorsqu'elles ne sont pas configurées ; les paramètres optionnels absents affichent `—`.
+- Chaque libellé et chaque valeur possède un id HTML dédié
+  (`LeaveSettings.configs.<id>.param.<clé>.label` et `.param.<clé>`), sans collision avec les
+  ids existants de l'en-tête ou de l'historique.
+- Aucun changement backend (les DTO exposent déjà tous les paramètres).
+
+**Tests**
+- Frontend — `LeaveSettings.test.tsx` : nouveau test « rappelle tous les paramètres de chaque
+  configuration existante » vérifiant les 15 valeurs affichées et les ids associés.
+  `npm.cmd test -- src/pages/LeaveSettings.test.tsx` : **17 tests OK**.
+- `npm.cmd test` : 55 fichiers / **471 tests OK** ; `npm.cmd run lint` OK (avertissements
+  pré-existants) ; `npm.cmd run build` OK.
