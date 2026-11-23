@@ -4742,3 +4742,26 @@ Paramètres congés : maj du form : mettre 6 label/input par ligne afin d'optimi
 
 **Commit**
 - Frontend `021a4ce` — parametres conges: formulaire en 6 colonnes par ligne.
+
+### 2026-11-23 16:45:05 — Paramètres congés : groupes alignés et formulaire global en 6 colonnes
+
+**Tâche**
+```
+il fallait garder les noms de groupage, mais optimiser le form globalement
+aligner les groupes aussi
+```
+
+**Implémentation**
+- `pages/LeaveSettings.tsx` : les intitulés de groupes (Général, Acquisition des droits,
+  Période de référence, Expiration, Report des droits, Solde négatif) sont conservés et alignés
+  dans une colonne de libellés dédiée (`lg:grid-cols-[160px_1fr]`).
+- Les champs de chaque groupe sont disposés dans une grille globale alignée à droite en 6 colonnes
+  (`lg:grid-cols-6`), d'où un formulaire dense et homogène sans perdre le regroupement.
+- Aucun changement fonctionnel (mêmes champs, conditions et ids HTML).
+
+**Tests**
+- `npm.cmd test -- src/pages/LeaveSettings.test.tsx` : 17 tests OK ; `npm.cmd run lint` OK
+  (avertissements pré-existants) ; `npm.cmd run build` OK.
+
+**Commit**
+- Frontend `b2107b4` — parametres conges: groupes alignes et formulaire global en 6 colonnes.
