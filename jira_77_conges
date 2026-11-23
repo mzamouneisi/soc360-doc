@@ -1,0 +1,341 @@
+soc-77 Évolution – Refonte du paramétrage et de la gestion des congés SOC360
+
+Objectif
+
+Refondre le paramétrage des congés et des droits acquis afin de disposer d'un système simple à configurer, fiable dans ses calculs et suffisamment flexible pour gérer les règles de congés de différents pays.
+
+Priorité : proposer une gestion adaptée aux sociétés françaises, notamment pour les congés payés (CP) et les RTT.
+
+Le système doit ensuite pouvoir s'adapter aux règles des autres pays, notamment USA, Japon, Algérie, Tunisie, sans nécessiter de modifications importantes du code.
+
+Avant toute implémentation, analyser l'existant dans le backend, le frontend, les modèles de données et les règles de gestion actuelles. Préserver les fonctionnalités existantes et éviter les régressions.
+
+1. Paramétrage des droits
+
+Refondre le paramétrage actuel des droits acquis.
+
+Une règle doit notamment permettre de définir :
+
+Type de droit : CP, RTT ou autre type configurable.
+
+Fréquence d'acquisition : mensuelle, trimestrielle, annuelle, unique ou autre si nécessaire.
+
+Quantité acquise par période.
+
+Date de début d'application.
+
+Date de fin d'application facultative.
+
+Période de référence : année civile, année personnalisée ou autre cycle.
+
+Mode d'acquisition : début ou fin de période.
+
+Autorisation de solde négatif.
+
+Seuil négatif maximal autorisé.
+
+Règle de report des droits d'une période vers une autre.
+
+Règle d'expiration des droits.
+
+Activation/désactivation de la règle.
+
+Supprimer le paramètre « jour du mois » s'il devient redondant avec la date d'effet et la fréquence d'acquisition.
+
+La modification d'une règle ne doit pas modifier rétroactivement les droits déjà acquis. Prévoir une date d'effet et conserver l'historique des règles.
+
+2. Gestion des congés adaptée à la France (priorité)
+
+Prévoir une configuration française permettant de gérer simplement les CP et RTT.
+
+Congés payés (CP)
+
+Gérer distinctement les droits acquis de l'année N et les reliquats de l'année N-1.
+
+Exemple :
+
+CP N-1 : droits acquis au cours de la période précédente, reportés et utilisables jusqu'à une échéance configurable.
+
+CP N : droits acquis au cours de la période en cours.
+
+Les périodes d'acquisition et de prise des congés doivent être configurables indépendamment.
+
+Paramètres possibles :
+
+Date de début et de fin de la période d'acquisition.
+
+Date de début et de fin de la période de prise.
+
+Mois ou date limite de consommation des droits reportés.
+
+Nombre de périodes de droits conservées.
+
+Autorisation ou interdiction de report.
+
+Règles d'expiration.
+
+Ne pas coder en dur une date d'expiration. Elle doit dépendre de la configuration de la société et de la règle applicable.
+
+RTT
+
+Permettre une gestion différente des CP.
+
+Exemple de configuration :
+
+Acquisition mensuelle ou annuelle.
+
+Droits rattachés à l'année N.
+
+Période de consommation configurable.
+
+Expiration en fin d'année ou à une autre échéance.
+
+Report éventuel configurable.
+
+Les RTT ne doivent pas nécessairement suivre les mêmes règles que les CP.
+
+Configuration française par défaut
+
+Proposer un profil de configuration France permettant de faciliter le paramétrage des règles courantes de CP et RTT.
+
+Les valeurs proposées doivent être configurables et ne doivent pas être considérées comme obligatoires pour toutes les entreprises.
+
+Ne pas considérer les règles par défaut comme une garantie de conformité juridique. Les règles doivent pouvoir être adaptées aux accords d'entreprise, conventions collectives et situations particulières.
+
+3. Gestion des droits acquis et des soldes
+
+Ne pas se limiter à un solde global de congés.
+
+Chaque acquisition doit être identifiable par un lot de droits comprenant notamment :
+
+Type de congé.
+
+Consultant concerné.
+
+Quantité acquise.
+
+Date d'acquisition.
+
+Période de référence.
+
+Date d'expiration éventuelle.
+
+Quantité consommée.
+
+Quantité restante.
+
+Origine : acquisition automatique, attribution manuelle, régularisation, report, etc.
+
+Le solde doit être calculable à partir des mouvements de droits.
+
+Prévoir les mouvements suivants :
+
+Acquisition.
+
+Consommation.
+
+Report.
+
+Expiration.
+
+Ajustement positif ou négatif.
+
+Annulation ou régularisation.
+
+Toute modification manuelle doit être historisée et justifiée.
+
+4. Consommation des droits
+
+Lors de la validation ou de la consommation des congés, utiliser en priorité les droits dont l'expiration est la plus proche (FEFO), lorsque cette stratégie est applicable.
+
+Le système doit :
+
+Consommer les droits N-1 avant les droits N lorsque la règle le prévoit.
+
+Respecter les dates d'expiration.
+
+Ne pas consommer de droits expirés.
+
+Respecter le seuil de solde négatif autorisé.
+
+Permettre des stratégies différentes selon le type de congé ou le pays.
+
+La stratégie de consommation doit être configurable si nécessaire.
+
+5. Expiration et report
+
+L'expiration doit s'appliquer aux lots de droits concernés et non au solde global.
+
+Exemple :
+
+CP acquis pendant N-1 : expiration à une date définie.
+
+CP acquis pendant N : conservés selon leur période de prise.
+
+RTT N : expiration en fin de période, si la règle le prévoit.
+
+Lors de l'expiration :
+
+Calculer la quantité restante.
+
+Générer un mouvement d'expiration.
+
+Mettre à jour le solde.
+
+Conserver l'historique.
+
+Informer le consultant si nécessaire.
+
+Prévoir des notifications avant expiration afin que le consultant puisse anticiper la consommation de ses droits.
+
+6. Internationalisation : gestion multi-pays
+
+L'architecture doit permettre de définir des profils de congés par pays.
+
+Pays prioritaires à prendre en charge :
+
+France.
+
+États-Unis (USA).
+
+Japon.
+
+Algérie.
+
+Tunisie.
+
+Prévoir la possibilité d'ajouter facilement d'autres pays.
+
+Les règles ne doivent pas être codées en dur dans les services métier. Elles doivent être paramétrables à partir de profils de pays et de règles propres à chaque société.
+
+Chaque société doit pouvoir :
+
+Sélectionner son pays. Par défaut c'est le pays de la société.
+
+Utiliser une configuration par défaut correspondant à son pays.
+
+Personnaliser les règles.
+
+Créer ses propres types de congés.
+
+Définir ses périodes d'acquisition.
+
+Définir ses périodes de prise.
+
+Définir ses reports et expirations.
+
+Définir les seuils négatifs.
+
+Définir les jours ouvrés et les méthodes de décompte.
+
+Le pays doit être un profil initial, et non une contrainte empêchant les sociétés de personnaliser leurs règles.
+
+Ne pas appliquer automatiquement des règles légales sans avoir identifié leur source et leur champ d'application. Prévoir des paramètres configurables pour tenir compte des évolutions légales et des particularités locales.
+
+7. Jours ouvrés et méthodes de décompte
+
+La gestion des congés doit pouvoir prendre en compte les différences entre pays et sociétés :
+
+Décompte en jours ouvrés.
+
+Décompte en jours ouvrables.
+
+Décompte en heures, si nécessaire.
+
+Jours de travail habituels du consultant.
+
+Temps partiel.
+
+Calendrier des jours fériés.
+
+Jours fériés chômés payés.
+
+Jours fériés chômés non payés.
+
+Particularités du calendrier local.
+
+Ne pas supposer que tous les consultants travaillent du lundi au vendredi.
+
+Les règles de calcul doivent utiliser le calendrier applicable au consultant ou à sa société.
+
+8. Interface utilisateur
+
+Simplifier et réorganiser l'écran des paramètres de congés.
+
+Proposer des sections claires :
+
+Type de congé.
+
+Acquisition des droits.
+
+Période de référence.
+
+Report des droits.
+
+Expiration.
+
+Solde négatif.
+
+Calendrier et jours ouvrés.
+
+Activation et historique.
+
+L'interface doit rester simple pour une société française qui souhaite uniquement configurer ses CP et RTT.
+
+Les paramètres avancés liés à l'internationalisation doivent être accessibles sans complexifier la configuration standard.
+
+9. Historique et traçabilité
+
+Conserver l'historique des :
+
+Modifications de paramètres.
+
+Acquisitions de droits.
+
+Consommations.
+
+Reports.
+
+Expirations.
+
+Ajustements manuels.
+
+Recalculs.
+
+Il doit être possible de comprendre à tout moment pourquoi un consultant dispose d'un solde donné.
+
+10. Contraintes d'implémentation
+
+Analyser l'architecture existante avant de modifier le code.
+
+Réutiliser les composants et services existants lorsque cela est pertinent.
+
+Éviter une complexité excessive et les abstractions inutiles.
+
+Ne pas casser les fonctionnalités existantes des absences, congés, CRA et soldes.
+
+Prévoir une migration des paramètres et des soldes existants.
+
+Ne pas perdre l'historique existant.
+
+Rendre les traitements d'acquisition et d'expiration idempotents.
+
+Prévoir les tests unitaires des calculs et les tests fonctionnels des principaux cas d'utilisation.
+
+Vérifier les cas limites : changement de règle en cours d'année, année bissextile, temps partiel, expiration, report, solde négatif, acquisition unique et changement de pays.
+
+11. Résultat attendu
+
+Mettre en place une gestion des congés simple pour les sociétés françaises, mais reposant sur un moteur de règles suffisamment générique pour prendre en charge les autres pays.
+
+La priorité est la fiabilité des calculs, la traçabilité des droits et la simplicité de configuration pour le Responsable Société.
+
+Avant de commencer les développements, présenter une synthèse de l'existant, les évolutions nécessaires du modèle de données, les impacts sur les fonctionnalités existantes et le plan d'implémentation proposé. Puis procéder à l'implémentation.
+
+Mon conseil : ne demandez pas à OpenCode de créer immédiatement un système juridique mondial complexe. La bonne approche est de faire un moteur générique, d'implémenter et tester correctement le profil France (CP/RTT/N/N-1/report/expiration), puis d'ajouter les profils des autres pays progressivement.
+
+Ne pas tout développer en une seule fois. Lui demander d'abord l'audit de l'existant et une proposition d'évolution, puis de procéder progressivement : modèle de données, moteur d'acquisition, gestion N/N-1, expiration et enfin internationalisation.
+
+Cela limitera les régressions dans SOC360.
+
+

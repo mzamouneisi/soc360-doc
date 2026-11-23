@@ -1,0 +1,20 @@
+Paramètres congés
+
+A re organiser 
+
+Actuellement, on peut ajouter des regles sur les conges de type CP ou RTT
+chaque regle contient les proprietes suivantes :
+type : CP ou RTT
+frequence : Mensuelle, Annuelle, Trimestrielle, Unique
+seuil négatif : un nombre positif
+date_effet : date à partir de laquelle commence le cycle de comptage
+jour du mois : jour du mois à partir duquel commence le compatage : je pense qu'il doit etre remplacé par date_effet
+quantite_aqcuise : nombre aquis chaque periode 
+mois_expiration : par defaut 12
+active : true or false 
+
+-----------
+
+que pensez vous de cette gestion des conges ?
+donner une solution idéale 
+
