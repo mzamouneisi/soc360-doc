@@ -4516,3 +4516,45 @@ Cela limitera les régressions dans SOC360.
 **Commits**
 - Backend `4d3e7ab` — conges: date de fin d'application et autorisation de solde negatif.
 - Frontend `c647bcf` — parametres conges: date de fin d'application et autorisation de solde negatif.
+
+### 2026-11-23 15:40:14 — soc-77 : le jour/mois de crédit fait partie de la date d'effet
+
+**Correction demandée**
+```
+Jour du mois fait partie de date d'effet.
+date d'effet commence toujours par le 1er jour du mois par defaut.
+```
+
+**Implémentation — backend**
+- Migration Flyway `V203__leave_config_drop_credit_month_day.sql` : suppression des colonnes
+  `credit_month` et `credit_day` (paramètres redondants). Les lots déjà acquis restent inchangés.
+- `LeaveConfig` : suppression des champs `creditMonth` / `creditDay`.
+- `LeaveDtos.LeaveConfigDto` / `LeaveConfigRequest` : suppression des deux paramètres.
+- `LeaveService` : le jour et le mois de crédit sont dérivés de `effectiveDate` selon la fréquence :
+  - mensuelle : jour de la date d'effet, chaque mois (jour ramené à la longueur du mois) ;
+  - trimestrielle : cycle ancré sur le mois de la date d'effet +3 mois, avancé jusqu'au début réel
+    (date d'embauche / éligibilité) ;
+  - annuelle : mois + jour de la date d'effet, chaque année ;
+  - unique : date d'effet (ou date d'embauche si postérieure).
+- Suppression des contrôles de saisie devenus inutiles (mois/jour de crédit) ; les contrôles des
+  périodes d'acquisition/utilisation et des montants sont conservés.
+
+**Implémentation — frontend**
+- `pages/LeaveSettings.tsx` : suppression des champs « Mois de crédit » et « Jour de crédit /
+  Jour du mois ». La date d'effet est pré-remplie au **1er jour du mois courant**.
+- Ajout d'une mention : les droits sont crédités au jour et au mois de la date d'effet, selon la
+  fréquence ; la date d'effet démarre par défaut le 1er du mois.
+- Tableau des configurations : suppression des colonnes « Mois de crédit » et « Jour de crédit ».
+- `api/types.ts` : suppression de `creditMonth` / `creditDay`.
+
+**Tests exécutés**
+- Backend : `LeaveServiceTest` adapté (tests de validation des mois/jours de crédit supprimés,
+  tests d'acquisition recalés sur la date d'effet ; new : arrêt à la date de fin, solde négatif
+  autorisé/interdit). `mvn test` : **782 tests, 0 échec, 0 erreur**.
+- Frontend : tests « ne propose plus de jour/mois de crédit », « date d'effet au 1er du mois »,
+  envoi trimestriel sans jour/mois de crédit. `npm.cmd test` : 55 fichiers / **472 tests OK** ;
+  `npm.cmd run lint` OK (avertissements pré-existants) ; `npm.cmd run build` OK.
+
+**Commits**
+- Backend `71b6d4f` — conges: jour et mois de credit derives de la date d'effet.
+- Frontend `891f889` — parametres conges: date d'effet au 1er du mois et suppression du jour de credit.
