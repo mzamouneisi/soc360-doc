@@ -4597,3 +4597,38 @@ donc un btn supprimer en cascade apparait dans la colonne Actions.
 **Commits**
 - Backend `7d4f49e` — conges: suppression en cascade des configurations.
 - Frontend `e5b1ede` — parametres conges: bouton supprimer en cascade.
+
+### 2026-11-23 15:53:23 — Backend : correction erreur suppression en cascade (TransientObjectException)
+
+**Erreur (run.log)**
+```
+ERROR ... c.s.c.exception.GlobalExceptionHandler : Erreur non gérée
+org.springframework.dao.InvalidDataAccessApiUsageException: org.hibernate.TransientObjectException:
+persistent instance references an unsaved transient instance of 'com.soc360.leave.LeaveConfig'
+  at ... LeaveService$$SpringCGLIB$$0.deleteConfigCascade
+  at ... LeaveController.deleteConfigCascade
+```
+
+**Cause**
+- `deleteConfigCascade` chargeait les lots via `findByConfigId` (entités managées) puis les
+  supprimait par requêtes JPQL `@Modifying` (qui ne mettent pas le contexte de persistance à
+  jour). Au flush, Hibernate voyait encore des `LeaveLot` managées référençant la configuration
+  supprimée → `TransientObjectException` au commit.
+
+**Correction**
+- `LeaveLotRepository` : remplacement de `findByConfigId` (entités) par
+  `findIdsByConfigId` (projection d'identifiants uniquement, `select l.id ...`). Plus aucune
+  entité de lot n'est managée, donc la suppression de la configuration ne référence plus d'entité
+  transitoire.
+- L'ordre des suppressions reste : mouvements (par lot puis par configuration) → lots →
+  historique d'activation → configuration.
+
+**Tests**
+- Nouveau test d'intégration `LeaveDeleteIntegrationTest` (`@SpringBootTest`, profil `test`,
+  H2 en mémoire) qui persiste société, consultant, configuration, lot, mouvement et historique
+  d'activation, exécute `deleteConfigCascade` et vérifie la suppression complète. Il reproduit le
+  flush réel et garantit l'absence de `TransientObjectException`.
+- `LeaveServiceTest` adapté (`findIdsByConfigId`). `mvn test` : **785 tests, 0 échec, 0 erreur**.
+
+**Commit**
+- Backend `87171c4` — conges: corrige TransientObjectException sur suppression en cascade.
