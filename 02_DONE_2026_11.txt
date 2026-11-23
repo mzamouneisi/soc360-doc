@@ -4765,3 +4765,27 @@ aligner les groupes aussi
 
 **Commit**
 - Frontend `b2107b4` — parametres conges: groupes alignes et formulaire global en 6 colonnes.
+
+### 2026-11-23 16:49:33 — Paramètres congés : un card par groupe avec titre en gras
+
+**Tâche**
+```
+chaque groupe doit etre une card avec un titre au dessus en bold
+```
+
+**Implémentation**
+- `pages/LeaveSettings.tsx` : le formulaire est découpé en plusieurs `Card` (une par groupe) :
+  Général, Acquisition des droits (si fréquence ≠ unique), Période de référence, Expiration,
+  Report des droits, Solde négatif. Chaque card affiche un titre en gras au-dessus de ses champs.
+- Chaque groupe conserve une grille de champs en 6 colonnes sur grand écran ; le conteneur global
+  n'est plus une card (évite les cards imbriquées), les intitulés ont un id dédié
+  (`LeaveSettings.config.group.<groupe>` pour la card, `LeaveSettings.config.section.<groupe>`
+  pour le titre).
+- Aucun changement fonctionnel (champs, conditions et ids HTML inchangés).
+
+**Tests**
+- `npm.cmd test -- src/pages/LeaveSettings.test.tsx` : 17 tests OK ; `npm.cmd run lint` OK
+  (avertissements pré-existants) ; `npm.cmd run build` OK.
+
+**Commit**
+- Frontend `dea6f04` — parametres conges: un card par groupe avec titre en gras.
