@@ -4558,3 +4558,42 @@ date d'effet commence toujours par le 1er jour du mois par defaut.
 **Commits**
 - Backend `71b6d4f` — conges: jour et mois de credit derives de la date d'effet.
 - Frontend `891f889` — parametres conges: date d'effet au 1er du mois et suppression du jour de credit.
+
+### 2026-11-23 15:48:12 — Paramètres congés : suppression en cascade des configurations
+
+**Tâche**
+```
+Paramètres congés : le responsable_soc peut supprimer en cascade les configurations existantes.
+donc un btn supprimer en cascade apparait dans la colonne Actions.
+```
+
+**Implémentation — backend**
+- `LeaveService.deleteConfigCascade(id)` : contrôle d'accès société
+  (`SecurityUtils.requireSocAccess`), puis suppression en cascade des mouvements liés aux lots de
+  la configuration et des mouvements portant `config_id`, des lots, de l'historique d'activation
+  et enfin de la configuration. Respect de l'ordre des clés étrangères (mouvements → lots →
+  configuration).
+- `LeaveController` : nouveau endpoint `DELETE /api/leave/configs/{id}/cascade` protégé par
+  `@PreAuthorize("hasRole('RESPONSIBLE_SOC')")`. L'endpoint de suppression simple est conservé
+  (refus si des lots/mouvements existent).
+- `LeaveMovementRepository` : `deleteByConfigId` et `deleteByLotIdIn` (JPQL `@Modifying`).
+- `LeaveLotRepository` : `findByConfigId` et `deleteByConfigId`.
+
+**Implémentation — frontend**
+- `api/leave.ts` : `deleteConfigCascade(id)` (`DELETE /leave/configs/{id}/cascade`).
+- `pages/LeaveSettings.tsx` : bouton « Supprimer en cascade » dans la colonne Actions de chaque
+  configuration (id `LeaveSettings.configs.<id>.supprimerCascade`), avec confirmation explicite
+  (suppression définitive des lots, mouvements et historique). Le bouton « Supprimer » simple
+  reste affiché uniquement lorsque la configuration n'est pas référencée.
+
+**Tests exécutés**
+- Backend : `deleteConfigCascade_removesMovementsLotsActivationsAndConfig` et
+  `deleteConfigCascade_withoutLots_skipsLotMovementDeletion`. `mvn test` :
+  **784 tests, 0 échec, 0 erreur**.
+- Frontend : présence du bouton pour une configuration référencée et suppression en cascade après
+  confirmation. `npm.cmd test` : 55 fichiers / **474 tests OK** ; `npm.cmd run lint` OK
+  (avertissements pré-existants) ; `npm.cmd run build` OK.
+
+**Commits**
+- Backend `7d4f49e` — conges: suppression en cascade des configurations.
+- Frontend `e5b1ede` — parametres conges: bouton supprimer en cascade.
