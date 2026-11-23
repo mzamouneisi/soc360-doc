@@ -4723,3 +4723,22 @@ Analyser d'abord le fonctionnement actuel et les impacts sur les calculs de sold
 **Commits**
 - Backend `bfb68c0` — conges: politique d'expiration, periode de reference, report et mode d'acquisition.
 - Frontend `d086079` — parametres conges: refonte des regles expiration reference report acquisition.
+
+### 2026-11-23 16:40:30 — Paramètres congés : formulaire en 6 colonnes par ligne
+
+**Tâche**
+```
+Paramètres congés : maj du form : mettre 6 label/input par ligne afin d'optimiser l'espace
+```
+
+**Implémentation**
+- `pages/LeaveSettings.tsx` : toutes les grilles de champs du formulaire passent de 3 à 6
+  colonnes sur grand écran (`grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-6`) pour
+  densifier l'affichage sans dégrader les petits écrans. Aucun changement fonctionnel.
+
+**Tests**
+- `npm.cmd test -- src/pages/LeaveSettings.test.tsx` : 17 tests OK ; `npm.cmd run lint` OK
+  (avertissements pré-existants) ; `npm.cmd run build` OK.
+
+**Commit**
+- Frontend `021a4ce` — parametres conges: formulaire en 6 colonnes par ligne.
