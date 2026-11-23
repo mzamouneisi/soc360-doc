@@ -4789,3 +4789,26 @@ chaque groupe doit etre une card avec un titre au dessus en bold
 
 **Commit**
 - Frontend `dea6f04` — parametres conges: un card par groupe avec titre en gras.
+
+### 2026-11-23 16:51:43 — Paramètres congés : cards de largeur ajustée au contenu
+
+**Tâche**
+```
+une card doit avoir un width juste ce qu'il faut afin de ne pas prendre toute la ligne
+```
+
+**Implémentation**
+- `pages/LeaveSettings.tsx` : les cards de groupes sont placées dans un conteneur
+  `flex flex-wrap items-start gap-3` et dimensionnées sur leur contenu
+  (`w-fit max-w-full`), afin qu'elles ne prennent plus toute la largeur et puissent se placer
+  côte à côte.
+- Les champs de chaque card sont en `flex flex-wrap gap-2` avec une largeur maîtrisée
+  (`w-40`), ce qui évite les colonnes vides et garde une largeur « juste nécessaire ».
+- Aucun changement fonctionnel (champs, conditions, ids HTML inchangés).
+
+**Tests**
+- `npm.cmd test -- src/pages/LeaveSettings.test.tsx` : 17 tests OK ; `npm.cmd run lint` OK
+  (avertissements pré-existants) ; `npm.cmd run build` OK.
+
+**Commit**
+- Frontend `7122f9d` — parametres conges: cards de largeur ajustee au contenu.
