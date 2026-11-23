@@ -4831,3 +4831,24 @@ la hauteur des cards doit etre la meme
 
 **Commit**
 - Frontend — parametres conges: hauteur uniforme des cards.
+
+### 2026-11-23 17:00:10 — Paramètres congés : date d'effet par défaut au 1er janvier
+
+**Tâche**
+```
+date d'effet par defaut, commence au 1er janvier de l'annee en cours
+```
+
+**Implémentation**
+- `pages/LeaveSettings.tsx` : `defaultEffectiveDate()` renvoie désormais `<année courante>-01-01`
+  (au lieu du 1er jour du mois courant), utilisé à la création et à la duplication d'une
+  configuration. Mention mise à jour : « La date d'effet commence par défaut le 1er janvier de
+  l'année en cours. »
+- Frontend tests : `LeaveSettings.test.tsx` vérifie jour = 01, mois = 01 et année courante.
+
+**Tests**
+- `npm.cmd test -- src/pages/LeaveSettings.test.tsx` : 17 tests OK ; `npm.cmd run lint` OK
+  (avertissements pré-existants) ; `npm.cmd run build` OK.
+
+**Commit**
+- Frontend — parametres conges: date d'effet par defaut au 1er janvier.
