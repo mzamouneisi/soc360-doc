@@ -4852,3 +4852,28 @@ date d'effet par defaut, commence au 1er janvier de l'annee en cours
 
 **Commit**
 - Frontend — parametres conges: date d'effet par defaut au 1er janvier.
+
+### 2026-11-23 17:43:34 — Paramètres congés : durée d'expiration jusqu'à 120 mois
+
+**Tâche**
+```
+Politique d'expiration : si je choisis "Apres une duree", il faut que je puisse saisir plus de 12 mois
+```
+
+**Implémentation**
+- Backend — `LeaveService.validateConfigFields` : la borne de `expirationMonths` passe de 1..12 à
+  **1..120** pour la politique « Après une durée ».
+- Frontend — `LeaveSettings.tsx` : validation 1..120, message d'erreur et attribut `max` du champ
+  « Durée (mois) » passés à 120.
+- Tests : backend (`saveConfig_rejectsExpirationMonthsOutOfRange` sur 0/121,
+  `saveConfig_acceptsExpirationMonthsBoundaries` sur 1/12/24/120) ; frontend (refus 0/121, acceptation
+  de 24 mois).
+
+**Tests exécutés**
+- Backend `mvn test` : **791 tests, 0 échec**.
+- Frontend `npm.cmd test` : 55 fichiers / **472 tests OK** ; `lint` OK (avertissements
+  pré-existants) ; `build` OK.
+
+**Commits**
+- Backend `d1b1270` — conges: duree d'expiration jusqu'a 120 mois.
+- Frontend `3adde0a` — parametres conges: duree d'expiration jusqu'a 120 mois.
