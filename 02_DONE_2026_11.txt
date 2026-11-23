@@ -4632,3 +4632,94 @@ persistent instance references an unsaved transient instance of 'com.soc360.leav
 
 **Commit**
 - Backend `87171c4` — conges: corrige TransientObjectException sur suppression en cascade.
+
+### 2026-11-23 16:30:08 — Paramètres congés : refonte des règles (expiration, période de référence, report, acquisition)
+
+**Tâche**
+```
+Refondre l'écran « Paramètres congés » en conservant sa simplicité actuelle, mais en clarifiant la gestion des règles d'acquisition, des périodes de référence, des reports et des expirations.
+
+Modifications demandées :
+
+1. Conserver Type, Quantité acquise, Fréquence, Date d'effet, Date de fin d'application et Active.
+2. Supprimer ou revoir le champ « Expiration (mois) », qui est insuffisant pour gérer correctement les CP N/N-1 et les RTT.
+3. Remplacer par une politique d'expiration configurable :
+   - Aucune expiration ;
+   - Après une durée ;
+   - À une date fixe ;
+   - À la fin de la période de référence ;
+   - Au mois défini de la période suivante.
+4. Ajouter la notion de période de référence : année civile, cycle personnalisé ou autre.
+5. Distinguer les droits de l'année N et les droits reportés de N-1.
+6. Permettre de définir les règles de report et leur échéance.
+7. Remplacer « Seuil négatif » par « Maximum d'anticipation (jours) » et n'afficher ce champ que si le solde négatif est autorisé.
+8. Clarifier le mode d'acquisition : début ou fin de période.
+9. Adapter les champs affichés selon le type de droit et les options choisies afin de ne pas surcharger le formulaire.
+10. Améliorer la liste des configurations existantes en affichant une synthèse des règles et en proposant Modifier, Désactiver, Dupliquer et Historique.
+
+Priorité aux règles françaises CP/RTT, notamment la gestion des droits N/N-1, report et expiration. Garder une architecture extensible pour les autres pays.
+
+Analyser d'abord le fonctionnement actuel et les impacts sur les calculs de soldes, puis proposer les modifications du modèle de données et implémenter sans régression.
+
+```
+
+**Audit / impacts**
+- Écran actuel : formulaire partiel (type, date d'effet/fin, quantité, fréquence, expiration en mois,
+  seuil négatif, actif) ; paramètres d'acquisition/utilisation et report stockés mais peu exploités.
+- Moteur : lots par période, FEFO, expirations idempotentes, seuils négatifs CP/RTT, journal
+  d'audit. Ajout des notions manquantes sans supprimer les fonctionnalités existantes.
+- Multicritère préservé : DTO en ajout de champs (pas de rupture des endpoints), migration Flyway.
+
+**Modèle de données (Flyway `V204__leave_config_refonte_regles.sql`)**
+- `expiration_policy` (NONE / AFTER_DURATION / FIXED_DATE / END_OF_REFERENCE_PERIOD /
+  MONTH_OF_FOLLOWING_PERIOD), `expiration_date`, `expiration_month`.
+- `reference_period` (CALENDAR_YEAR / CUSTOM), `reference_start_month`, `reference_start_day`.
+- `carryover_allowed` (autorisation de report).
+- `acquisition_mode` (START_OF_PERIOD / END_OF_PERIOD).
+- Reprise de l'existant : une durée d'expiration configurée devient `AFTER_DURATION`.
+
+**Backend**
+- Enums `LeaveExpirationPolicy`, `LeaveReferencePeriod`, `LeaveAcquisitionMode`.
+- `LeaveConfig` / `LeaveDtos` : nouveaux champs exposés (DTO + requête).
+- `LeaveService.saveConfig` : persistance + validation conditionnelle (durée 1..12, date fixe
+  obligatoire, mois 1..12, cycle personnalisé mois/jour obligatoires), cohérence
+  `negativeAllowed` → `negativeLimit` (maximum d'anticipation), report conditionné à
+  `carryoverAllowed`.
+- `LeaveService.ensureLotsForConfig` : crédit au début ou à la fin de chaque période
+  (mensuelle/trimestrielle/annuelle) selon `acquisitionMode`.
+- `LeaveService.computeExpirationDate` : expiration selon la politique (aucune, après durée,
+  date fixe, fin de période de référence, mois défini de la période suivante).
+- `referenceStart` / `referenceEnd` : année civile ou cycle personnalisé (mois/jour de début).
+- `ensureExpirations` : report automatique — jusqu'à `carryoverMax` jours transférés sur un lot
+  `CARRYOVER-<lot>` avec échéance `date d'expiration + carryoverExpirationMonths`, le reste
+  expiré ; opérations idempotentes (clés `carry-*` / `exp-*`). Comptage N/N-1 via lots distincts.
+
+**Frontend (`soc360-front-react`)**
+- `api/types.ts` : nouveaux types et champs (`LeaveAcquisitionMode`, `LeaveReferencePeriod`,
+  `LeaveExpirationPolicy`).
+- `pages/LeaveSettings.tsx` : formulaire réorganisé en sections (Général, Acquisition, Période de
+  référence, Expiration, Report, Solde négatif) avec champs conditionnels (mode d'acquisition si
+  fréquence ≠ unique, mois/jour si cycle personnalisé, champs selon la politique d'expiration,
+  report maximum/échéance si report autorisé, « Maximum d'anticipation (jours) » uniquement si
+  solde négatif autorisé).
+- Liste des configurations : synthèse des règles (acquisition + mode, période de référence,
+  expiration, report, anticipation, statut) et actions Modifier, Dupliquer, Désactiver/Activer,
+  Historique, Supprimer en cascade. « Modifier » pré-remplit le formulaire ; « Dupliquer » le
+  pré-remplit avec une nouvelle date d'effet (1er du mois courant).
+- Tous les nouveaux éléments ont un id HTML dédié ; date d'effet toujours par défaut au 1er du mois.
+
+**Tests exécutés**
+- Backend : nouveaux tests `createLot_expirationPolicyEndOfReferencePeriod_usesReferenceEnd`,
+  `createLot_expirationPolicyMonthOfFollowingPeriod_usesFollowingYearMonth`,
+  `createLot_customReferencePeriod_usesCustomCycle`,
+  `expirations_carryoverAllowedCreatesCarryoverLotAndExpiresExcess`,
+  `saveConfig_requiresFixedExpirationDate`, `saveConfig_requiresCustomReferenceStart`, acquisition
+  fin de période, cycle trimestriel calendaire. `mvn test` : **791 tests, 0 échec, 0 erreur**.
+- Frontend : `LeaveSettings.test.tsx` réécrit (synthèse des règles, champs conditionnels
+  expiration/report/anticipation/cycle, Modifier, Dupliquer, envoi de la configuration complète,
+  validations). `npm.cmd test` : 55 fichiers / **471 tests OK** ; `npm.cmd run lint` OK
+  (avertissements pré-existants) ; `npm.cmd run build` OK.
+
+**Commits**
+- Backend `bfb68c0` — conges: politique d'expiration, periode de reference, report et mode d'acquisition.
+- Frontend `d086079` — parametres conges: refonte des regles expiration reference report acquisition.
