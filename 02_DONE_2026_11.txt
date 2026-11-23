@@ -4812,3 +4812,22 @@ une card doit avoir un width juste ce qu'il faut afin de ne pas prendre toute la
 
 **Commit**
 - Frontend `7122f9d` — parametres conges: cards de largeur ajustee au contenu.
+
+### 2026-11-23 16:52:49 — Paramètres congés : hauteur uniforme des cards
+
+**Tâche**
+```
+la hauteur des cards doit etre la meme
+```
+
+**Implémentation**
+- `pages/LeaveSettings.tsx` : le conteneur des cards passe en `items-stretch` (les cards
+  d'une même ligne prennent la hauteur de la plus haute) et chaque card de groupe reçoit une
+  hauteur minimale commune (`min-h-[140px]`) pour un rendu homogène.
+
+**Tests**
+- `npm.cmd test -- src/pages/LeaveSettings.test.tsx` : 17 tests OK ; `npm.cmd run lint` OK
+  (avertissements pré-existants) ; `npm.cmd run build` OK.
+
+**Commit**
+- Frontend — parametres conges: hauteur uniforme des cards.
