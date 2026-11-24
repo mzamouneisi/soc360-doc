@@ -5278,3 +5278,31 @@ L'implémentation doit être maintenable, évolutive et cohérente avec l'archit
 **Commits**
 - Backend `72206a3` — apparence: configuration JSON centralisee avec heritage global/societe/utilisateur.
 - Frontend `2d00cfe` — apparence: page de personnalisation avec heritage et restauration.
+
+### 2026-11-24 11:30:18 — Paramètres : onglet « Apparence (héritage) » avec boutons Restaurer
+
+**Tâche**
+```
+je me suis connecté avec un role responsable_soc, mais je ne vois pas le btn Restaurer !!
+dans parametres
+```
+
+**Cause**
+- La gestion de l'apparence (héritage + restauration) était sur une page dédiée `/apparence`,
+  absente de l'écran « Paramètres » où le responsable cherchait les boutons Restaurer.
+
+**Implémentation**
+- `pages/Settings.tsx` : nouvel onglet **« Apparence (héritage) »** (tous rôles) intégrant le
+  composant `AppearanceSettings` en mode embarqué.
+- `pages/AppearanceSettings.tsx` : prop `embedded` (masque l'en-tête de page en mode onglet) ;
+  niveau par défaut selon le rôle (GLOBAL pour admin, SOC pour responsable de société, USER sinon),
+  donc le bouton « Restaurer le paramétrage SOC360 » est directement visible pour un
+  RESPONSIBLE_SOC, et « Restaurer le paramétrage de ma société » pour les utilisateurs.
+- Tests `AppearanceSettings.test.tsx` adaptés au niveau par défaut selon le rôle.
+
+**Tests exécutés**
+- `npm.cmd test` : 56 fichiers / **477 tests OK** ; `lint` OK (avertissements pré-existants) ;
+  `build` OK.
+
+**Commit**
+- Frontend `5d129fd` — parametres: onglet apparence heritage avec boutons restaurer.
