@@ -4877,3 +4877,31 @@ Politique d'expiration : si je choisis "Apres une duree", il faut que je puisse 
 **Commits**
 - Backend `d1b1270` — conges: duree d'expiration jusqu'a 120 mois.
 - Frontend `3adde0a` — parametres conges: duree d'expiration jusqu'a 120 mois.
+
+### 2026-11-24 09:57:54 — Notes de frais : tri par date desc et nom du fichier dans la liste
+
+**Tâche**
+```
+notes de frais : liste : ordonner par date desc
+faire apparaitre nom du fichier dans liste
+```
+
+**Implémentation**
+- Backend — `NoteFraisService` : les listes (`findBySocYear`, `findByConsultantYear`) sont triées par
+  date décroissante (année, puis mois, puis id décroissants) via un comparateur commun
+  `NOTE_DATE_DESC`, garantissant un ordre déterministe.
+- Frontend — `NoteFraisList.tsx` : nouvelle colonne « Fichier » affichant `documentName` du
+  justificatif (ou « — »), avec id `NoteFraisList.row.<id>.document`.
+- i18n — migration Flyway `V205__i18n_note_frais_file_name.sql` (`NoteFraisList.fichier`) et
+  ajout de la clé dans `messages.generated.ts` (fr/en/ar).
+
+**Tests exécutés**
+- Backend — `NoteFraisServiceTest.findBySocYear_ordersByDateDescendingWithIdTiebreak`.
+  `mvn test` : **792 tests, 0 échec**.
+- Frontend — `NoteFraisList.test.tsx` : affichage du nom du fichier
+  (`NoteFraisList.row.1.document`). `npm.cmd test` : 55 fichiers / **473 tests OK** ;
+  `lint` OK (avertissements pré-existants) ; `build` OK.
+
+**Commits**
+- Backend `ad297b5` — notes de frais: liste triee par date desc + i18n nom du fichier.
+- Frontend `aea3786` — notes de frais: affichage du nom du fichier dans la liste.
