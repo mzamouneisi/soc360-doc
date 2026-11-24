@@ -5400,3 +5400,27 @@ Manager, Consultant : gère l'Apparence à son niveau. le btn Restaurer ramène 
 **Commits**
 - Backend `5a14f88` — apparence: configuration globale par defaut complete.
 - Frontend `9164af1` — parametres: apparence geree par role sans onglet heritage.
+
+### 2026-11-24 14:42:25 — Paramètres : un seul bouton Enregistrer, Restaurer réservé à l'onglet Apparence
+
+**Tâche**
+```
+faire un seul btn Enregistrer des parametres. le btn Restaurer sera seulement pour le tab Apparence.
+```
+
+**Implémentation**
+- `pages/Settings.tsx` : suppression du bouton Enregistrer spécifique à l'apparence ; il ne reste
+  qu'un **bouton Enregistrer global** (tous les onglets). Sur l'onglet Apparence, ce bouton
+  enregistre aussi la configuration d'apparence (JSON) au niveau du rôle (global/société/utilisateur)
+  puis réapplique l'apparence effective.
+- Le bouton **Restaurer** est rendu à côté de l'Enregistrer uniquement lorsque l'onglet
+  **Apparence** est actif (et hors niveau global pour un admin).
+- Suppression de la fonction d'enregistrement d'apparence devenue inutile ; tests adaptés (bouton
+  global `common.save.button`, absence de Restaurer pour un admin).
+
+**Tests exécutés**
+- `npm.cmd test` : 56 fichiers / **479 tests OK** ; `lint` OK (avertissements pré-existants) ;
+  `build` OK.
+
+**Commit**
+- Frontend `262bbc3` — parametres: un seul bouton enregistrer; restaurer reserve a l'apparence.
