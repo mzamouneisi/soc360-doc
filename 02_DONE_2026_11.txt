@@ -5688,3 +5688,34 @@ list de selection bien sur
 
 **Commit**
 - Frontend — parametres: listes de selection fiabilisees (marquage direct sans delegation).
+
+### 2026-11-24 16:42:00 — Apparence : l'admin paramètre le niveau SOC360 (restauration société effective)
+
+**Symptôme**
+- L'admin modifie un paramètre d'apparence ; un responsable de société clique sur « Restaurer le
+  paramétrage SOC360 » → aucun changement.
+
+**Cause**
+- L'admin enregistrait son apparence au niveau **personnel (USER)** et non au niveau **global
+  SOC360**. La configuration de référence SOC360 n'était donc jamais modifiée, et la restauration
+  société (qui revient au global) ne changeait rien.
+
+**Correctif**
+- Frontend — `Settings` : l'admin enregistre désormais au niveau **GLOBAL** (SOC360) ; le
+  responsable au niveau **SOC** ; les autres en **USER**. Le bouton Restaurer reste masqué pour
+  l'admin.
+- Backend — `AppearanceService.effective()` : la portée personnelle (USER) est ignorée pour
+  **l'admin** comme pour le responsable, afin que leur écran reflète le niveau qu'ils administrent
+  (global ou société). La restauration société reprend donc bien les valeurs SOC360 mises à jour
+  par l'admin.
+- Tests ajoutés : enregistrement GLOBAL côté admin (frontend), `effective_ignoresUserScopeForAdmin`
+  (backend).
+
+**Tests exécutés**
+- Backend `mvn test` : **802 tests, 0 échec**.
+- Frontend `npm.cmd test` : 56 fichiers / **484 tests OK** ; `lint` OK (avertissements
+  pré-existants) ; `build` OK.
+
+**Commits**
+- Backend `8226bd3` — apparence: admin gere le niveau SOC360 (global).
+- Frontend `68fd5c2` — parametres: admin enregistre l'apparence SOC360 (global).
