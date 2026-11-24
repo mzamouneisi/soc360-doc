@@ -5529,3 +5529,34 @@ je suis manager ou consultant : si je click sur restaurer les params de ma socie
 
 **Commit**
 - Frontend `768a4ce` — apparence: le theme JSON est la seule source (correctif restauration societe).
+
+### 2026-11-24 15:54:50 — Apparence : le responsable voit bien le paramétrage société après enregistrement
+
+**Symptôme**
+- Responsable de société : changement d'une couleur de bouton puis « Enregistrer » → la couleur
+  revient à l'ancienne valeur.
+
+**Diagnostic (API réelle)**
+- `GET /api/appearance/SOC` du responsable contenait bien la nouvelle couleur (société), mais
+  `GET /api/appearance/effective` renvoyait l'ancienne valeur avec source **USER** : un ancien
+  override personnel du responsable (créé lors d'une version antérieure) écrasait le niveau
+  société. Après enregistrement, l'écran rechargeait donc l'apparence effective (USER) et
+  « revenait comme avant ».
+
+**Correctif**
+- Backend — `AppearanceService.effective()` : pour un **RESPONSIBLE_SOC** (non admin), la portée
+  **USER est ignorée** ; l'apparence effective = SOC360 → société. Le responsable voit donc
+  immédiatement le paramétrage de sa société.
+- Frontend — `Settings` : à l'enregistrement ou à la restauration du niveau société par le
+  responsable, sa personnalisation personnelle (`USER`) est supprimée, garantissant la cohérence
+  de l'affichage.
+- Test backend ajouté `effective_ignoresUserScopeForResponsibleSoc` ; tests frontend complétés.
+
+**Tests exécutés**
+- Backend `mvn test` : **801 tests, 0 échec**.
+- Frontend `npm.cmd test` : 56 fichiers / **481 tests OK** ; `lint` OK (avertissements
+  pré-existants) ; `build` OK.
+
+**Commits**
+- Backend `653a7e7` — apparence: le responsable voit le parametrage societe (ignore son override personnel).
+- Frontend `3814289` — parametres: suppression de l'override personnel du responsable a l'enregistrement.
