@@ -5584,3 +5584,31 @@ le btn "Enregistrer" doit s'activer à chaque changement de n'importe quel eleme
 
 **Commit**
 - Frontend — parametres: le bouton Enregistrer s'active a chaque modification.
+
+### 2026-11-24 16:11:17 — Paramètres : une seule sélection suffit pour « Nombre de lignes par page »
+
+**Tâche**
+```
+bug sur changement "Nombre de lignes par page" : il faut selectionner deux fois pour que ca change de valeur !!
+```
+
+**Cause**
+- Au chargement des paramètres, l'appel `appearanceApi.effective()` est asynchrone et appliquait
+  la configuration au formulaire (`applyAppearanceConfig`) **après** la première sélection de
+  l'utilisateur, réécrasant la valeur choisie (ex. nombre de lignes par page). Il fallait donc
+  ressaisir la valeur.
+
+**Correctif**
+- `pages/Settings.tsx` : suivi des saisies via `dirtyRef` (mis à vrai par la délégation
+  `onChange`/`onInput`). Le chargement de l'apparence effective n'écrase plus le formulaire si
+  une saisie a déjà commencé. `dirtyRef` est remis à faux après un enregistrement/restauration
+  réussi.
+- Test ajouté : l'apparence effective résolue **après** la sélection ne réécrase pas la valeur
+  (une seule sélection suffit).
+
+**Tests exécutés**
+- `npm.cmd test` : 56 fichiers / **483 tests OK** ; `lint` OK (avertissements pré-existants) ;
+  `build` OK.
+
+**Commit**
+- Frontend — parametres: une seule selection suffit (chargement apparence ne l'ecrase plus).
