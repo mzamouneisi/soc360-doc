@@ -5471,3 +5471,31 @@ si admin change les params de ses apparence, ca ne doit pas changer ceux des aut
 
 **Commit**
 - Frontend `1a65161` — parametres: apparence personnelle pour tous les roles.
+
+### 2026-11-24 15:03:50 — Paramètres : Restaurer affiche les paramètres de la société (manager/consultant)
+
+**Tâche**
+```
+je suis manager ou consultant : si je click sur restaurer les params de ma societe, alors je dois recuperer tous les params de ma société et les visualiser dans mon ecran
+```
+
+**Implémentation**
+- Niveaux d'apparence par rôle : le **responsable de société** enregistre au niveau **société**
+  (SOC) ; les autres rôles (admin, manager, consultant) conservent une apparence **personnelle**
+  (USER). L'apparence effective reste résolue utilisateur → société → SOC360, donc les réglages
+  personnels restent prioritaires et ne sont jamais écrasés.
+- **Manager / consultant** : « Restaurer le paramétrage de ma société » supprime la
+  personnalisation personnelle (`appearanceApi.reset('USER')`), puis recharge l'apparence
+  effective (société + global) et **réaffiche tous les paramètres de la société** dans le
+  formulaire (police, thème, fond, tableaux, formulaires, boutons).
+- Responsable de société : Restaurer supprime la config société (retour à SOC360). Admin : pas de
+  bouton Restaurer.
+- Test ajouté  (vérifie le
+  niveau USER et l'affichage des valeurs société après restauration).
+
+**Tests exécutés**
+- `npm.cmd test` : 56 fichiers / **481 tests OK** ; `lint` OK (avertissements pré-existants) ;
+  `build` OK.
+
+**Commit**
+- Frontend — parametres: restaurer affiche les parametres de la societe.
