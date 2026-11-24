@@ -5662,3 +5662,29 @@ les cards doivent les meme largeur : comme celle de "Nombre de lignes par page"
 
 **Commit**
 - Frontend — parametres: tableaux en cards de meme largeur et hauteur.
+
+### 2026-11-24 16:33:52 — Paramètres : les listes de sélection fonctionnent dès le premier coup
+
+**Tâche**
+```
+dans parametres : tous les composants "Liste" ne fonctionnent pas bien du 1er coup : ya une liaison avec enregistrer  qui bloque !!
+list de selection bien sur
+```
+
+**Cause / correctif**
+- L'activation du bouton Enregistrer reposait sur une **délégation d'événements** `onChange`/`onInput`
+  sur un conteneur englobant tous les paramètres. Cela pouvait perturber la première sélection des
+  listes déroulantes (`<select>`).
+- `pages/Settings.tsx` : suppression de cette délégation ; chaque champ des paramètres appelle
+  désormais directement `markDirty()` (met à jour `dirtyRef`, active le bouton Enregistrer et
+  réinitialise le message « enregistré »). Le téléchargement du logo marque aussi les paramètres
+  comme modifiés.
+- Le chargement de l'apparence effective reste protégé (une seule application par
+  utilisateur/société, pas d'écrasement d'une saisie en cours).
+
+**Tests exécutés**
+- `npm.cmd test` : 56 fichiers / **483 tests OK** ; `lint` OK (avertissements pré-existants) ;
+  `build` OK.
+
+**Commit**
+- Frontend — parametres: listes de selection fiabilisees (marquage direct sans delegation).
