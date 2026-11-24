@@ -5636,3 +5636,29 @@ Lignes par page : lorsque je selectionne une autre valeur la 1ere fois, elle ne 
 
 **Commit**
 - Frontend — parametres: valeur appliquee des la premiere selection (apparence chargee une seule fois).
+
+### 2026-11-24 16:29:03 — Paramètres / Apparence / Tableaux : sections en cards de même largeur et hauteur
+
+**Tâche**
+```
+Paramètres : tab Apparence, tab Tableaux : afin de gagner de l'espace, on presentera sous forme de cards , l'un à coté de l'autre , avec meme hauteur
+les cards doivent les meme largeur : comme celle de "Nombre de lignes par page"
+```
+
+**Implémentation**
+- `pages/Settings.tsx` (sous-onglet Tableaux) : les réglages sont regroupés en **cards** placées
+  côte à côte :
+  - « Nombre de lignes par page » ;
+  - « Couleurs des tables » ;
+  - « En-tête de tableau ».
+- Disposition en grille `grid-cols-1 sm:grid-cols-2 lg:grid-cols-3` : les trois cards ont la
+  **même largeur** ; `items-stretch` + `min-h-[180px]` garantissent la **même hauteur**.
+- L'aperçu du tableau est conservé dans une card dédiée sous la rangée.
+- Aucun changement fonctionnel (ids et champs inchangés).
+
+**Tests exécutés**
+- `npm.cmd test` : 56 fichiers / **483 tests OK** ; `lint` OK (avertissements pré-existants) ;
+  `build` OK.
+
+**Commit**
+- Frontend — parametres: tableaux en cards de meme largeur et hauteur.
