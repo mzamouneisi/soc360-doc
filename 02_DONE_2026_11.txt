@@ -5560,3 +5560,27 @@ je suis manager ou consultant : si je click sur restaurer les params de ma socie
 **Commits**
 - Backend `653a7e7` — apparence: le responsable voit le parametrage societe (ignore son override personnel).
 - Frontend `3814289` — parametres: suppression de l'override personnel du responsable a l'enregistrement.
+
+### 2026-11-24 16:03:51 — Paramètres : le bouton Enregistrer s'active à chaque modification
+
+**Tâche**
+```
+le btn "Enregistrer" doit s'activer à chaque changement de n'importe quel element des params
+```
+
+**Implémentation**
+- `pages/Settings.tsx` : ajout d'un état `dirty` activé par délégation `onChange`/`onInput` sur
+  l'ensemble de la carte des paramètres. Dès qu'un champ (apparence, formulaires, tableaux,
+  boutons, CRA, TVA, etc.) est modifié, `dirty` passe à vrai et **le bouton Enregistrer
+  s'active**.
+- Le bouton est désactivé au chargement et après un enregistrement/restauration réussi
+  (`setDirty(false)`). Remplacement de l'ancien calcul `changed` (comparaison partielle aux
+  colonnes utilisateur) par ce mécanisme générique.
+- Test ajouté : le bouton est désactivé à l'ouverture puis activé après modification d'un champ.
+
+**Tests exécutés**
+- `npm.cmd test` : 56 fichiers / **482 tests OK** ; `lint` OK (avertissements pré-existants) ;
+  `build` OK.
+
+**Commit**
+- Frontend — parametres: le bouton Enregistrer s'active a chaque modification.
