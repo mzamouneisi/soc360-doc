@@ -4905,3 +4905,24 @@ faire apparaitre nom du fichier dans liste
 **Commits**
 - Backend `ad297b5` — notes de frais: liste triee par date desc + i18n nom du fichier.
 - Frontend `aea3786` — notes de frais: affichage du nom du fichier dans la liste.
+
+### 2026-11-24 10:01:40 — Documents : liste triée par date décroissante
+
+**Tâche**
+```
+/documents liste a ordonner par date desc
+```
+
+**Implémentation**
+- Backend — `DocumentController.findAll` : la liste renvoyée (tous profils et tous filtres :
+  admin, société, consultant, ou documents accessibles fusionnés) est triée par **date de dépôt
+  décroissante** (`createdAt`), puis par id décroissant en cas d'égalité.
+- Aucun changement d'API ni de frontend : `Documents.tsx` affiche désormais les documents les
+  plus récents en premier.
+
+**Tests exécutés**
+- Backend — nouveau `DocumentControllerTest.findAll_ordersByCreatedAtDescending` (ordre
+  2, 3, 1 pour des dates 2026-06, 2026-03, 2026-01). `mvn test` : **793 tests, 0 échec**.
+
+**Commit**
+- Backend `d1ae863` — documents: liste triee par date de depot decroissante.
