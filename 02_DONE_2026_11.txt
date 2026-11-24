@@ -5424,3 +5424,23 @@ faire un seul btn Enregistrer des parametres. le btn Restaurer sera seulement po
 
 **Commit**
 - Frontend `262bbc3` — parametres: un seul bouton enregistrer; restaurer reserve a l'apparence.
+
+### 2026-11-24 14:50:39 — Paramètres : bouton Enregistrer placé sous le cadre blanc
+
+**Tâche**
+```
+mettre le btn Enregistrer en dessous du cadre Blanc afin qu'on voit qu'il est général à tous les parametres
+```
+
+**Implémentation**
+- `pages/Settings.tsx` : le bloc d'actions (`Enregistrer` + `Restaurer` selon l'onglet Apparence)
+  est sorti de la card blanche et placé juste en dessous (`#settings.actions`), pour marquer son
+  caractère global à tous les paramètres. Les ids (`common.save.button`,
+  `settings.appearance.restore`, `settings.error`, `settings.saved`) sont conservés.
+
+**Tests exécutés**
+- `npm.cmd test` : 56 fichiers / **479 tests OK** ; `lint` OK (avertissements pré-existants) ;
+  `build` OK.
+
+**Commit**
+- Frontend — parametres: bouton enregistrer sous le cadre blanc.
