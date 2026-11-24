@@ -87,6 +87,8 @@ function save_projs_soc360_mza() {
 	pwd 
 	git add . && git commit -m "$comment" && git push 
 
+	cd $GIT_DIR
+
 }
 
 
@@ -129,6 +131,8 @@ function save_projs_soc360_bitbucket() {
 	cd "$BITBUCKET_DIR/soc360-front-react/"
 	pwd 
 	git add . && git commit -m "$comment" && git push 
+
+	cd $GIT_DIR
 
 }
 

@@ -1,0 +1,14 @@
+ya eu une regression :
+il faut respecter le principe d'heritage : 
+role admin : contient les params au niveau soc360
+role responsable_soc : contient les params au niveau de sa societe. btn restaurer : copier params de soc360 vers cette societe.
+manager : contient les params au niveau de ce manager (ce user). btn restaurer : copier params de sa societe vers ce user.
+consultant : contient les params au niveau de ce consultant (ce user) . btn restaurer : copier params de sa societe vers ce user.
+ 
+si admin change ses params, ca ne doit pas changer ceux des autres user
+si un responsable_soc change ses params, ca ne doit pas changer ceux des user de sa societe 
+si un manager change ses params, ca ne doit pas changer ceux de ses collaborateurs 
+si un consultant change ses params, ca ne doit pas impacter les params des autres user 
+
+
+

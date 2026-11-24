@@ -1,0 +1,265 @@
+soc-105 Évolution — Personnalisation de l'apparence de SOC360
+
+Objectif
+
+Permettre de personnaliser l'apparence de SOC360 à trois niveaux :
+
+SOC360 : définit l'apparence initiale par défaut de la plateforme.
+
+Société : permet au Responsable Société de définir l'apparence par défaut de sa société.
+
+Utilisateur : permet à chaque Collaborateur de personnaliser individuellement son interface.
+
+Les personnalisations doivent être indépendantes et respecter une logique d'héritage : utilisateur → société → SOC360.
+
+1. Paramètres personnalisables
+
+Mettre à disposition les paramètres visuels supportés par l'application, notamment :
+
+Couleurs principales et secondaires.
+
+Couleurs des menus, fonds et éléments de l'interface.
+
+Couleurs et styles des boutons.
+
+Autres éléments visuels personnalisables.
+
+Les paramètres doivent être centralisés afin de faciliter l'ajout de nouvelles options de personnalisation.
+
+2. Configuration SOC360
+
+SOC360 dispose d'une configuration globale de référence définissant l'apparence initiale de la plateforme.
+
+Cette configuration est utilisée :
+
+Pour les sociétés ne disposant pas de personnalisation.
+
+Comme configuration de référence lors de la restauration de l'apparence d'une société.
+
+Elle doit être administrable au niveau global de la plateforme.
+
+3. Personnalisation de la société
+
+Le Responsable Société peut accéder à une rubrique dédiée à la personnalisation de l'apparence de sa société.
+
+Il peut modifier les paramètres visuels disponibles et enregistrer sa configuration.
+
+Cette configuration devient l'apparence par défaut des utilisateurs de sa société qui ne possèdent pas de personnalisation individuelle.
+
+Restaurer le paramétrage SOC360
+
+Un bouton « Restaurer le paramétrage SOC360 » permet au Responsable Société de supprimer sa personnalisation et de revenir à la configuration globale.
+
+Une confirmation est demandée avant l'exécution.
+
+Après confirmation :
+
+La personnalisation de la société est supprimée.
+
+La configuration SOC360 devient la configuration de référence de la société.
+
+Les utilisateurs sans personnalisation individuelle utilisent automatiquement cette configuration.
+
+Les utilisateurs possédant une personnalisation individuelle conservent celle-ci.
+
+Cette opération ne modifie pas les personnalisations individuelles.
+
+4. Personnalisation individuelle
+
+Chaque Consultant, Manager et Collaborateur peut personnaliser l'apparence de son interface.
+
+Sa personnalisation est enregistrée individuellement et n'a aucun impact sur les autres utilisateurs ni sur la configuration de sa société.
+
+Lorsqu'une personnalisation individuelle existe, elle est prioritaire sur la configuration de la société.
+
+La personnalisation individuelle doit pouvoir être partielle : un utilisateur peut modifier uniquement certains paramètres et conserver les autres paramètres hérités de sa société.
+
+Restaurer le paramétrage de ma société
+
+Un bouton « Restaurer le paramétrage de ma société » permet à l'utilisateur de supprimer sa personnalisation individuelle.
+
+Une confirmation est demandée avant l'exécution.
+
+Après confirmation :
+
+La personnalisation individuelle est supprimée.
+
+L'utilisateur retrouve automatiquement l'apparence définie par sa société.
+
+Si la société utilise le paramétrage SOC360, l'utilisateur retrouve indirectement celui-ci.
+
+Cette opération ne modifie ni la configuration de la société ni celle des autres utilisateurs.
+
+5. Règle d'application des paramètres
+
+L'apparence effective de l'utilisateur doit être déterminée selon l'ordre de priorité suivant :
+
+Configuration individuelle de l'utilisateur, si elle existe.
+
+Configuration de sa société, si elle existe.
+
+Configuration globale SOC360, dans tous les autres cas.
+
+Pour les personnalisations partielles, chaque paramètre doit être résolu indépendamment selon cette même logique.
+
+Exemple :
+
+SOC360 : bouton bleu, menu gris, fond blanc.
+
+Société : bouton vert.
+
+Utilisateur : fond noir.
+
+L'utilisateur doit obtenir :
+
+Bouton vert (hérité de la société).
+
+Menu gris (hérité de SOC360).
+
+Fond noir (personnalisé individuellement).
+
+L'application doit recalculer automatiquement l'apparence effective lorsqu'un paramétrage de référence est modifié ou lorsqu'une personnalisation est supprimée.
+
+6. Gestion technique et persistance
+
+Privilégier une configuration centralisée de type JSON pour stocker les paramètres d'apparence, plutôt que de créer une colonne en base pour chaque couleur ou propriété visuelle.
+
+Exemple de configuration :
+
+{
+  "primaryColor": "#1976D2",
+  "secondaryColor": "#424242",
+  "backgroundColor": "#FFFFFF",
+  "menuColor": "#1976D2",
+  "buttonStyle": "rounded"
+}
+
+Cette structure doit rester évolutive afin de pouvoir ajouter de nouveaux paramètres sans nécessiter systématiquement de modification du schéma de base de données.
+
+Les configurations doivent être enregistrées indépendamment selon leur portée :
+
+SOC360 : configuration globale.
+
+Société : configuration associée à l'identifiant de la société (id_soc).
+
+Utilisateur : configuration associée à l'identifiant de l'utilisateur.
+
+Une configuration absente ou un paramètre absent doit entraîner un héritage du niveau supérieur.
+
+Ne pas dupliquer les configurations de référence au niveau des utilisateurs ou des sociétés lorsqu'aucune personnalisation n'est effectuée.
+
+Les personnalisations doivent être conservées après déconnexion et reconnexion.
+
+La suppression ou la restauration d'une configuration doit supprimer uniquement la personnalisation du niveau concerné, sans modifier les autres configurations.
+
+7. Interface utilisateur
+
+Prévoir une rubrique de personnalisation adaptée aux droits de l'utilisateur.
+
+Responsable Société
+
+Il peut :
+
+Visualiser l'apparence actuelle de sa société.
+
+Modifier les paramètres visuels disponibles.
+
+Prévisualiser les modifications si cela est réalisable simplement.
+
+Enregistrer sa personnalisation.
+
+Restaurer le paramétrage SOC360 après confirmation.
+
+Utilisateur
+
+Il peut :
+
+Visualiser l'apparence actuelle de son interface.
+
+Personnaliser les paramètres visuels disponibles.
+
+Enregistrer sa personnalisation individuelle.
+
+Restaurer le paramétrage de sa société après confirmation.
+
+La restauration doit utiliser une boîte de confirmation explicite.
+
+8. Sécurité et droits d'accès
+
+Seul un utilisateur autorisé au niveau SOC360 peut modifier la configuration globale.
+
+Seul le Responsable Société autorisé peut modifier la configuration de sa société.
+
+Chaque utilisateur peut uniquement modifier sa propre personnalisation individuelle.
+
+Un utilisateur ne doit jamais pouvoir modifier la configuration d'une autre société ou d'un autre utilisateur.
+
+Les droits doivent être contrôlés côté backend et ne pas reposer uniquement sur l'interface frontend.
+
+9. Critères d'acceptation
+
+SOC360 dispose d'une configuration initiale de référence.
+
+Le Responsable Société peut personnaliser l'apparence de sa société.
+
+La configuration société est appliquée aux utilisateurs sans personnalisation individuelle.
+
+Le Responsable Société peut restaurer la configuration SOC360 après confirmation.
+
+Cette restauration n'affecte pas les personnalisations individuelles.
+
+Chaque Consultant, Manager et Collaborateur peut personnaliser son interface indépendamment.
+
+Les personnalisations individuelles sont indépendantes des autres utilisateurs.
+
+La personnalisation individuelle est prioritaire sur celle de la société.
+
+Les personnalisations partielles héritent des paramètres non définis.
+
+Chaque utilisateur peut restaurer la configuration de sa société après confirmation.
+
+La restauration individuelle n'affecte aucun autre utilisateur ni la configuration société.
+
+La configuration effective respecte systématiquement la priorité utilisateur → société → SOC360, paramètre par paramètre.
+
+Les paramètres sont persistants après déconnexion et reconnexion.
+
+Une configuration absente entraîne l'utilisation de la configuration du niveau supérieur.
+
+Les modifications à un niveau n'affectent pas les configurations enregistrées aux autres niveaux.
+
+Les contrôles d'accès sont réalisés côté backend.
+
+10. Consignes d'implémentation
+
+Implémenter cette évolution en s'appuyant prioritairement sur l'architecture, les composants, les services, les mécanismes de persistance et les conventions déjà présents dans SOC360.
+
+Privilégier une solution simple, centralisée et évolutive.
+
+Éviter :
+
+La duplication des configurations par utilisateur ou société.
+
+La création d'une colonne en base pour chaque paramètre visuel.
+
+La multiplication inutile des DTO, services ou composants.
+
+La complexification de l'architecture pour cette seule fonctionnalité.
+
+La modification des autres fonctionnalités de l'application.
+
+Analyser l'existant avant de commencer et réutiliser les mécanismes déjà disponibles lorsque cela est pertinent.
+
+Implémenter le backend, le frontend, la persistance, les droits d'accès et les tests nécessaires.
+
+Résultat attendu
+
+SOC360 dispose d'un mécanisme centralisé de personnalisation de son apparence avec héritage des paramètres entre les niveaux global, société et utilisateur.
+
+Chaque société peut définir sa propre identité visuelle, tandis que chaque utilisateur reste libre de personnaliser son interface.
+
+Les restaurations permettent de revenir simplement à la configuration de référence du niveau supérieur.
+
+L'implémentation doit être maintenable, évolutive et cohérente avec l'architecture existante de SOC360.
+
+
