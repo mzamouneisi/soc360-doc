@@ -5499,3 +5499,33 @@ je suis manager ou consultant : si je click sur restaurer les params de ma socie
 
 **Commit**
 - Frontend — parametres: restaurer affiche les parametres de la societe.
+
+### 2026-11-24 15:43:59 — Apparence : correctif « Restaurer » (thème JSON seul appliqué)
+
+**Symptôme**
+- Responsable de société : changement d'une couleur de bouton. Manager : clic sur
+  « Restaurer le paramétrage de ma société » → la couleur du bouton ne change pas.
+
+**Diagnostic**
+- Vérification de l'API backend `GET /api/appearance/effective` pour le manager : la
+  configuration renvoyée contient bien la couleur société (`buttonOkColor` de la société).
+- Cause frontend : l'ancien mécanisme de thème (colonnes `user_account` appliquées par
+  `AuthContext`) réappliquait ses valeurs et **écrasait** le thème JSON (société/global) appliqué
+  par `AppearanceApplier`.
+
+**Correctif**
+- `auth/AuthContext.tsx` : suppression de l'application des anciennes colonnes d'apparence
+  (l'apparence effective JSON devient la **seule source** ; les variables CSS par défaut restent
+  définies dans `:root`).
+- `components/AppearanceApplier.tsx` : réapplication de l'apparence effective également lorsque
+  la **société sélectionnée** change (`selectedSocId`), en plus de l'utilisateur. Le manager voit
+  donc l'apparence de sa société, y compris après « Restaurer ».
+
+**Tests exécutés**
+- `npm.cmd test` : 56 fichiers / **481 tests OK** ; `lint` OK (avertissements pré-existants) ;
+  `build` OK.
+- Contrôle API manuel : `GET /api/appearance/effective` (manager) renvoie bien `buttonOkColor` de
+  la société.
+
+**Commit**
+- Frontend `768a4ce` — apparence: le theme JSON est la seule source (correctif restauration societe).
