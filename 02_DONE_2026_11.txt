@@ -5719,3 +5719,60 @@ list de selection bien sur
 **Commits**
 - Backend `8226bd3` — apparence: admin gere le niveau SOC360 (global).
 - Frontend `68fd5c2` — parametres: admin enregistre l'apparence SOC360 (global).
+
+### 2026-11-24 17:05:19 — Apparence : héritage par copie (restaurer le niveau supérieur)
+
+**Tâche**
+```
+ya eu une regression :
+il faut respecter le principe d'heritage : 
+role admin : contient les params au niveau soc360
+role responsable_soc : contient les params au niveau de sa societe. btn restaurer : copier params de soc360 vers cette societe.
+manager : contient les params au niveau de ce manager (ce user). btn restaurer : copier params de sa societe vers ce user.
+consultant : contient les params au niveau de ce consultant (ce user) . btn restaurer : copier params de sa societe vers ce user.
+ 
+si admin change ses params, ca ne doit pas changer ceux des autres user
+si un responsable_soc change ses params, ca ne doit pas changer ceux des user de sa societe 
+si un manager change ses params, ca ne doit pas changer ceux de ses collaborateurs 
+si un consultant change ses params, ca ne doit pas impacter les params des autres user 
+
+
+
+```
+
+**Modèle retenu**
+- Chaque niveau stocke ses propres paramètres : **GLOBAL** (admin, SOC360), **SOC** (responsable,
+  société), **USER** (manager/consultant, personnel).
+- L'apparence effective d'un utilisateur = **uniquement le niveau qu'il administre** ; un
+  changement de niveau ne se propage pas automatiquement (admin → autres, responsable →
+  collaborateurs, manager → collaborateurs, consultant → autres).
+- **Restaurer** effectue une **copie** explicite du niveau supérieur vers le niveau courant :
+  - responsable : SOC360 → société ;
+  - manager / consultant : société → utilisateur.
+
+**Backend**
+- \`AppearanceService.effective()\` : retourne la config du seul niveau de l'utilisateur courant
+  (GLOBAL pour admin, SOC pour responsable, USER pour les autres), plus la source des paramètres.
+  Plus de fusion automatique global → société → utilisateur.
+- \`AppearanceService.restore()\` : copie serveur GLOBAL→SOC (responsable, avec
+  \`requireSocAccess\`) ou SOC→USER (manager/consultant), puis renvoie l'apparence effective.
+- \`POST /api/appearance/restore\` ajouté ; admin refusé (aucun niveau supérieur).
+- Tests : effective admin/société/utilisateur, restaurations par copie (société et utilisateur),
+  refus admin.
+
+**Frontend**
+- \`api/appearance.ts\` : \`restore()\` (POST \`/appearance/restore\`).
+- \`Settings\` : le bouton **Restaurer** appelle cet endpoint (copie) puis applique et affiche la
+  configuration copiée ; messages de confirmation adaptés. Enregistrement : admin → GLOBAL,
+  responsable → SOC, autres → USER. Suppression de l'ancienne logique reset/inheritance.
+- Tests : enregistrement GLOBAL/SOC/USER et restauration (affichage des paramètres société pour un
+  manager).
+
+**Tests exécutés**
+- Backend \`mvn test\` : **805 tests, 0 échec**.
+- Frontend \`npm.cmd test\` : 56 fichiers / **484 tests OK** ; \`lint\` OK (avertissements
+  pré-existants) ; \`build\` OK.
+
+**Commits**
+- Backend `c034e7d` — apparence: restauration par copie du niveau superieur (heritage).
+- Frontend `3db4ebf` — parametres: restaurer copie les params du niveau superieur.
