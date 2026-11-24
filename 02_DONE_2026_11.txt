@@ -5444,3 +5444,30 @@ mettre le btn Enregistrer en dessous du cadre Blanc afin qu'on voit qu'il est g�
 
 **Commit**
 - Frontend — parametres: bouton enregistrer sous le cadre blanc.
+
+### 2026-11-24 14:58:02 — Paramètres : apparence personnelle pour tous les rôles (aucune répercussion)
+
+**Tâche**
+```
+lorsque le responsabe_soc change ses parametres d'apparence, ca ne doit pas changer ceux de ses collaborateurs !
+de meme si un manager change ses params d'apparence, ca ne doit pas changer ceux de ses collaborateurs
+si admin change les params de ses apparence, ca ne doit pas changer ceux des autres users
+```
+
+**Implémentation**
+- `pages/Settings.tsx` : l'apparence est **toujours enregistrée au niveau personnel** (portée
+  `USER`), quel que soit le rôle (admin, responsable de société, manager, consultant). Les réglages
+  d'un utilisateur ne modifient donc jamais ceux des autres utilisateurs ni ceux de la société.
+- Le bouton **Restaurer** reste limité à l'onglet Apparence et n'est **pas affiché pour un admin**.
+  Libellé adapté : « Restaurer le paramétrage SOC360 » pour un responsable de société,
+  « Restaurer le paramétrage de ma société » pour les autres (suppression de la personnalisation
+  personnelle → retour à l'héritage société/global).
+- Tests `Settings.test.tsx` : enregistrement en portée `USER` pour responsable et manager,
+  restauration `USER`, absence de Restaurer pour l'admin.
+
+**Tests exécutés**
+- `npm.cmd test` : 56 fichiers / **480 tests OK** ; `lint` OK (avertissements pré-existants) ;
+  `build` OK.
+
+**Commit**
+- Frontend `1a65161` — parametres: apparence personnelle pour tous les roles.
