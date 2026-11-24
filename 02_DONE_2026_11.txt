@@ -5612,3 +5612,27 @@ bug sur changement "Nombre de lignes par page" : il faut selectionner deux fois 
 
 **Commit**
 - Frontend — parametres: une seule selection suffit (chargement apparence ne l'ecrase plus).
+
+### 2026-11-24 16:21:27 — Paramètres : la première sélection est bien prise en compte
+
+**Tâche**
+```
+Lignes par page : lorsque je selectionne une autre valeur la 1ere fois, elle ne change pas.
+```
+
+**Cause / correctif**
+- L'application asynchrone de l'apparence effective pouvait réappliquer la configuration (à cause
+  de ré-exécutions de l'effet de chargement) et réinitialiser la valeur juste choisie.
+- `pages/Settings.tsx` : l'apparence effective n'est désormais appliquée **qu'une seule fois par
+  couple utilisateur/société** (`appliedAppearanceKeyRef`), en plus de la protection contre
+  l'écrasement d'une saisie en cours (`dirtyRef`). Une sélection de « Nombre de lignes par page »
+  est donc prise en compte dès la première fois.
+- Tests : « une seule sélection suffit pour le nombre de lignes par page » (chargement effectif
+  résolu après la sélection).
+
+**Tests exécutés**
+- `npm.cmd test` : 56 fichiers / **483 tests OK** ; `lint` OK (avertissements pré-existants) ;
+  `build` OK.
+
+**Commit**
+- Frontend — parametres: valeur appliquee des la premiere selection (apparence chargee une seule fois).
