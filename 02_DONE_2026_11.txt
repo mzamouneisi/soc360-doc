@@ -5353,3 +5353,50 @@ Restaurer : restaurer l'apparence de Soc360 , avec confirmation bien sur.
 
 **Commit**
 - Frontend `b35380b` — parametres: onglet apparence en sous-tabs avec enregistrer et restaurer.
+
+### 2026-11-24 12:15:07 — Paramètres : apparence par rôle, suppression de l'onglet « Apparence (héritage) »
+
+**Tâche**
+```
+Paramètres
+
+on ne doit pas voir de tab "Apparence (héritage)"
+
+c'est géré par role :
+
+Admin : gère l'Apparence au niveau Soc360. pas de btn Restaurer.
+Responsable_soc : gère l'Apparence au niveau de sa societe selected. le btn Restaurer ramène celui de Soc360.
+Manager, Consultant : gère l'Apparence à son niveau. le btn Restaurer ramène celui de sa societe.
+
+
+```
+
+**Implémentation**
+- Suppression de l'onglet **« Apparence (héritage) »** des Paramètres, ainsi que de la route et de
+  l'entrée de menu `/apparence` (une seule rubrique « Apparence » dans Paramètres).
+- L'onglet **Apparence** gère désormais le **niveau déterminé par le rôle** :
+  - **ADMIN** : niveau **SOC360 (global)**, **pas de bouton Restaurer** ;
+  - **RESPONSIBLE_SOC** : niveau **société** (société sélectionnée), **Restaurer** = revient au
+    paramétrage SOC360 (suppression de la config société → héritage global) ;
+  - **MANAGER / CONSULTANT** : niveau **utilisateur**, **Restaurer** = revient au paramétrage de la
+    société (suppression de la config utilisateur → héritage société/global).
+- Les sous-onglets (Application / Boutons / Formulaires / Tableaux) restent, avec leur contenu
+  existant ; **Enregistrer** écrit la configuration d'apparence complète (JSON) dans la portée du
+  rôle via `appearanceApi`, **Restaurer** appelle `appearanceApi.reset(scope)` après confirmation.
+- L'apparence effective (héritage global → société → utilisateur) est chargée/reappliquée à
+  l'ouverture et après enregistrement/restauration ; `lib/appearance.ts` applique désormais tous
+  les paramètres (police, thème, fond, tableaux, formulaires, boutons) aux variables CSS.
+- Migration Flyway `V207__appearance_global_defaults.sql` : la configuration globale SOC360 reprend
+  toutes les valeurs par défaut actuelles (aucun changement visuel), pour une résolution d'héritage
+  complète.
+- Tests `Settings.test.tsx` adaptés (enregistrement via `appearanceApi`, restauration niveau
+  société, absence du bouton Restaurer pour un admin).
+
+**Tests exécutés**
+- Backend \`mvn test\` : **800 tests, 0 échec** (migration V207 validée).
+- Frontend \`npm.cmd test\` : 56 fichiers / **479 tests OK** ; \`lint\` OK (avertissements
+  pré-existants) ; \`build\` OK.
+
+**Commits**
+- Backend `5a14f88` — apparence: configuration globale par defaut complete.
+- Frontend `9164af1` — parametres: apparence geree par role sans onglet heritage.
