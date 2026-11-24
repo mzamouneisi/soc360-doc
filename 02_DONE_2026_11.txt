@@ -5306,3 +5306,50 @@ dans parametres
 
 **Commit**
 - Frontend `5d129fd` — parametres: onglet apparence heritage avec boutons restaurer.
+
+### 2026-11-24 11:39:14 — Paramètres : onglet Apparence en sous-onglets (Application/Boutons/Formulaires/Tableaux) + Restaurer
+
+**Tâche**
+```
+Paramètres
+
+tab Apparence :
+
+à metrre sous forme tabs :
+
+Application : Taille de police de l’application, Fond de l’application, Thème de l’application
+Boutons
+Formulaires
+Tableaux : Nombre de lignes par page, Couleurs des tables, En-têtes de tableau
+
+------
+
+en bas les btns : Enregistrer et Restaurer 
+
+Restaurer : restaurer l'apparence de Soc360 , avec confirmation bien sur.
+
+```
+
+**Implémentation (frontend)**
+- `pages/Settings.tsx` : l'onglet « Apparence » est réorganisé en **sous-onglets** :
+  - **Application** : taille de police, thème, fond de l'application ;
+  - **Boutons** : réglages des boutons (le sous-onglet remplace l'ancien onglet Boutons) ;
+  - **Formulaires** : en-têtes/labels et tailles des formulaires ;
+  - **Tableaux** : nombre de lignes par page, couleurs des tables, en-tête de tableau et aperçu.
+  Barre de sous-onglets avec ids `settings.appearance.tab.<application|buttons|forms|tables>`.
+- En bas de l'onglet Apparence : boutons **Enregistrer** (`settings.appearance.save`, appelle le
+  `handleSave` existant) et **Restaurer** (`settings.appearance.restore`).
+- **Restaurer** : confirmation explicite (`dialog.confirm`), puis réapplication des valeurs
+  d'apparence **SOC360 par défaut** (police, thème, couleurs tables/formulaires, pagination,
+  styles/couleurs de boutons, fond) via les API `authApi.update*`, rafraîchissement du compte et
+  réinitialisation de l'état local du formulaire. Le bouton global d'enregistrement est masqué sur
+  l'onglet Apparence (remplacé par les boutons dédiés).
+
+**Tests exécutés**
+- `Settings.test.tsx` : tests existants adaptés aux sous-onglets (Tableaux/Formulaires) + nouveau
+  test « restaure l'apparence de SOC360 après confirmation ».
+  `npm.cmd test` : 56 fichiers / **478 tests OK** ; `lint` OK (avertissements pré-existants) ;
+  `build` OK.
+
+**Commit**
+- Frontend `b35380b` — parametres: onglet apparence en sous-tabs avec enregistrer et restaurer.
