@@ -5490,7 +5490,7 @@ je suis manager ou consultant : si je click sur restaurer les params de ma socie
   formulaire (police, thème, fond, tableaux, formulaires, boutons).
 - Responsable de société : Restaurer supprime la config société (retour à SOC360). Admin : pas de
   bouton Restaurer.
-- Test ajouté  (vérifie le
+- Test ajouté « restaure et affiche les paramètres de la société pour un manager » (vérifie le
   niveau USER et l'affichage des valeurs société après restauration).
 
 **Tests exécutés**
