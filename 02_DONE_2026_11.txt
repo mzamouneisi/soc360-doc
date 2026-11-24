@@ -4926,3 +4926,28 @@ faire apparaitre nom du fichier dans liste
 
 **Commit**
 - Backend `d1ae863` — documents: liste triee par date de depot decroissante.
+
+### 2026-11-24 10:06:13 — Documents : vérifier la suppression interdite si lié à une note de frais
+
+**Tâche**
+```
+verifier qu'on ne peut pas supprimer un document lié à une note de frais
+```
+
+**Vérification**
+- Le garde-fou existe déjà dans `DocumentController.delete` :
+  `noteFraisRepository.existsByDocumentId(id)` ⇒ `ApiException.badRequest("Ce document est lié à
+  une note de frais et ne peut pas être supprimé")` avant toute suppression (partages, stockage,
+  document).
+- Test d'intégration existant `DocumentShareIntegrationTest#deletingJustificatifLinkedToNoteFrais_isRejected`
+  relancé : `DELETE /api/documents/{id}` renvoie **400** et le document, la note et sa ligne
+  restent présents.
+- Tests unitaires ajoutés à `DocumentControllerTest` :
+  `delete_rejectsDocumentLinkedToNoteFrais` (400, aucune suppression de partage/document) et
+  `delete_allowsDocumentNotLinkedToNoteFrais` (suppression normale autorisée).
+
+**Tests exécutés**
+- `mvn test` : **795 tests, 0 échec**.
+
+**Commit**
+- Backend `a68f9ae` — documents: tests suppression interdite si lie a une note de frais.
