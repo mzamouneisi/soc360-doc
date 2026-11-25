@@ -5776,3 +5776,675 @@ si un consultant change ses params, ca ne doit pas impacter les params des autre
 **Commits**
 - Backend `c034e7d` — apparence: restauration par copie du niveau superieur (heritage).
 - Frontend `3db4ebf` — parametres: restaurer copie les params du niveau superieur.
+
+### 2026-11-25 15:17:45 — Tests fonctionnels DSL traduits en Playwright (MVP)
+
+**Tâche**
+
+```
+Évolution SOC360 — Langage simplifié de tests fonctionnels traduit en Playwright
+
+1. Objectif
+
+Créer dans SOC360 un éditeur permettant d'écrire des tests fonctionnels dans un langage simple, compréhensible et proche du langage naturel.
+
+Ce langage doit être traduit automatiquement en tests Playwright exécutables.
+
+L'objectif est de permettre de créer, lire, modifier et exécuter des tests sans avoir à maîtriser directement TypeScript ou Playwright.
+
+Le langage doit s'appuyer sur :
+
+Des mots-clés simples (Given, When, Then, And, But).
+
+Les objets métier de SOC360.
+
+Les propriétés de ces objets (consultant.nom, cra.statut, noteFrais.montant, etc.).
+
+Des actions utilisateur (cliquer, saisir, sélectionner, naviguer, valider).
+
+Des vérifications de résultats.
+
+Un système d'autocomplétion contextuelle via Ctrl + Espace.
+
+2. Exemple de langage cible
+
+Scenario "Créer un CRA"
+
+Given utilisateur connecté en tant que consultant
+
+When je navigue vers "Mes CRA"
+And je sélectionne le mois "Novembre 2026"
+And je saisis cra.jours[3] = 1
+And je saisis cra.commentaire = "Développement SOC360"
+And je clique sur "Enregistrer"
+
+Then cra.statut should be "BROUILLON"
+And cra.jours[3] should be 1
+And cra.commentaire should be "Développement SOC360"
+And le message "CRA enregistré" should be visible
+
+Autre exemple :
+
+Scenario "Refuser une note de frais"
+
+Given utilisateur connecté en tant que manager
+And noteFrais.statut = "SOUMISE"
+
+When je consulte noteFrais
+And je clique sur "Refuser"
+And je saisis noteFrais.motifRefus = "Justificatif manquant"
+And je confirme
+
+Then noteFrais.statut should be "REFUSEE"
+And noteFrais.motifRefus should be "Justificatif manquant"
+
+Le langage doit rester simple, lisible et évolutif.
+
+3. Les mots-clés du langage
+
+Créer un langage structuré avec les mots-clés suivants :
+
+Structure
+
+Scenario : nom du scénario.
+
+Given : contexte initial ou préconditions.
+
+When : action à réaliser.
+
+Then : résultat attendu.
+
+And : complément de l'étape précédente.
+
+But : résultat négatif ou condition qui ne doit pas être satisfaite.
+
+Actions
+
+Prévoir notamment les actions suivantes :
+
+je me connecte en tant que
+
+je navigue vers
+
+je clique sur
+
+je saisis
+
+je sélectionne
+
+je coche
+
+je décoche
+
+je recherche
+
+je filtre
+
+je télécharge
+
+je téléverse
+
+je valide
+
+je refuse
+
+je supprime
+
+je crée
+
+je modifie
+
+je soumets
+
+je confirme
+
+je vérifie
+
+Le langage doit pouvoir être enrichi sans modifier toute l'architecture.
+
+4. Objets métier et propriétés
+
+Le langage doit connaître les objets métier de SOC360.
+
+Exemples :
+
+consultant.nom
+consultant.prenom
+consultant.email
+consultant.statut
+
+cra.mois
+cra.annee
+cra.statut
+cra.commentaire
+cra.jours[1]
+cra.totalJours
+
+noteFrais.montant
+noteFrais.date
+noteFrais.statut
+noteFrais.commentaire
+
+absence.dateDebut
+absence.dateFin
+absence.type
+absence.statut
+
+societe.nom
+societe.logo
+societe.parametres
+
+Ces objets et propriétés ne doivent pas être codés en dur dans l'éditeur.
+
+Créer un mécanisme de définition ou de découverte du modèle métier permettant de connaître :
+
+Les objets métier disponibles.
+
+Leurs propriétés.
+
+Le type des propriétés (String, Number, Date, Boolean, Enum, Liste, Objet).
+
+Les propriétés obligatoires.
+
+Les valeurs possibles pour les enums.
+
+Les relations entre objets.
+
+Les actions possibles sur les objets.
+
+Les règles métier pouvant être vérifiées.
+
+L'éditeur doit pouvoir exploiter ce modèle pour l'autocomplétion, la validation et la génération des tests.
+
+ré ecrire les anciens tests avec le nouveau langage.
+
+Privilégier une architecture simple, compatible avec l'évolution future de SOC360.
+
+5. Autocomplétion contextuelle — Ctrl + Espace
+
+L'éditeur doit proposer une assistance contextuelle similaire à celle d'un IDE.
+
+Lorsqu'on appuie sur Ctrl + Espace, afficher les suggestions pertinentes selon :
+
+La position du curseur.
+
+Le mot-clé utilisé.
+
+L'étape du scénario.
+
+L'objet métier déjà utilisé.
+
+Les propriétés de l'objet.
+
+Le type de propriété.
+
+Les valeurs possibles.
+
+Les actions disponibles.
+
+Les éléments de l'interface SOC360.
+
+Exemples
+
+Après avoir tapé :
+
+When
+
+Proposer :
+
+je navigue vers
+je clique sur
+je saisis
+je sélectionne
+je recherche
+je valide
+je soumets
+je supprime
+
+Après :
+
+Then cra.
+
+Proposer :
+
+cra.statut
+cra.mois
+cra.annee
+cra.commentaire
+cra.totalJours
+cra.jours[]
+
+Après :
+
+Then cra.statut should be
+
+Proposer les valeurs possibles :
+
+BROUILLON
+SOUMIS
+VALIDÉ
+REFUSÉ
+
+Après :
+
+When je clique sur
+
+Proposer les boutons/actions de la page actuellement concernée.
+
+L'autocomplétion doit être accessible au clavier, navigable avec les flèches, validable avec Entrée et fermable avec Échap.
+
+Afficher éventuellement une description de la suggestion.
+
+6. Éditeur
+
+Créer une interface ergonomique intégrée à SOC360 permettant :
+
+De créer un scénario.
+
+D'écrire et modifier le langage de tests.
+
+De bénéficier de la coloration syntaxique.
+
+De bénéficier de l'autocomplétion avec Ctrl + Espace.
+
+De détecter les erreurs syntaxiques.
+
+De détecter les objets ou propriétés inconnus.
+
+D'afficher les erreurs avec leur ligne et leur position.
+
+De sauvegarder les scénarios.
+
+De lancer un scénario ou plusieurs scénarios.
+
+De consulter les résultats des tests.
+
+Prévoir une interface simple, éventuellement composée de :
+
+Liste des scénarios.
+
+Éditeur.
+
+Bouton Vérifier.
+
+Bouton Exécuter.
+
+Résultat d'exécution.
+
+Détail des erreurs.
+
+7. Traduction en Playwright
+
+Le langage créé doit être transformé en code Playwright TypeScript.
+
+Exemple de traduction :
+
+Langage utilisateur :
+
+Given utilisateur connecté en tant que consultant
+When je navigue vers "Mes CRA"
+And je clique sur "Créer"
+Then cra.statut should be "BROUILLON"
+
+Code Playwright généré (exemple) :
+
+await loginAs("consultant");
+
+await page.goto("/cra");
+
+await page.getByRole("button", {
+  name: "Créer"
+}).click();
+
+await expect(
+  page.getByText("BROUILLON")
+).toBeVisible();
+
+Travailler par id le plus possible pour l'indentification d'un élément.
+
+La génération doit s'appuyer sur des mécanismes fiables permettant de retrouver les éléments de l'interface :
+
+data-testid en priorité lorsque nécessaire.
+
+Labels.
+
+Roles.
+
+Textes visibles.
+
+Autres sélecteurs robustes.
+
+Éviter les sélecteurs fragiles basés sur la structure CSS ou les positions des éléments.
+
+Le code généré doit être déterministe, maintenable et réutilisable.
+
+8. Architecture souhaitée
+
+Séparer les responsabilités :
+
+A. Langage DSL
+
+Gestion :
+
+Syntaxe.
+
+Grammaire.
+
+Parsing.
+
+Validation.
+
+Représentation intermédiaire du scénario.
+
+B. Modèle métier SOC360
+
+Gestion :
+
+Objets métier.
+
+Propriétés.
+
+Types.
+
+Valeurs possibles.
+
+Actions.
+
+Relations.
+
+C. Autocomplétion
+
+Gestion :
+
+Suggestions contextuelles.
+
+Mots-clés.
+
+Objets.
+
+Propriétés.
+
+Valeurs.
+
+Actions de l'interface.
+
+D. Générateur Playwright
+
+Transformation du scénario en code Playwright.
+
+E. Exécution
+
+Exécution des tests, gestion des résultats et collecte des erreurs.
+
+F. Interface utilisateur
+
+Éditeur, scénarios, validation, exécution et rapports.
+
+Ne pas créer une architecture inutilement complexe. Privilégier la réutilisation des composants et des services existants de SOC360.
+
+9. Gestion des erreurs
+
+Avant l'exécution, vérifier le scénario.
+
+Exemples d'erreurs :
+
+Unknown object: craX
+Unknown property: cra.totall
+Invalid value: cra.statut = "INCONNU"
+Missing action after When
+Invalid expression
+Unexpected keyword
+
+Les erreurs doivent être affichées de manière compréhensible, avec la ligne concernée.
+
+L'éditeur doit permettre de corriger rapidement les erreurs grâce à l'autocomplétion.
+
+10. Exécution et résultats
+
+Lors de l'exécution :
+
+Lancer le test Playwright correspondant.
+
+Afficher l'état du scénario : En attente, En cours, Réussi, Échoué.
+
+Afficher l'étape en cours.
+
+Afficher les erreurs.
+
+Afficher les résultats des assertions.
+
+Permettre de consulter les logs.
+
+Permettre de récupérer une capture d'écran en cas d'échec.
+
+Permettre de consulter éventuellement la trace Playwright.
+
+Les scénarios doivent pouvoir être exécutés individuellement ou dans une suite de tests.
+
+11. Sécurité et environnement
+
+Les tests doivent s'exécuter sur un environnement de test dédié.
+
+Ne jamais exécuter automatiquement des tests destructifs sur la production.
+
+Prévoir :
+
+Des comptes de tests.
+
+Des données de tests.
+
+Une isolation des tests lorsque cela est possible.
+
+Un nettoyage des données créées.
+
+La possibilité de réinitialiser les données d'un scénario.
+
+Une configuration des URLs par environnement.
+
+12. Exemples de scénarios à prendre en charge
+
+Création d'un consultant
+
+Scenario "Créer un consultant"
+
+Given utilisateur connecté en tant que responsable société
+When je navigue vers "Consultants"
+And je clique sur "Ajouter"
+And je saisis consultant.nom = "TEST NOM"
+And je saisis consultant.prenom = "TEST PRENOM"
+And je saisis consultant.email = "test@soc360.fr"
+And je clique sur "Enregistrer"
+
+Then consultant.nom should be "TEST NOM"
+And consultant.prenom should be "TEST PRENOM"
+And consultant.email should be "test@soc360.fr"
+And consultant.statut should be "ACTIF"
+
+Vérification d'une règle métier
+
+Scenario "Interdire deux notes de frais avec le même justificatif"
+
+Given utilisateur connecté en tant que consultant
+And noteFrais1.justificatif = "justificatif.pdf"
+And noteFrais1.statut = "BROUILLON"
+
+When je crée noteFrais2
+And noteFrais2.justificatif = "justificatif.pdf"
+And je clique sur "Enregistrer"
+
+Then le message "Ce justificatif est déjà utilisé" should be visible
+And noteFrais2 should not be created
+
+13. Méthode d'implémentation
+
+Avant de commencer :
+
+Analyser l'architecture existante de SOC360.
+
+Identifier les technologies front-end et back-end utilisées.
+
+Identifier les composants existants pour les tests, les formulaires, les objets métier et les notifications.
+
+Proposer une architecture adaptée au projet.
+
+Identifier les dépendances nécessaires.
+
+Présenter les choix techniques et les impacts.
+
+Ensuite, implémenter la fonctionnalité progressivement.
+
+Commencer par un MVP fonctionnel comprenant :
+
+Un éditeur.
+
+Les mots-clés Scenario, Given, When, Then, And, But.
+
+Un petit nombre d'objets métier.
+
+Les actions élémentaires.
+
+L'autocomplétion avec Ctrl + Espace.
+
+La validation syntaxique.
+
+La génération de Playwright.
+
+L'exécution d'un scénario.
+
+L'affichage du résultat.
+
+Ne pas implémenter immédiatement toutes les fonctionnalités possibles.
+
+Construire une architecture permettant d'ajouter facilement de nouveaux objets métier, propriétés, actions et mots-clés.
+
+Le résultat attendu est un véritable langage de tests fonctionnels SOC360, simple à utiliser, extensible et traduisible en Playwright, et non simplement un éditeur de texte contenant des scripts Playwright.
+
+
+
+```
+
+**Implémentation (MVP)**
+
+**Architecture**
+- Backend `com.soc360.dsl` : modèle métier exposé (`GET /api/dsl/model`), parser/validateur,
+  générateur Playwright déterministe, CRUD des scénarios.
+- Frontend page `/tests-dsl` (menu Tests DSL) : liste des scénarios, éditeur avec coloration,
+  autocomplétion Ctrl+Espace, validation (ligne/colonne), génération Playwright, exécution dry-run.
+
+**Backend**
+- `DslModel` : objets métier (utilisateur, consultant, cra, noteFrais, absence, societe, client,
+  prospect, projet, activite), propriétés typées (STRING/NUMBER/DATE/BOOLEAN/ENUM/LIST), valeurs
+  d'énumération, actions, rôles, actions d'interface.
+- `DslParser` : mots-clés Scenario/Given/When/Then/And/But ; actions (naviguer, cliquer, saisir,
+  sélectionner, cocher/décocher, rechercher/filtrer, télécharger/téléverser, valider/refuser/
+  supprimer/créer/modifier/soumettre/confirmer/vérifier) ; assertions `objet.propriete should be/
+  not be/contain`, `le message "..." should (not) be visible`, `objet should not be created` ;
+  affectations directes (`noteFrais.justificatif = "..."`) et instances numérotées (`noteFrais2`).
+  Erreurs typées (MISSING_SCENARIO, UNKNOWN_OBJECT, UNKNOWN_PROPERTY, INVALID_VALUE,
+  INVALID_EXPRESSION, MISSING_ACTION, MISSING_STEP) avec ligne/colonne.
+- `DslPlaywrightGenerator` : code TypeScript déterministe, sélecteurs par id `[id="..."]` et
+  rôles/labels accessibles ; routes des pages SOC360.
+- `DslScenario` + `V208__dsl_scenario.sql` (company_id, name, content, audit) ; service CRUD avec
+  isolation multi-société (`SecurityUtils.currentSocId/effectiveSocId/requireSocAccess`).
+- Endpoints `/api/dsl/{model,validate,generate,run,scenarios}` protégés ADMIN/RESPONSIBLE_SOC/MANAGER.
+- L'exécution est un **dry-run** (validation + génération) : aucune exécution navigateur réelle
+  n'est lancée par l'API ; elle reste à brancher sur le projet eisi-tests-fonc-playwright.
+
+**Frontend**
+- `src/api/dsl.ts`, types `Dsl*` dans `src/api/types.ts`.
+- `src/lib/dslSuggestions.ts` : suggestions contextuelles (mots-clés, actions, objets, propriétés,
+  valeurs d'énumération, boutons/pages).
+- `src/pages/DslTests.tsx` : liste + éditeur, coloration syntaxique (overlay), Ctrl+Espace
+  navigable (flèches/Entrée/Échap), boutons Enregistrer/Vérifier/Générer/Exécuter, affichage des
+  erreurs (ligne/colonne), du code Playwright et des résultats.
+- Route `/tests-dsl` (NotConsultantRoute) + entrée menu `nav.dslTests` (ADMIN/RESPONSIBLE_SOC/
+  MANAGER) + clés i18n FR/EN/AR.
+
+**Anciens tests réécrits**
+- `soc360-doc/dsl_scenarios/test_001_consultants.dsl`, `test_002_prospect.dsl`,
+  `test_003_cra.dsl`, `test_004_clients.dsl` (traduction des scénarios Playwright existants
+  `tests-proj/soc360/test_001..004` dans le nouveau langage).
+
+**Tests exécutés**
+- Backend `mvn test` : **826 tests, 0 échec** (dont DslParserTest 11, DslPlaywrightGeneratorTest 2,
+  DslScenarioServiceTest 8).
+- Frontend `npm.cmd run lint` : OK ; `npm.cmd run build` : OK ;
+  `npm.cmd test -- --maxWorkers=2` : **58 fichiers / 493 tests OK**
+  (dont dslSuggestions.test.ts 6, DslTests.test.tsx 3).
+
+**Limites / suite**
+- Exécution réelle Playwright (navigateur, captures, traces) non branchée dans ce MVP ; le bouton
+  Exécuter effectue un dry-run explicite.
+- Le modèle métier est une définition backend centralisée (extensible) ; il pourra être enrichi
+  (règles métier vérifiables, actions par page) sans modifier l'éditeur.
+
+**Transfert (2026-11-25)**
+- Cette todo concernait en réalité le projet `eisi-tests-fonc-playwright`. Le moteur DSL a été
+  porté en JavaScript dans `web/src/dslModel.js`, `dslParser.js`, `dslPlaywright.js` et
+  `dslSuggestions.js` (+ tests `web/src/dsl*.test.mjs`, 23 tests) ; les scénarios ont été
+  déplacés dans `tests-proj/soc360/dsl/`.
+- Les changements SOC360 (backend `com.soc360.dsl`, page front `/tests-dsl`, i18n) ont été
+  retirés. La migration `V209__drop_dsl_scenario.sql` supprime la table `dsl_scenario` créée par
+  `V208` (déjà appliquée sur l'instance de travail).
+
+### 2026-11-25 17:30:59 — Paramètres : onglet Société pour l'admin (logo + paramètres société)
+
+**Tâche**
+```
+parametres :
+
+ajouter tab Societe pour admin afin de gerer le logo de Soc360 et eventuellement d'autres params 
+```
+
+**Backend**
+- `SocController` : `POST /api/socs/{id}/logo` et `DELETE /api/socs/{id}/logo` autorisés à
+  `ADMIN` **ou** `RESPONSIBLE_SOC` (auparavant `RESPONSIBLE_SOC` uniquement).
+- `SocService` : `ensureResponsibleSocManager` remplacé par `ensureLogoManager` qui laisse passer
+  l'administrateur ; un non-admin doit rester responsable et rattaché à la société (créateur ou
+  `user_soc`) → isolation multi-société conservée (`requireSocAccess` inchangé côté contrôleur).
+- Migration `V210__i18n_settings_company_select.sql` : clés i18n FR/EN/AR
+  `settings.company.select` et `settings.company.empty` dans `app_language`.
+- Tests `SocServiceTest` : `updateLogo_asAdmin_forbidden` → `updateLogo_asAdmin_allowed` et
+  `deleteLogo_asAdmin_forbidden` → `deleteLogo_asAdmin_allowed` (le refus d'un responsable non
+  rattaché reste testé).
+
+**Frontend**
+- `Settings` : l'onglet **Société** (`settings.tab.company`) est désormais visible pour l'**ADMIN**
+  (`canManageCompany = ADMIN || RESPONSIBLE_SOC`), en plus du responsable.
+- L'admin n'ayant pas de sélecteur de société dans l'en-tête, un `<Select>` (« Société à
+  paramétrer », id `settings.company.select.input`) liste les sociétés via `socsApi.findAll()` et
+  fixe la société ciblée (`adminSocId`) ; propriétaire : `selectedSocId` du contexte.
+- Le logo (`SocLogoField`), les couleurs CRA et la TVA utilisent la société ciblée (`companySocId`)
+  pour l'admin comme pour le responsable ; état vide id `settings.company.empty`.
+- i18n : `settings.company.select` / `settings.company.empty` ajoutés en FR/EN/AR dans
+  `messages.ts`.
+- Tests `Settings.test.tsx` : ajout du mock `socsApi.findAll` et test « affiche l'onglet Société à
+  l'administrateur et permet de choisir la société » (liste, sélection, rechargement de la société).
+
+**Tests exécutés**
+- Backend `mvn test` : **805 tests, 0 échec**.
+- Frontend `npm.cmd test` : 56 fichiers / **485 tests OK** ; `lint` OK (avertissements
+  pré-existants) ; `build` OK.
+
+### 2026-11-25 17:31:00 — Paramètres congés : carte « Report des droits » agrandie
+
+**Tâche**
+```
+paramètres de congés :
+
+Report des droits : 
+agrandir la longueur de la card afin de ne pas avoir des input non alignés verticalement lorsqu'on a un label grand qui se met sur deux lignes comme : Échéance du report (mois).
+```
+
+**Frontend**
+- `LeaveSettings` (carte `LeaveSettings.config.group.carryover`) : champs élargis
+  (`w-40` → `w-48`, et `w-56` pour « Échéance du report (mois) ») afin que les libellés longs
+  tiennent sur une seule ligne ; la carte `w-fit` s'agrandit en conséquence.
+- Conteneur interne passé en `flex flex-wrap items-end gap-2` pour que les inputs restent alignés
+  verticalement même si un libellé passe sur deux lignes (police agrandie).
+- Aucun changement de règle métier ; les ids HTML existants sont conservés.
+
+**Tests exécutés**
+- Backend `mvn test` : **805 tests, 0 échec**.
+- Frontend `npm.cmd test` : 56 fichiers / **485 tests OK** ; `lint` OK (avertissements
+  pré-existants) ; `build` OK.
