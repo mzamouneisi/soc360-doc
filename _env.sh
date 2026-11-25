@@ -77,7 +77,9 @@ function save_projs_soc360_mza() {
 
 	cd "$GIT_DIST/soc360-back-java/"
 	pwd 
-	git add . && git commit -m "$comment" && git push 
+	git add .
+	git commit -m "$comment" || true
+	git push
 
 	log "
 		commit proj mza react ...
@@ -85,7 +87,9 @@ function save_projs_soc360_mza() {
 
 	cd "$GIT_DIST/soc360-front-react/"
 	pwd 
-	git add . && git commit -m "$comment" && git push 
+	git add .
+	git commit -m "$comment" || true
+	git push
 
 	cd $GIT_DIR
 
@@ -122,7 +126,9 @@ function save_projs_soc360_bitbucket() {
 
 	cd "$BITBUCKET_DIR/soc360-back-java/"
 	pwd 
-	git add . && git commit -m "$comment" && git push 
+	git add .
+	git commit -m "$comment" || true
+	git push
 
 	log "
 		commit proj bitbucket react ...
@@ -130,7 +136,9 @@ function save_projs_soc360_bitbucket() {
 
 	cd "$BITBUCKET_DIR/soc360-front-react/"
 	pwd 
-	git add . && git commit -m "$comment" && git push 
+	git add .
+	git commit -m "$comment" || true
+	git push
 
 	cd $GIT_DIR
 
