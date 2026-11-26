@@ -45,9 +45,10 @@ lire un par un les fichiers soc360-doc/01_TODO_* (chaque tache peut se terminer 
 Pour chaque fichier 01_TODO_* :
   - executer les taches de ce fichier ;
   - implementer ses tests unitaires et les executer. si erreurs, corriger.
-  - archiver le contenu du fichier dans soc360-doc/02_DONE_<annee>_<MM>.txt
+  - archiver le contenu du fichier dans le bon fichier soc360-doc/02_DONE_<annee>_<MM>.txt
     avec la date du jour complete yyyy-mm-dd HH:MM:SS ;
-  - supprimer le fichier 01_TODO_* traite.
+  - NE PAS vider le fichier 01_TODO_* : apres archivage, supprimer le fichier 01_TODO_*
+    execute (le fichier traite est archive puis supprime, jamais vide).
 --------------------
 command : /errback :
 

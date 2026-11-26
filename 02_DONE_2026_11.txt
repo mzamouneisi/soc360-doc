@@ -6516,3 +6516,351 @@ agrandir la longueur de la card afin de ne pas avoir des input non alignés vert
 - Backend `mvn test` : **805 tests, 0 échec**.
 - Frontend `npm.cmd test` : 56 fichiers / **485 tests OK** ; `lint` OK (avertissements
   pré-existants) ; `build` OK.
+
+### 2026-11-26 14:55:54 — soc-89 : devis / factures (remise %, validation, duplication, navigation)
+
+**Tâche**
+```
+soc-89 : devis facture : 
+
+1. la remise dans les devis  devra logiquement être un pourcentage  (bien évidement faire les contrôle nécessaire) 
+2. Pour l’envoi de devis par mail changer le label "sujet" en "objet"
+3. dans la form Devis ou Facture : la liste Activité devrait s'appeler en fr : Mission. Et devrait contenir que les activites de type MISSION. Car on ne peut pas faire une facture pour un congé ou pour se former ... 
+4.  dans la form Devis ou Facture : le btn en bas "Fermer" devrait s'appeler Annuler.
+5. Dans la form Facture : si cette facture provient d'un devis, ajouter en bas un btn qui permet d'afficher le devis origine. Et inversement : dans la form du devis, afficher en bas, le btn qui permet d'afficher la facture générée à partir de ce devis.
+6. lorsqu'on genere une facture a partir d'un devis, ce devis devient figé (non modifiable) , on affiche une bte de dialog disant que la facture a été générée avec une case à cocher pour basculer ou non à la facture générée  (cochée par défaut).
+7. Form Devis ou Facture : ajouter un btn en bas pour Dupliquer ce Devis ou Facture en cours. on affiche une bte de dialog disant que le devis ou facture dupliqué a été générée avec une case à cocher pour basculer ou non au devis ou facture générée  (cochée par défaut).
+8. Rajouter la notion de valider un devis, ce qui rendre le devis figé non modifiable et qui permettra d’activer le bouton pour générer la facture associé au devis.
+```
+
+**Backend**
+- Migration `V214__billing_quote_validation.sql` : colonne `validated` sur `billing_document`.
+  La colonne `discount` représente désormais un **pourcentage** (0..100) appliqué au total HT.
+- `BillingDocument` : champ `validated` (devis figé).
+- `BillingDtos.BillingDocumentDto` : ajout de `validated`, `frozen`, `generatedInvoiceId`,
+  `generatedInvoiceNumber`.
+- `BillingService` :
+  - remise en pourcentage + contrôle 0..100 (`discountPercent`), recalcul HT/TTC revu ;
+  - validation d'une activité facturable : seules les activités de type `MISSION` sont acceptées
+    (`validateBillableActivity`), en plus du refus des congés existant ;
+  - validation d'un devis (`validateQuote`) : le devis devient figé ;
+  - garde de modification : un devis validé/facturé est non modifiable ;
+  - création d'une facture depuis un devis : le devis parent est marqué validé/figé ;
+  - duplication (`duplicate`) : nouveau brouillon, mêmes lignes/projet/activité/consultant,
+    nouveau numéro, `status=DRAFT`, `validated=false`, compteurs d'envoi remis à zéro ;
+  - `toDto` expose la facture générée (`generatedInvoiceId/Number`) et `frozen` ; PDF : remise en %.
+- `BillingController` : `POST /api/billing/{id}/validate` et `POST /api/billing/{id}/duplicate`.
+- `BillingDocumentRepository` : `findFirstByParentQuoteId...` et `existsByParentQuoteId`.
+- Multi-société : accès toujours via `SecurityUtils.effectiveSocId` / `requireSocAccess`.
+
+**Frontend**
+- `api/types.ts` / `api/billing.ts` : nouveaux champs DTO et méthodes `validateQuote`, `duplicate`.
+- `Billing.tsx` :
+  - remise libellée « Remise (%) » et totaux calculés en pourcentage ;
+  - champ activité libellé « Mission » et filtré aux activités `type.code === 'MISSION'` ;
+  - envoi par mail : label « Objet » au lieu de « Sujet » ;
+  - bouton bas de la fiche « Annuler » au lieu de « Fermer » ;
+  - navigation : « Voir le devis » (facture → devis) et « Voir la facture » (devis → facture générée) ;
+  - devis : bouton « Valider le devis » (fige la fiche et active « Créer facture »), champs
+    désactivés + bouton Enregistrer masqué quand le devis est figé ;
+  - génération de facture : boîte de dialogue avec case « Basculer vers la facture générée »
+    cochée par défaut ;
+  - bouton « Dupliquer » + boîte de dialogue avec case « Basculer vers le document dupliqué »
+    cochée par défaut.
+- Tests `Billing.test.tsx` : remise en pourcentage, filtre activités MISSION, validation d'un devis,
+  duplication et dialogue de bascule.
+
+**Tests exécutés**
+- Backend `mvn test` : **813 tests, 0 échec** (dont `BillingServiceTest` 17, +6).
+- Frontend `npm.cmd test` : 56 fichiers / **493 tests OK** (dont `Billing.test.tsx` 6) ;
+  `lint` OK (avertissements pré-existants) ; `build` OK.
+
+### 2026-11-26 16:05:45 — Paramétrage des notifications : manager/admin + réorganisation destinataires
+
+**Tâche**
+```
+ajouter le menu "Parametrage des notifications" pour le role manager 
+le role admin doit avoir aussi ce menu 
+
+chacun son scope de collaborateurs bien sur.
+
+---
+
+reorg de ifor Nouvelle configuration de "Parametrage des notifications" :
+
+Destinataires :
+
+si resp_soc ou manager :
+cadre 1
+3 btns radios : Tous les collaborateurs, Managers, Consultants
+2 cases à cocher : inclure non-salariés, inclure soi-meme
+
+cadre 2
+Choix des collaborateurs un par un dans une liste. A coté de cette liste, ajouter un btn qui permet de "Tout selectionner" ou "Tout Desectioner"
+
+on doit choisir l'un des deux cadres
+```
+
+**Accès manager / admin**
+- Backend `NotificationConfigController` : `@PreAuthorize` élargi à
+  `hasAnyRole('ADMIN','RESPONSIBLE_SOC','MANAGER')`.
+- Frontend `App.tsx` : la route `/parametres-notifications` utilise `NotConsultantRoute` (ADMIN,
+  RESPONSIBLE_SOC, MANAGER) au lieu de `ResponsibleSocRoute`.
+- `MainLayout` : entrée de menu `nav.notificationSettings` visible pour ADMIN/RESPONSIBLE_SOC/MANAGER.
+- Admin sans société par défaut : sélecteur de société (`NotificationSettings.soc.input`) alimenté
+  par `socsApi.findAll()`, comme dans les paramètres généraux.
+
+**Périmètre des collaborateurs**
+- `NotificationEngineService.usersInScope` : un MANAGER ne cible que lui-même + ses collaborateurs
+  directs (`findByManagerId`) ; RESPONSIBLE_SOC/ADMIN ciblent les utilisateurs de la société.
+- La sélection manuelle est validée dans ce périmètre (refus « hors de votre périmètre » pour un
+  manager). L'audience est recalculée à l'exécution avec le créateur de la configuration
+  (`createdBy`), y compris pour les exécutions planifiées sans utilisateur connecté.
+- Multi-société conservée (`effectiveSocId` / `requireSocAccess`).
+
+**Réorganisation « Destinataires »**
+- Modèle : `recipientAudience` (`ALL` / `MANAGERS` / `CONSULTANTS`, null = sélection manuelle),
+  `recipientIncludeNonEmployees`, `recipientIncludeSelf`, + `recipientIds` pour le cadre 2.
+- Migrations : `V215__notification_recipient_audience_reorg.sql` (nouvelles colonnes, suppression
+  des anciens indicateurs V211) et `V216__i18n_notification_recipient_audience_reorg.sql`.
+- Cadre 1 : 3 radios (Tous les collaborateurs / Managers / Consultants) + cases « Inclure les
+  non-salariés » et « Inclure moi-même ». Par défaut, seuls les salariés sont inclus.
+- Cadre 2 : liste des collaborateurs (nom, rôle, salarié/non salarié) avec bouton
+  « Tout sélectionner » / « Tout désélectionner ».
+- Un seul cadre actif : le choix de l'un désactive et vide l'autre. Validation : audience requise
+  en cadre 1, au moins un collaborateur en cadre 2.
+- Tableau des configurations : libellé d'audience + options, ou noms des collaborateurs sélectionnés.
+
+**Tests exécutés**
+- Backend `mvn test` : **814 tests, 0 échec** (dont `NotificationEngineServiceTest` 13, tests
+  réécrits : audience/options, périmètre manager + soi-même, résolution managers/salariés).
+- Frontend `npm.cmd test` : 56 fichiers / **494 tests OK** (dont `NotificationSettings.test.tsx` 9 :
+  cadre exclusif, audience, tout sélectionner/désélectionner, sélection manuelle, ordre des rôles) ;
+  `lint` OK (avertissements pré-existants) ; `build` OK.
+
+### 2026-11-26 16:09:15 — Formulaire Nouveau devis : suppression de la liste Mission en double
+
+**Tâche**
+```
+form Nouveau devis :
+
+pourquoi il y a deux listes Mission ?
+```
+
+**Cause**
+- La liste des projets était déjà libellée « Mission » ; la tâche soc-89 précédente avait aussi
+  renommé la liste des activités en « Mission » (activités de type MISSION), d'où deux listes
+  portant le même libellé dans la création d'un devis/facture.
+
+**Correctif**
+- Suppression du sélecteur de projet redondant dans la création d'un devis/facture : il ne reste
+  qu'une seule liste « Mission » (les activités de type MISSION, filtrées comme demandé).
+- Le projet est désormais déduit de la mission (activité) sélectionnée :
+  `projectId` envoyé = `selectedMission.project.id` et le titre de la popup affiche le nom du
+  projet de la mission choisie.
+- La grille du formulaire passe de 5 à 4 colonnes (Type, Statut, TVA, Remise) ; le champ Mission
+  reste sur sa ligne.
+- La liste « Mission » par filtre du tableau et le tableau de bord sont inchangés.
+
+**Tests exécutés**
+- Backend inchangé (aucune modification) — dernier état : **814 tests, 0 échec**.
+- Frontend `npm.cmd test` : 56 fichiers / **495 tests OK** (dont `Billing.test.tsx` 7, +1 :
+  « n'affiche qu'une seule liste Mission (l'activité) dans le nouveau devis ») ;
+  `lint` OK (avertissements pré-existants) ; `build` OK.
+
+### 2026-11-26 16:20:28 — Paramétrage notifications (admin) : 3 cadres destinataires + choix des sociétés
+
+**Tâche**
+```
+reorg de ifor Nouvelle configuration de "Parametrage des notifications" :
+
+Destinataires :
+
+si role admin :
+cadre 1
+3 btns radios : Sociétés, Responsables_soc, Managers, Consultants
+2 cases à cocher : inclure non-salariés, inclure soi-meme
+
+cadre 2
+Choix des collaborateurs un par un dans une liste. A coté de cette liste, ajouter un btn qui permet de "Tout selectionner" ou "Tout Desectioner"
+
+cadre 3 
+Choix des sociétés un par un dans une liste. A coté de cette liste, ajouter un btn qui permet de "Tout selectionner" ou "Tout Desectioner"
+
+on doit choisir l'un des 3  cadres
+
+---------
+
+le choix Sociétés : veut dire envoyer à tous les users de toutes les sociétés, y compris leurs resp_soc
+```
+
+**Backend**
+- `NotificationRecipientAudience` : ajout de `RESPONSIBLE_SOC` (en plus de `ALL`, `MANAGERS`,
+  `CONSULTANTS`).
+- Entity `NotificationConfig` : `recipientCompanies` (ManyToMany) → table
+  `notification_config_company` (migration `V217`).
+- `NotificationDtos` : `recipientCompanyIds` / `recipientCompanyNames` (DTO) et
+  `recipientCompanyIds` (request).
+- `NotificationEngineService` :
+  - `saveConfig` : trois modes exclusifs — audience (cadre 1), collaborateurs (cadre 2),
+    sociétés (cadre 3). Le mode « sociétés » est réservé à l'administrateur et valide l'existence
+    des sociétés ; les autres modes vident les données des cadres non retenus.
+  - `usersInScope` : ADMIN = tous les utilisateurs toutes sociétés ; MANAGER = lui-même + équipe ;
+    RESPONSIBLE_SOC = utilisateurs de sa société.
+  - `resolveAudience` : prise en charge de `RESPONSIBLE_SOC` ; pour `ALL` (« Sociétés »), les
+    responsables de société sont toujours inclus même non salariés.
+  - `resolveCompanyRecipients` (cadre 3) : tous les utilisateurs actifs non administrateurs des
+    sociétés sélectionnées, responsables compris, sans filtre salarié.
+  - `toConfigDto` : expose les sociétés destinataires.
+- `ConsultantDtos.CollaboratorSummary` : ajout de `socId` / `socName` (affichage de la société du
+  collaborateur pour l'administrateur).
+- i18n `V218` : libellés des cadres/sociétés FR/EN/AR.
+
+**Frontend**
+- `api/types.ts` : `CollaboratorSummary.socId/socName`, `recipientCompanyIds/Names`,
+  `NotificationRecipientAudience` étendu à `RESPONSIBLE_SOC`.
+- `NotificationSettings` (admin) :
+  - 3 cadres sélectionnables (radio) : audience, collaborateurs, sociétés ; un seul actif.
+  - Cadre 1 : radios Sociétés / Responsables société / Managers / Consultants + cases
+    « Inclure les non-salariés » et « Inclure moi-même ».
+  - Cadre 2 : liste des collaborateurs (Nom, Société, Rôle, Salarié/Non salarié) + bouton
+    Tout sélectionner / Tout désélectionner.
+  - Cadre 3 : liste des sociétés + bouton Tout sélectionner / Tout désélectionner.
+  - Responsable/manager : conservent 2 cadres (audience + collaborateurs), sans cadre sociétés.
+  - Validation : audience en cadre 1, au moins un collaborateur en cadre 2, au moins une société
+    en cadre 3 ; payload normalisé selon le cadre.
+  - Tableau : affichage des noms de sociétés pour un envoi par sociétés.
+- Tests : cadre exclusif, audience, sélection manuelle, ordre des rôles, et nouveau test admin
+  (radios Sociétés/Responsables, cadre 3 + tout sélectionner + enregistrement des sociétés).
+
+**Tests exécutés**
+- Backend `mvn test` : **817 tests, 0 échec** (dont `NotificationEngineServiceTest` 16, +3 :
+  mode sociétés réservé admin, stockage des sociétés, résolution de tous les utilisateurs des
+  sociétés avec responsables).
+- Frontend `npm.cmd test` : 56 fichiers / **496 tests OK** (dont `NotificationSettings.test.tsx`
+  10, +1 admin) ; `lint` OK (avertissements pré-existants) ; `build` OK.
+
+### 2026-11-26 16:30:39 — Nouveau devis : mission par liste ou saisie libre + fiche client
+
+**Tâche**
+```
+form Neauvou devis :
+
+pour la mission : on a deux btns radios : 
+liste des missions
+un textArea pour saisir librement le texte de la mission
+
+
+si on selectionne une mission, le client et le projet correspondants se selectionnent automatiquement.
+on peut saisir manuellement dans un champ texte la mission, et selectionner le client.
+une fois le client selectioné, on rappelle en bas de celui-ci son nom, adresse, telephone, email
+```
+
+**Backend**
+- Migration `V219__billing_free_mission_client.sql` : `billing_document.client_id` et
+  `billing_document.mission_label`.
+- `BillingDocument` : client associé + mission libre.
+- `BillingDtos` : DTO expose `clientId/clientName/clientAddress/clientPhone/clientEmail` et
+  `missionLabel` ; requêtes create/update acceptent `clientId` et `missionLabel`
+  (surcharges de compatibilité pour les anciens appels).
+- `BillingService` : enregistrement du client (contrôle `requireSocAccess`) et de la mission libre ;
+  en mode liste, le client est repris du projet de l'activité ; duplication et conversion
+  devis→facture conservent client + mission ; email/PDF utilisent le client (projet ou direct).
+- `ActivityDtos.ProjectRef` : ajout de `clientId` (pour retrouver la fiche client côté front).
+
+**Frontend**
+- `api/types.ts` : champs client + `missionLabel` sur le document ; `clientId`/`missionLabel` sur
+  les requêtes ; `ActivityDto.project.clientId`.
+- `Billing` (formulaire Nouveau devis/facture) :
+  - deux radios « Liste des missions » / « Saisie libre » ;
+  - mode liste : sélection de l'activité MISSION → projet et client automatiques ;
+  - mode libre : textarea Mission + sélection du Client ;
+  - bloc récapitulatif sous le client : nom, adresse, téléphone, email ;
+  - validation (mission + client requis en saisie libre) et payload normalisé ;
+  - tableau : colonne Mission affiche projet, sinon mission libre, sinon activité ;
+  - fiche (view) : affiche la mission libre et les coordonnées du client.
+- Tests `Billing.test.tsx` : nouveau test saisie libre (coordonnées affichées + payload
+  `missionLabel`/`clientId`).
+
+**Tests exécutés**
+- Backend `mvn test` : **819 tests, 0 échec** (dont `BillingServiceTest` 19, +2 : mission libre +
+  client, email client sans projet).
+- Frontend `npm.cmd test` : 56 fichiers / **497 tests OK** (dont `Billing.test.tsx` 8, +1 saisie
+  libre) ; `lint` OK (avertissements pré-existants) ; `build` OK.
+
+### 2026-11-26 16:33:25 — Paramètres notifications : liste des collaborateurs défilante
+
+**Tâche**
+```
+Paramètres de notifications :
+
+Nouvelle configuration :
+
+le cadre contenant la liste des collaborateurs, dans la partie "Selection manuelle", doit avoir un ascenceur vertical, afin de prévoir un grand nombre de users.
+```
+
+**Correctif**
+- `NotificationSettings` (cadre 2 « Sélection manuelle ») : la liste des collaborateurs est
+  désormais une zone à hauteur bornée et **défilement vertical** (`max-h-72 overflow-y-auto`),
+  afin que le cadre garde une hauteur raisonnable avec un grand nombre d'utilisateurs.
+- Même traitement appliqué à la liste des sociétés du cadre 3 (administrateur) pour rester
+  cohérent.
+- Ajout d'un test frontend avec 30 collaborateurs vérifiant que le conteneur reste une zone
+  défilante (`overflow-y-auto`, `max-h-72`).
+
+**Tests exécutés**
+- Backend inchangé (dernier état : **819 tests, 0 échec**).
+- Frontend `npm.cmd test` : 56 fichiers / **498 tests OK** (dont `NotificationSettings.test.tsx`
+  11, +1 : liste défilante) ; `lint` OK (avertissements pré-existants) ; `build` OK.
+
+### 2026-11-26 16:35:40 — Notifications : radio « Managers » masquée pour un manager sans manager
+
+**Tâche**
+```
+Paramètres de notifications :
+
+
+Nouvelle configuration :
+
+si on est manager , dans le cadre "Par catégorie" : on a que :
+
+si ce manager n'a aucun manager parmi ses collaborateurs (distinct de lui meme), on ne met pas le btn radio "Managers".
+```
+
+**Correctif**
+- `NotificationSettings` : pour un utilisateur de rôle MANAGER, le bouton radio « Managers » du
+  cadre « Par catégorie » n'est affiché que si l'équipe contient au moins un collaborateur de
+  rôle MANAGER **distinct de lui-même** (`managerHasManagerCollaborator`).
+- Les autres radios (Tous les collaborateurs / Consultants) restent inchangés ; RESPONSIBLE_SOC
+  et ADMIN conservent le radio « Managers ».
+
+**Tests exécutés**
+- Backend inchangé (dernier état : **819 tests, 0 échec**).
+- Frontend `npm.cmd test` : 56 fichiers / **500 tests OK** (dont `NotificationSettings.test.tsx`
+  13, +2 : manager sans manager → radio masquée ; manager avec un autre manager → radio affichée) ;
+  `lint` OK (avertissements pré-existants) ; `build` OK.
+
+### 2026-11-26 16:38:03 — Notifications : popup de configuration défilante
+
+**Tâche**
+```
+Paramètres de notifications :
+
+
+Nouvelle configuration :
+
+la popup doit avoir un ascenceur vertical et eventuellement horizontal afin de pouvoir tout voir si l'ecran du navigateur est petit
+```
+
+**Correctif**
+- `Modal` (composant générique) : nouvelle option `scrollBody` — le corps de la popup est borné en
+  hauteur et défile verticalement et horizontalement (`max-h-[calc(100vh-10rem)] overflow-auto`),
+  l'en-tête et le pied restant visibles.
+- Activée sur la popup « Nouvelle configuration / Modifier » des paramètres de notifications.
+  Les autres modales ne changent pas (option désactivée par défaut).
+- Test frontend : le corps de la popup de configuration porte bien les classes de défilement.
+
+**Tests exécutés**
+- Backend inchangé (dernier état : **819 tests, 0 échec**).
+- Frontend `npm.cmd test` : 56 fichiers / **501 tests OK** (dont `NotificationSettings.test.tsx`
+  14, +1 : popup défilante) ; `lint` OK (avertissements pré-existants) ; `build` OK.
