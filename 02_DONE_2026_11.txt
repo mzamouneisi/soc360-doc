@@ -6426,6 +6426,74 @@ ajouter tab Societe pour admin afin de gerer le logo de Soc360 et eventuellement
 - Frontend `npm.cmd test` : 56 fichiers / **485 tests OK** ; `lint` OK (avertissements
   pré-existants) ; `build` OK.
 
+### 2026-11-26 09:36:40 — Paramètres de notifications : évolution des destinataires
+
+**Tâche**
+```
+Paramètres de notifications
+
+Evolution de la partie "Destinataires" :
+
+On peut envoyer à tous les collaborateurs 
+ou certains collaborateurs
+et/ou salariés seulement
+et/ou non salariés seulement
+et/ou manager seulement
+et/ou consultant seulement
+
+
+gerer les contradictions bien sur . ex : 
+si on coche tous les collaborateurs, les autres filtres seront désactivés
+```
+
+**Modèle retenu**
+- Destinataires = union de plusieurs audiences : « tous les collaborateurs », « certains
+  collaborateurs » (sélection explicite existante), « salariés seulement », « non salariés
+  seulement », « managers seulement », « consultants seulement ».
+- « Tous les collaborateurs » est exclusif : il désactive et vide les autres filtres (côté IHM) et
+  prime côté backend (les autres indicateurs sont ignorés).
+- Les audiences par catégorie sont résolues **à l'exécution** (envoi manuel/planifié) contre les
+  utilisateurs actuels de la société ; les destinataires explicites restent stockés dans la table
+  `notification_config_recipient`.
+- Sémantique : OR entre les catégories cochées ; les comptes `ADMIN` et inactifs sont exclus des
+  audiences par catégorie ; les destinataires explicites restent actifs et rattachés à la société.
+
+**Backend**
+- Migrations Flyway : `V211__notification_recipient_audience.sql` (colonnes `recipient_all`,
+  `recipient_employee`, `recipient_non_employee`, `recipient_manager`, `recipient_consultant`) et
+  `V212__i18n_notification_recipient_audience.sql` (libellés FR/EN/AR).
+- `NotificationConfig` : 5 nouveaux booléens d'audience.
+- `NotificationDtos.ConfigDto` / `ConfigRequest` : mêmes 5 booléens exposés.
+- `NotificationEngineService` :
+  - `saveConfig` normalise les audiences (tous ⇒ autres = false, destinataires explicites ignorés),
+    valide qu'au moins une audience/destinataire est fourni, et stocke les destinataires explicites.
+  - `executeConfig` résout les destinataires via `resolveConfigRecipients` (explicites +
+    `resolveAudience` sur `usersOfSoc` = `findBySocId` ∪ `findBySocIdInSocs`), filtrage
+    actif/non-ADMIN/rattachement société.
+  - `toConfigDto` renvoie les indicateurs d'audience.
+- Multi-société : résolution bornée à la société de la configuration ; rattachement contrôlé par
+  `belongsToSoc` / `requireSocAccess` (inchangés).
+
+**Frontend**
+- `src/api/types.ts` : booléens d'audience ajoutés à `NotificationConfigDto` / `NotificationConfigRequest`.
+- `NotificationSettings` (partie « Destinataires ») : case « Tous les collaborateurs »
+  (`NotificationSettings.recipients.all.input`), cases « Salariés seulement »
+  (`.employee.input`), « Non salariés seulement » (`.nonEmployee.input`), « Managers seulement »
+  (`.manager.input`), « Consultants seulement » (`.consultant.input`) et multi-sélection
+  « Certains collaborateurs » (`.input`, `.specific`).
+  - `setRecipientAll` : cocher « tous » vide/désactive les autres filtres ; décocher les réactive.
+  - Validation IHM : au moins une audience ou un destinataire explicite requis.
+  - Colonne « Destinataires » : libellé synthétique à partir des audiences cochées + noms explicites.
+  - Id du libellé « Destinataires » suffixé `.field` pour éviter le doublon avec l'en-tête de table.
+
+**Tests exécutés**
+- Backend `mvn test` : **807 tests, 0 échec** (dont `NotificationEngineServiceTest` 15, +2 :
+  `saveConfig_allCollaboratorsIgnoresOtherRecipientFlags`,
+  `runNow_categoryAudienceResolvesMatchingActiveUsers`).
+- Frontend `npm.cmd test` : 56 fichiers / **487 tests OK** (dont `NotificationSettings.test.tsx` 6,
+  +2 : désactivation des filtres quand « tous » est coché, enregistrement de l'audience « tous ») ;
+  `lint` OK (avertissements pré-existants) ; `build` OK.
+
 ### 2026-11-25 17:31:00 — Paramètres congés : carte « Report des droits » agrandie
 
 **Tâche**
