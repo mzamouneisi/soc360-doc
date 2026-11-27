@@ -7080,3 +7080,43 @@ comme pour le fournisseur
 - Backend `mvn test` : **830 tests, 0 échec** (dont `ClientServiceTest` +3).
 - Frontend `npm.cmd test` : 61 fichiers / **549 tests OK** (dont `Clients.test.tsx`) ;
   `lint` OK (avertissements pré-existants) ; `build` OK.
+
+### 2026-11-27 21:45:35 — Mes sociétés / Toutes les sociétés : flags site web et adresse
+
+**Tâche**
+```
+mes societes 
+
+verif + flag sur : site web
+
+organiser l'adresse comme pour prospect
+
+verif + flag sur adresse et ses 4 elements comme pour prospect
+
+-----------
+
+de meme pour le menu "toutes les societes"
+```
+
+**Correctif**
+- `SocAdmin` (utilisé pour `/soc` « Mes sociétés » et `/soc/toutes` « Toutes les sociétés ») :
+  - **Site web** : flag vert/rouge (`isValidWebsite`), validation bloquante à l'enregistrement si
+    renseigné et invalide.
+  - **Adresse** : regroupée dans une Card « Adresse », champs réordonnés Pays → Code postal →
+    Ville → Rue, chacun avec un flag vert/rouge :
+    - Pays : pays reconnu ;
+    - Code postal : format valide (5 chiffres pour la France) ;
+    - Ville : correspond au code postal (vérification BAN à la saisie/perte de focus) ;
+    - Rue : existe pour le code postal (vérification BAN), avec suggestions commençant par la
+      saisie (numéro de voie géré comme pour les prospects).
+  - À l'ouverture du formulaire d'édition, ville et rue sont vérifiées automatiquement à partir
+    des valeurs enregistrées (flags corrects dès l'ouverture).
+  - Suggestions de pays (datalist) et de rues (liste déroulante) identiques au formulaire prospect.
+- Validation bloquante du code postal à l'enregistrement (5 chiffres pour la France).
+- i18n `V225` : messages `SocAdmin.site.web.invalide` / `SocAdmin.code.postal.invalide`.
+
+**Tests exécutés**
+- Backend `mvn test` : **830 tests, 0 échec** (migration V225 appliquée).
+- Frontend `npm.cmd test` : 61 fichiers / **550 tests OK** (dont `SocAdmin.test.tsx` : flags site
+  web + adresse, vérification ville/rue à l'ouverture) ; `lint` OK (avertissements pré-existants) ;
+  `build` OK.
