@@ -6864,3 +6864,51 @@ la popup doit avoir un ascenceur vertical et eventuellement horizontal afin de p
 - Backend inchangé (dernier état : **819 tests, 0 échec**).
 - Frontend `npm.cmd test` : 56 fichiers / **501 tests OK** (dont `NotificationSettings.test.tsx`
   14, +1 : popup défilante) ; `lint` OK (avertissements pré-existants) ; `build` OK.
+
+### 2026-11-27 11:27:46 — Toutes les popups défilantes (petits écrans)
+
+**Tâche**
+```
+toutes les popup doivent prevoir un ascenceur vertical et eventuellement horizontal afin de pouvoir tout afficher en cas d'un ecran petit
+```
+
+**Correctif**
+- `Modal` (composant générique) : le corps de **toutes** les popups est désormais défilant par
+  défaut (`scrollBody = true`) avec une hauteur bornée et défilement vertical + horizontal
+  (`max-h-[calc(100vh-10rem)] overflow-auto`), en-tête et pied restant visibles.
+- L'option `scrollBody={false}` reste disponible pour un cas particulier.
+
+**Tests exécutés**
+- Backend inchangé (dernier état : **819 tests, 0 échec**).
+- Frontend `npm.cmd test` : 56 fichiers / **501 tests OK** ; `lint` OK (avertissements
+  pré-existants) ; `build` OK.
+
+### 2026-11-27 11:27:47 — Notifications : inclure les non-salariés en sélection manuelle
+
+**Tâche**
+```
+Paramètres de notifications :
+
+
+Nouvelle configuration :
+
+Sélection manuelle : 
+
+ajouter une case à cocher au dessus du btn "Tout selectionner" qui permet d'ajouter ou non les non-salariés. Par défaut elle est décochée.
+```
+
+**Correctif**
+- `NotificationSettings` (cadre 2 « Sélection manuelle ») : case à cocher « Inclure les
+  non-salariés » ajoutée au-dessus du bouton « Tout sélectionner », **décochée par défaut**.
+- Décochée : la liste ne montre que les salariés et « Tout sélectionner » ne sélectionne qu'eux ;
+  décocher retire de la sélection les non-salariés déjà cochés.
+- Cochée : les non-salariés apparaissent et peuvent être sélectionnés.
+- À l'édition, la case est automatiquement cochée si la configuration contient déjà un
+  non-salarié sélectionné (pour ne pas masquer la sélection existante).
+- Test frontend ajouté : non-salariés masqués par défaut, inclus via la case, retirés lors du
+  décochage.
+
+**Tests exécutés**
+- Backend inchangé (dernier état : **819 tests, 0 échec**).
+- Frontend `npm.cmd test` : 56 fichiers / **502 tests OK** (dont `NotificationSettings.test.tsx`
+  15, +1) ; `lint` OK (avertissements pré-existants) ; `build` OK.
