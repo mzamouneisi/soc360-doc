@@ -6912,3 +6912,79 @@ ajouter une case à cocher au dessus du btn "Tout selectionner" qui permet d'ajo
 - Backend inchangé (dernier état : **819 tests, 0 échec**).
 - Frontend `npm.cmd test` : 56 fichiers / **502 tests OK** (dont `NotificationSettings.test.tsx`
   15, +1) ; `lint` OK (avertissements pré-existants) ; `build` OK.
+
+### 2026-11-27 16:19:43 — Notifications : compteur de collaborateurs sélectionnés
+
+**Tâche**
+```
+
+Paramètres de notifications :
+
+
+Nouvelle configuration :
+
+Ajouter à droite du Label "Destinataires" : 
+<le nombre de collaborateurs selected> / <nombre total des collaborateurs>
+```
+
+**Correctif**
+- `NotificationSettings` : à droite du libellé « Destinataires », affichage de
+  `<sélectionnés> / <total>` (`NotificationSettings.recipients.count`).
+  - sélectionnés = nombre d'identifiants de collaborateurs cochés (`recipientIds`) ;
+  - total = nombre de collaborateurs du périmètre (liste renvoyée par le backend, tous rôles
+    et salariés/non-salariés confondus).
+- Le compteur se met à jour en temps réel lors du cochage/décochage et des actions
+  « Tout sélectionner / Tout désélectionner ».
+- Test frontend ajouté : `0 / 2` puis `1 / 2` après sélection d'un collaborateur.
+
+**Tests exécutés**
+- Backend inchangé (dernier état : **819 tests, 0 échec**).
+- Frontend `npm.cmd test` : 56 fichiers / **503 tests OK** (dont `NotificationSettings.test.tsx`
+  16, +1) ; `lint` OK (avertissements pré-existants) ; `build` OK.
+
+### 2026-11-27 16:54:08 — soc-99 : prospects, contrôles de saisie et adresse française
+
+**Tâche**
+```
+soc-99 gestion des prospects :
+
+Rajouter les contrôle de saisie sur les champs : 
+email, téléphone et développer l'adresse (ville code postale rue, …)
+pour la france gerer l'auto completion sur l'adresse :
+lorsqu'on saisi le code postal, l'appli insert la bonne ville dans le champ ville
+lorsqu'on saisi la ville, l'appli insert le code postal s'il est trouvé.
+lorsque le code postal est saisi, on aide à la saisie de la rue ... 
+```
+
+**Backend**
+- Migration `V221__prospect_address_fields.sql` : colonnes `street`, `postal_code`, `city`,
+  `country` sur `prospect` (la colonne historique `address` reste alimentée par concaténation).
+- `Prospect` + `ProspectDtos` : champs d'adresse structurés exposés (DTO + requête) ;
+  constructeur de compatibilité pour les anciens appels.
+- `ProspectService` :
+  - contrôles de saisie : email (format), téléphone (chiffres/+/().-, 6 à 30), code postal
+    (5 chiffres pour la France, format générique sinon) ;
+  - adresse structurée enregistrée et `address` composée (`rue, code postal ville, pays`) ;
+  - `toDto` expose `street/postalCode/city/country`.
+- i18n `V222` : libellés Rue / Code postal / Ville / Pays + messages d'erreur FR/EN/AR.
+
+**Frontend**
+- `api/types.ts` : champs d'adresse structurés sur `ProspectDto` / `ProspectRequest`.
+- `src/lib/frenchAddress.ts` : appels à la Base Adresse Nationale
+  (`api-adresse.data.gouv.fr`) — ville depuis code postal, code postal depuis ville, suggestions
+  de rues (dédupliquées, échec silencieux si le service est indisponible).
+- `Prospects` (formulaire) :
+  - validation email / téléphone / code postal (messages d'erreur) ;
+  - champs Rue, Code postal, Ville, Pays (France par défaut) ;
+  - code postal saisi (5 chiffres) → ville auto-complétée ;
+  - ville quittée sans code postal → code postal complété s'il est trouvé ;
+  - saisie de rue (≥ 3 caractères) → suggestions via `<datalist>` (débounce 300 ms).
+- Tests : validation email/téléphone/code postal, code postal→ville, ville→code postal,
+  suggestions de rue, enregistrement de l'adresse structurée, et tests unitaires du helper
+  `frenchAddress`.
+
+**Tests exécutés**
+- Backend `mvn test` : **823 tests, 0 échec** (dont `ProspectServiceTest` +4 : email, téléphone,
+  code postal, composition d'adresse).
+- Frontend `npm.cmd test` : 57 fichiers / **516 tests OK** (dont `Prospects.test.tsx` 12 et
+  `frenchAddress.test.ts` 5) ; `lint` OK (avertissements pré-existants) ; `build` OK.
