@@ -7047,3 +7047,36 @@ contrôle de saisie téléphone et email
 - Backend `mvn test` : **827 tests, 0 échec** (dont `SupplierServiceTest` +3).
 - Frontend `npm.cmd test` : 60 fichiers / **544 tests OK** (dont `Suppliers.test.tsx`) ;
   `lint` OK (avertissements pré-existants) ; `build` OK.
+
+### 2026-11-27 21:22:11 — soc-107 : contrôles de saisie email / téléphone des clients
+
+**Tâche**
+```
+soc-107 Rajouter les contrôle de saisie sur les champs du client
+
+Email et téléphone
+
+comme pour le fournisseur 
+```
+
+**Backend**
+- `ClientService` : `validateContact` à l'enregistrement (create/update) :
+  - email : format `xx@yy.zz` si renseigné ;
+  - téléphone : caractères autorisés (`+` en tête, chiffres, espaces, points, tirets,
+    parenthèses) et **6 à 15 chiffres** (même règle que fournisseurs/prospects).
+- i18n `V224` : messages `Clients.email.invalid` / `Clients.phone.invalid` (FR/EN/AR).
+- Tests `ClientServiceTest` : email invalide, téléphones invalides, téléphone international
+  accepté.
+
+**Frontend**
+- `Clients` (formulaire) : validation email/téléphone avant enregistrement (messages d'erreur),
+  champs vides autorisés.
+- Flags vert/rouge sur les champs E-mail et Téléphone via le composant partagé `FlagField`
+  (ids `Clients.e.mail.du.contact.valid/invalid`, `Clients.telephone.valid/invalid`).
+- Nouveau `Clients.test.tsx` : flags par défaut/valides/invalides, email invalide refusé,
+  téléphone invalide refusé, contacts valides acceptés.
+
+**Tests exécutés**
+- Backend `mvn test` : **830 tests, 0 échec** (dont `ClientServiceTest` +3).
+- Frontend `npm.cmd test` : 61 fichiers / **549 tests OK** (dont `Clients.test.tsx`) ;
+  `lint` OK (avertissements pré-existants) ; `build` OK.
