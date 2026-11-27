@@ -7017,3 +7017,33 @@ qu'en pensez vous ?
   étendu à plusieurs cas).
 - Frontend `npm.cmd test` : 59 fichiers / **537 tests OK** (dont `validation.test.ts` et
   `Prospects.test.tsx`) ; `lint` OK (avertissements pré-existants) ; `build` OK.
+
+### 2026-11-27 21:02:35 — soc-106 : contrôles de saisie email / téléphone des fournisseurs
+
+**Tâche**
+```
+soc-106 Rajouter les contrôle de saisie sur les champs du fournisseur
+
+contrôle de saisie téléphone et email
+```
+
+**Backend**
+- `SupplierService` : validation `validateContact` à l'enregistrement (create/update) :
+  - email : format `xx@yy.zz` si renseigné ;
+  - téléphone : caractères autorisés (`+` en tête, chiffres, espaces, points, tirets,
+    parenthèses) et **6 à 15 chiffres** (même règle que les prospects).
+- i18n `V223` : messages `Suppliers.email.invalid` / `Suppliers.phone.invalid` (FR/EN/AR).
+- Tests `SupplierServiceTest` : refus d'un email invalide, refus de plusieurs téléphones
+  invalides, acceptation d'un téléphone international (`+33 6 12 34 56 78`).
+
+**Frontend**
+- `src/lib/validation.ts` : ajout de `isValidEmail` (à côté de `isValidPhone`).
+- `Suppliers` (formulaire) : contrôle email et téléphone avant l'enregistrement, avec messages
+  d'erreur ; champs vides toujours autorisés.
+- Nouveau test `Suppliers.test.tsx` : email invalide refusé, téléphone invalide refusé, email +
+  téléphone valides acceptés.
+
+**Tests exécutés**
+- Backend `mvn test` : **827 tests, 0 échec** (dont `SupplierServiceTest` +3).
+- Frontend `npm.cmd test` : 60 fichiers / **544 tests OK** (dont `Suppliers.test.tsx`) ;
+  `lint` OK (avertissements pré-existants) ; `build` OK.
